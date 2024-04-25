@@ -4,11 +4,11 @@ using UnityEngine;
 
 public class ClassTree : MonoBehaviour
 {
-    public Dictionary<string, AbstractClass> classMap = new Dictionary<string, AbstractClass>();
-    public Dictionary<string, AbstractClass> tierOneMap = new Dictionary<string, AbstractClass>();
-    public Dictionary<string, AbstractClass> tierTwoMap = new Dictionary<string, AbstractClass>();
-    public Dictionary<string, AbstractClass> tierThreeMap = new Dictionary<string, AbstractClass>();
-    public Dictionary<string, AbstractClass> tierFourMap = new Dictionary<string, AbstractClass>();
+    public Dictionary<string, CharacterClass> classMap = new Dictionary<string, CharacterClass>();
+    public List<string> tierOneClasses;
+    public List<string> tierTwoClasses;
+    public List<string> tierThreeClasses;
+    public List<string> tierFourClasses;
     public static Dictionary<string, List<string>> promotionsMap = new Dictionary<string, List<string>>();
 
     public ClassTree()
@@ -36,17 +36,15 @@ public class ClassTree : MonoBehaviour
     {
     }
 
-    public void add(AbstractClass c)
+    public void add(CharacterClass c)
     {
         classMap.Add(c.name, c);
     }
 
     public void addTierOneClasses()
     {
-        add(new Mage());
-        tierOneMap.Add("Mage", new Mage());
+        tierOneClasses.AddRange(new List<string> { "Mage", "Warrior", "Rogue", "Cleric" });
         promotionsMap.Add("Mage", new List<string> { "DarkMage", "LightMage", "EarthMage", "FireMage", "WaterMage", "WindMage", "Scholar" });
-
     }
 
     public static List<string> getPromotions(string classID)

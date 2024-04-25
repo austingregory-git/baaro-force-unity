@@ -6,19 +6,19 @@ public class ClassStats : MonoBehaviour
 {
     public int hp;
     public int str;
-    public int mr;
     public int def;
     public int magic;
     public int dex;
+    public int mana;
 
-    public ClassStats(int hp, int str, int def, int mr, int magic, int dex)
+    public ClassStats(int hp, int str, int def, int magic, int dex, int mana)
     {
         this.hp = hp;
         this.str = str;
-        this.mr = mr;
         this.def = def;
         this.magic = magic;
         this.dex = dex;
+        this.mana = mana;
     }
 
 

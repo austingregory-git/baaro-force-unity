@@ -33,6 +33,7 @@ public class HexGrid : MonoBehaviour {
 	}
 
     void Start () {
+		Debug.Log("yooo");
 		hexMesh.Triangulate(cells);
 	}
 	
@@ -56,11 +57,19 @@ public class HexGrid : MonoBehaviour {
 		
 	void Update () {
 		if (Input.GetMouseButton(0)) {
+			Debug.Log("Click");
 			HandleInput();
+		}
+		if (Event.current != null && Event.current.type == EventType.MouseDown && Event.current.button == 0)
+		{
+			Debug.Log("Click");
+			HandleInput();
+		
 		}
 	}
 
 	void HandleInput () {
+		Debug.Log("HandleInput");
 		Ray inputRay = Camera.main.ScreenPointToRay(Input.mousePosition);
 		RaycastHit hit;
 		if (Physics.Raycast(inputRay, out hit)) {
@@ -69,6 +78,7 @@ public class HexGrid : MonoBehaviour {
 	}
 	
 	void TouchCell (Vector3 position) {
+		Debug.Log("touched at " + position.ToString());
 		position = transform.InverseTransformPoint(position);
 		HexCoordinates coordinates = HexCoordinates.FromPosition(position);
 		Debug.Log("touched at " + coordinates.ToString());
