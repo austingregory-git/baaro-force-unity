@@ -8,7 +8,7 @@ namespace BaaroForce.Utils
     public class NameGenerator : MonoBehaviour
     {
 
-        private System.Random random = new System.Random();
+        private readonly System.Random random = new System.Random();
         public enum RealmType
         {
             FIRE,
@@ -153,7 +153,7 @@ namespace BaaroForce.Utils
                 "Grove",
                 "Worm",
                 "Tree",
-                "Mar"
+                "Mar",
             };
 
             List<string> nameSuffixes = new List<string>() {
@@ -190,7 +190,8 @@ namespace BaaroForce.Utils
                 "Whisp",
                 "Bird",
                 "Butter",
-                "Moth"
+                "Moth",
+                "Kir",
             };
 
             List<string> nameSuffixes = new List<string>() {
@@ -230,7 +231,7 @@ namespace BaaroForce.Utils
                 "Sty",
                 "Dam",
                 "Dem",
-                "Lun"
+                "Lun",
             };
 
             List<string> nameSuffixes = new List<string>() {

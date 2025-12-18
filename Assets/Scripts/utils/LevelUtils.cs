@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
-
+using BaaroForce.Utils;
 using UnityEngine;
 
 public class LevelUtils : MonoBehaviour
 {
 
-    private System.Random random = new System.Random();
-    private ClassGenerator classGenerator = new ClassGenerator();
+    private readonly System.Random random = new System.Random();
+    private readonly ClassGenerator classGenerator = new ClassGenerator();
 
     private RollUtils rollUtils = new RollUtils();
 
