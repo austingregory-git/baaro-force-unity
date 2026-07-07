@@ -3,22 +3,23 @@ using UnityEngine.SceneManagement;
 
 public class MainMenu : MonoBehaviour
 {
-    public static void Play()
+    public void Play()
     {
+        //Debug.Log("Play button pressed");
         SceneManager.LoadScene("CharacterSelectionScene");
     }
 
-    public static void Settings()
+    public void Settings()
     {
         Debug.Log("Settings button pressed");
     }
 
-    public static void Statistics()
+    public void Statistics()
     {
         Debug.Log("Statistics button pressed");
     }
 
-    public static void Quit()
+    public void Quit()
     {
         Debug.Log("Quit button pressed");
         Application.Quit();
