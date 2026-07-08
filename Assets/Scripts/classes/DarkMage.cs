@@ -1,18 +1,12 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
-public class DarkMage : MonoBehaviour
+namespace BaaroForce.Classes
 {
-    // Start is called before the first frame update
-    void Start()
+    public class DarkMage : CharacterClass
     {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        public DarkMage()
+            : base("DarkMage", Tier.TIER_TWO, ClassTree.getPromotions("DarkMage"), null, new ClassGrowthWeights(0.4, 0.2, 0.4))
+        {
+        }
     }
 }

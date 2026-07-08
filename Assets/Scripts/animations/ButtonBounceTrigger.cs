@@ -14,7 +14,8 @@ public class ButtonBounceTrigger : MonoBehaviour, IPointerEnterHandler
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        animator.SetTrigger("Hover");
+        if (animator != null)
+            animator.SetTrigger("Hover");
         if (audioSource != null && audioSource.clip != null)
         {
             audioSource.Play();

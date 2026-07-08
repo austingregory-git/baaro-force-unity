@@ -1,65 +1,62 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
-public class ClassTree : MonoBehaviour
+namespace BaaroForce.Classes
 {
-    public Dictionary<string, CharacterClass> classMap = new Dictionary<string, CharacterClass>();
-    public List<string> tierOneClasses;
-    public List<string> tierTwoClasses;
-    public List<string> tierThreeClasses;
-    public List<string> tierFourClasses;
-    public static Dictionary<string, List<string>> promotionsMap = new Dictionary<string, List<string>>();
+    public class ClassTree
+    {
+        public Dictionary<string, CharacterClass> classMap = new Dictionary<string, CharacterClass>();
+        public List<string> tierOneClasses = new List<string>();
+        public List<string> tierTwoClasses = new List<string>();
+        public List<string> tierThreeClasses = new List<string>();
+        public List<string> tierFourClasses = new List<string>();
+        private static readonly Dictionary<string, List<string>> promotionsMap = new Dictionary<string, List<string>>();
 
-    public ClassTree()
-    {
-        initialize();
-    }
+        static ClassTree()
+        {
+            promotionsMap.Add("Mage", new List<string> { "DarkMage", "LightMage", "EarthMage", "FireMage", "WaterMage", "WindMage", "Scholar" });
+            promotionsMap.Add("Cleric", new List<string> { "Deacon", "Monk", "Druid", "Paladin", "LightMage", "Scholar" });
+            promotionsMap.Add("DarkMage", new List<string> { "TwilightMage", "Undead", "Demon", "LunarMage", "VoidMage" });
+        }
 
-    public void initialize()
-    {
-        addTierOneClasses();
-        addTierTwoClasses();
-        addTierThreeClasses();
-        addTierFourClasses();
-    }
+        public ClassTree()
+        {
+            initialize();
+        }
 
-    private void addTierFourClasses()
-    {
-    }
+        public void initialize()
+        {
+            addTierOneClasses();
+            addTierTwoClasses();
+            addTierThreeClasses();
+            addTierFourClasses();
+        }
 
-    private void addTierThreeClasses()
-    {
-    }
+        private void addTierFourClasses()
+        {
+        }
 
-    private void addTierTwoClasses()
-    {
-    }
+        private void addTierThreeClasses()
+        {
+        }
 
-    public void add(CharacterClass c)
-    {
-        classMap.Add(c.name, c);
-    }
+        private void addTierTwoClasses()
+        {
+        }
 
-    public void addTierOneClasses()
-    {
-        tierOneClasses.AddRange(new List<string> { "Mage", "Warrior", "Rogue", "Cleric" });
-        promotionsMap.Add("Mage", new List<string> { "DarkMage", "LightMage", "EarthMage", "FireMage", "WaterMage", "WindMage", "Scholar" });
-    }
+        public void add(CharacterClass c)
+        {
+            classMap.Add(c.classID, c);
+        }
 
-    public static List<string> getPromotions(string classID)
-    {
-        return promotionsMap[classID];
-    }
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+        public void addTierOneClasses()
+        {
+            tierOneClasses.AddRange(new List<string> { "Mage", "Warrior", "Rogue", "Archer", "Cleric" });
+        }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+        public static List<string> getPromotions(string classID)
+        {
+            return promotionsMap[classID];
+        }
     }
 }
+

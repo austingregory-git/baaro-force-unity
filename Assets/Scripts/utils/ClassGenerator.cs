@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using BaaroForce.Classes;
+using BaaroForce.Characters;
 
 using UnityEngine;
 
@@ -18,32 +20,28 @@ namespace BaaroForce.Utils
             {
 
                 int level = random.Next(0, 30);
-                ClassStats classStats = GenerateClassStats(level);
+                CharacterStats characterStats = GenerateCharacterStats(level);
 
                 Debug.Log("Level: " + level);
-                Debug.Log("Hp: " + classStats.hp);
-                Debug.Log("Str: " + classStats.str);
-                Debug.Log("Def: " + classStats.def);
-                Debug.Log("Magic: " + classStats.magic);
-                Debug.Log("Dex: " + classStats.dex);
-                Debug.Log("Mana: " + classStats.mana);
+                Debug.Log("HealthPoints: " + characterStats.healthPoints);
+                Debug.Log("BaseAttack: " + characterStats.baseAttack);
+                Debug.Log("Mana: " + characterStats.mana);
+                Debug.Log("Movement: " + characterStats.movement);
             }
         }
 
-        public ClassStats GenerateClassStats(int level)
+        public CharacterStats GenerateCharacterStats(int level)
         {
             int lowerBound = (level / 2) + 4;
             int upperBound = (level / 2) + 12;
 
-            int hp = random.Next(lowerBound, upperBound);
-            int str = random.Next(lowerBound, upperBound);
-            int def = random.Next(lowerBound, upperBound);
-            int magic = random.Next(lowerBound, upperBound);
-            int dex = random.Next(lowerBound, upperBound);
+            int healthPoints = random.Next(lowerBound, upperBound);
+            int baseAttack = random.Next(lowerBound, upperBound);
             int mana = random.Next(lowerBound, upperBound);
+            int movement = 5;
 
-            ClassStats classStats = new ClassStats(hp, str, def, magic, dex, mana);
-            return classStats;
+            CharacterStats characterStats = new CharacterStats(healthPoints, baseAttack, mana, movement);
+            return characterStats;
         }
     }
 }

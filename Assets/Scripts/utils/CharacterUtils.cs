@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using BaaroForce.Classes;
+using BaaroForce.Characters;
 
 namespace BaaroForce.Utils 
 {
@@ -17,50 +19,44 @@ namespace BaaroForce.Utils
             for(int i=0; i < 100; i++) {
 
                 int level = random.Next(0, 30);
-                ClassStats classStats= GenerateClassStats(level);
+                CharacterStats characterStats = GenerateCharacterStats(level);
 
                 Debug.Log("Level: " + level);
-                Debug.Log("Hp: " + classStats.hp);
-                Debug.Log("Str: " + classStats.str);
-                Debug.Log("Def: " + classStats.def);
-                Debug.Log("Magic: " + classStats.magic);
-                Debug.Log("Dex: " + classStats.dex);
-                Debug.Log("Mana: " + classStats.mana);
+                Debug.Log("HealthPoints: " + characterStats.healthPoints);
+                Debug.Log("BaseAttack: " + characterStats.baseAttack);
+                Debug.Log("Mana: " + characterStats.mana);
+                Debug.Log("Movement: " + characterStats.movement);
             }
         }
 
-        public ClassStats GenerateClassStats(int level)
+        public CharacterStats GenerateCharacterStats(int level)
         {
             int lowerBound = (level/2)+4;
             int upperBound = (level/2)+12;
 
-            int hp = random.Next(lowerBound, upperBound);
-            int str = random.Next(lowerBound, upperBound);
-            int def = random.Next(lowerBound, upperBound);
-            int magic = random.Next(lowerBound, upperBound);
-            int dex = random.Next(lowerBound, upperBound);
+            int healthPoints = random.Next(lowerBound, upperBound);
+            int baseAttack = random.Next(lowerBound, upperBound);
             int mana = random.Next(lowerBound, upperBound);
-            ClassStats classStats = new ClassStats(hp, str, def, magic, dex, mana);
-            return classStats;
+            int movement = 5;
+            CharacterStats characterStats = new CharacterStats(healthPoints, baseAttack, mana, movement);
+            return characterStats;
         }
 
-        public List<Character> GenerateCharacters(int numCharacters)
-        {
-            List<Character> characters = new List<Character>();
+        // public List<Character> GenerateCharacters(int numCharacters)
+        // {
+        //     List<Character> characters = new List<Character>();
 
-            for(int i=0; i < numCharacters; i++) {
-                int level = random.Next(0, 30);
-                ClassStats classStats= GenerateClassStats(level);
-                List<string> promotions = new List<string>();
-                List<Spell> spells = new List<Spell>();
-                CharacterClass characterClass = new Mage(promotions, spells, classStats);
-                string characterName = nameGenerator.GetNameByRealm(nameGenerator.GetRandomRealm());
-                Character character = new Character(characterClass, characterName);
-                characters.Add(character);
-            }
+        //     for(int i=0; i < numCharacters; i++) {
+        //         int level = random.Next(0, 30);
+        //         CharacterStats characterStats = GenerateCharacterStats(level);
+        //         CharacterClass characterClass = new Mage();
+        //         string characterName = nameGenerator.GetNameByRealm(nameGenerator.GetRandomRealm());
+        //         Character character = new Character(characterClass, characterName, characterStats);
+        //         characters.Add(character);
+        //     }
 
-            return characters;
-        }
+        //     return characters;
+        // }
     }
 
 }
