@@ -42,6 +42,82 @@ namespace BaaroForce.Utils
             return characterStats;
         }
 
+        // ------------------------------------------------------------------ //
+        // Character registry                                                  //
+        // Add new playable characters here as they are implemented.           //
+        // ------------------------------------------------------------------ //
+
+        private static readonly List<Func<Character>> CharacterRegistry = new List<Func<Character>>
+        {
+            () => new Winston(),
+            () => new Beepo(),
+        };
+
+        /// <summary>
+        /// Returns <paramref name="numCharacters"/> randomly selected characters,
+        /// weighted towards <paramref name="realm"/>.
+        /// Characters whose realm matches get weight 0.5; all others get 0.1.
+        /// Selection is without replacement where possible; repeats are only
+        /// allowed when more characters are requested than the registry holds.
+        /// </summary>
+        public static List<Character> GetRandomCharacters(int numCharacters, Realm realm)
+        {
+            var entries = BuildWeightedEntries(realm);
+            var result  = new List<Character>(numCharacters);
+            bool[] used = new bool[entries.Count];
+
+            for (int pick = 0; pick < numCharacters; pick++)
+            {
+                ResetUsedIfExhausted(used, entries);
+                int chosen = PickWeightedIndex(used, entries);
+                used[chosen] = true;
+                result.Add(entries[chosen].factory());
+            }
+
+            return result;
+        }
+
+        private static List<(Func<Character> factory, float weight)> BuildWeightedEntries(Realm realm)
+        {
+            var entries = new List<(Func<Character> factory, float weight)>(CharacterRegistry.Count);
+            foreach (Func<Character> factory in CharacterRegistry)
+            {
+                float weight = factory().characterRealms.Contains(realm) ? 0.5f : 0.1f;
+                entries.Add((factory, weight));
+            }
+            return entries;
+        }
+
+        private static void ResetUsedIfExhausted(bool[] used,
+            List<(Func<Character> factory, float weight)> entries)
+        {
+            float total = 0f;
+            for (int i = 0; i < entries.Count; i++)
+                if (!used[i]) total += entries[i].weight;
+
+            if (total <= 0f)
+                for (int i = 0; i < used.Length; i++) used[i] = false;
+        }
+
+        private static int PickWeightedIndex(bool[] used,
+            List<(Func<Character> factory, float weight)> entries)
+        {
+            float total = 0f;
+            for (int i = 0; i < entries.Count; i++)
+                if (!used[i]) total += entries[i].weight;
+
+            float roll       = UnityEngine.Random.value * total;
+            float cumulative = 0f;
+            int   chosen     = entries.Count - 1;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                if (used[i]) continue;
+                cumulative += entries[i].weight;
+                if (roll <= cumulative) { chosen = i; break; }
+            }
+            return chosen;
+        }
+
         // public List<Character> GenerateCharacters(int numCharacters)
         // {
         //     List<Character> characters = new List<Character>();

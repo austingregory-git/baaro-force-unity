@@ -14,6 +14,7 @@ namespace BaaroForce.Classes
         static ClassTree()
         {
             promotionsMap.Add("Mage", new List<string> { "DarkMage", "LightMage", "EarthMage", "FireMage", "WaterMage", "WindMage", "Scholar" });
+            promotionsMap.Add("Warrior", new List<string> { "Soldier", "Samurai", "Paladin", "Thug", "Duelist", "StreetFighter", "NatureWarrior" });
             promotionsMap.Add("Cleric", new List<string> { "Deacon", "Monk", "Druid", "Paladin", "LightMage", "Scholar" });
             promotionsMap.Add("DarkMage", new List<string> { "TwilightMage", "Undead", "Demon", "LunarMage", "VoidMage" });
         }

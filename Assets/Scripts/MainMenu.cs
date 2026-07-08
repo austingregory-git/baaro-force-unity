@@ -1,11 +1,14 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using BaaroForce.Characters;
 
 public class MainMenu : MonoBehaviour
 {
     public void Play()
     {
-        //Debug.Log("Play button pressed");
+        Realm[] allRealms = (Realm[])System.Enum.GetValues(typeof(Realm));
+        Realm randomRealm = allRealms[Random.Range(0, allRealms.Length)];
+        PartyManager.Instance.SetRealm(randomRealm);
         SceneManager.LoadScene("CharacterSelectionScene");
     }
 

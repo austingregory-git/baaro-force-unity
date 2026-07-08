@@ -1,7 +1,10 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 using BaaroForce.Characters;
+using BaaroForce.Utils;
 
 public class CharacterSelectionManager : MonoBehaviour
 {
@@ -15,10 +18,21 @@ public class CharacterSelectionManager : MonoBehaviour
 
     void Awake()
     {
+        EnsureEventSystem();
         SetupCamera();
         GameObject canvasObj = CreateCanvas();
         CreateBackground(canvasObj.transform);
         CreateCards(canvasObj.transform);
+    }
+
+    private void EnsureEventSystem()
+    {
+        if (FindObjectOfType<EventSystem>() == null)
+        {
+            GameObject es = new GameObject("EventSystem");
+            es.AddComponent<EventSystem>();
+            es.AddComponent<StandaloneInputModule>();
+        }
     }
 
     private void SetupCamera()
@@ -50,7 +64,7 @@ public class CharacterSelectionManager : MonoBehaviour
         GameObject bg = new GameObject("Background");
         bg.transform.SetParent(parent, false);
         Image bgImage = bg.AddComponent<Image>();
-        bgImage.color = Color.white;
+        bgImage.color = GetRealmBackgroundColor(PartyManager.Instance.CurrentRealm);
         RectTransform bgRect = bg.GetComponent<RectTransform>();
         bgRect.anchorMin = Vector2.zero;
         bgRect.anchorMax = Vector2.one;
@@ -67,11 +81,11 @@ public class CharacterSelectionManager : MonoBehaviour
             new Vector2(CardOffset, 0f)
         };
 
+        Realm realm = PartyManager.Instance.CurrentRealm ?? Realm.EARTH;
+        List<Character> characters = CharacterUtils.GetRandomCharacters(3, realm);
+
         for (int i = 0; i < 3; i++)
-        {
-            Character character = new Winston();
-            CreateCard(parent, positions[i], i, character);
-        }
+            CreateCard(parent, positions[i], i, characters[i]);
     }
 
     private void CreateCard(Transform parent, Vector2 anchoredPos, int index, Character character)
@@ -99,13 +113,31 @@ public class CharacterSelectionManager : MonoBehaviour
             cardRect.sizeDelta = new Vector2(CardWidth, CardHeight);
         }
 
-        CreatePortrait(card.transform, cardRect.sizeDelta.y);
+        CreatePortrait(card.transform, cardRect.sizeDelta.y, character);
         AddCardStats(card.transform, cardRect.sizeDelta, character);
+
+        CharacterCardHandler handler = card.AddComponent<CharacterCardHandler>();
+        handler.Initialize(character);
     }
 
-    private void CreatePortrait(Transform cardParent, float cardHeight)
+    private static Color GetRealmBackgroundColor(Realm? realm)
     {
-        Sprite winstonSprite = Resources.Load<Sprite>("winston_48x36");
+        if (!realm.HasValue) return Color.white;
+        switch (realm.Value)
+        {
+            case Realm.DARK:  return new Color(0.55f, 0.55f, 0.58f); // gray
+            case Realm.LIGHT: return new Color(1.00f, 0.98f, 0.85f); // pale yellow
+            case Realm.EARTH: return new Color(0.82f, 0.95f, 0.77f); // light green
+            case Realm.WIND:  return new Color(0.96f, 0.96f, 0.94f); // eggshell white
+            case Realm.FIRE:  return new Color(1.00f, 0.86f, 0.68f); // light orange
+            case Realm.WATER: return new Color(0.73f, 0.90f, 1.00f); // light blue
+            default:                                return Color.white;
+        }
+    }
+
+    private void CreatePortrait(Transform cardParent, float cardHeight, Character character)
+    {
+        Sprite characterSprite = Resources.Load<Sprite>(character.characterImagePath);
 
         GameObject portrait = new GameObject("CharacterPortrait");
         portrait.transform.SetParent(cardParent, false);
@@ -116,9 +148,9 @@ public class CharacterSelectionManager : MonoBehaviour
         portraitRect.anchorMax = new Vector2(0.5f, 1f);
         portraitRect.pivot = new Vector2(0.5f, 0.5f);
 
-        if (winstonSprite != null)
+        if (characterSprite != null)
         {
-            portraitImage.sprite = winstonSprite;
+            portraitImage.sprite = characterSprite;
             portraitImage.SetNativeSize();
         }
         else
