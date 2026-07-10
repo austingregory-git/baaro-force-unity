@@ -4,6 +4,10 @@ namespace BaaroForce.Passives
     {
         private string name;
         private string description;
+
+        public string Name        => name;
+        public string Description => description;
+
         public PassiveAbility(string name, string description)
         {
             this.name = name;

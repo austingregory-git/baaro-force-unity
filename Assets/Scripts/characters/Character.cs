@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using BaaroForce.Classes;
+using BaaroForce.Passives;
 
 namespace BaaroForce.Characters
 {   

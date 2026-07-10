@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using BaaroForce.Classes;
+using BaaroForce.Passives;
 
 namespace BaaroForce.Characters
 {
@@ -10,6 +11,11 @@ namespace BaaroForce.Characters
         public Beepo()
             : base(new Warrior(), "Beepo", BEEPO_BASE_STATS, new List<Realm> { Realm.FIRE }, new List<PassiveAbility>(), new List<Spell>(), BEEPO_MODEL_PATH)
         {
+        }
+
+        public PassiveAbility GetBeepoPassiveAbility()
+        {
+            return new PassiveAbility("Beepo's Passive Ability", "This is Beepo's passive ability description.");
         }
     }
 }

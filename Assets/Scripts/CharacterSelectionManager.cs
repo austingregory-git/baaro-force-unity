@@ -4,7 +4,9 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 using BaaroForce.Characters;
+using BaaroForce.Passives;
 using BaaroForce.Utils;
+using BaaroForce.UI;
 
 public class CharacterSelectionManager : MonoBehaviour
 {
@@ -59,10 +61,17 @@ public class CharacterSelectionManager : MonoBehaviour
     void Awake()
     {
         EnsureEventSystem();
+        EnsureTooltipSystem();
         SetupCamera();
         GameObject canvasObj = CreateCanvas();
         CreateBackground(canvasObj.transform);
         CreateCards(canvasObj.transform);
+    }
+
+    private void EnsureTooltipSystem()
+    {
+        if (TooltipSystem.Instance == null)
+            new GameObject("[TooltipSystem]").AddComponent<TooltipSystem>();
     }
 
     private void EnsureEventSystem()
@@ -269,7 +278,7 @@ public class CharacterSelectionManager : MonoBehaviour
 
     private void AddCardStats(Transform cardParent, Vector2 cardSize, Character character)
     {
-        float textH   = 20f;  // height of the stat-value label stacked above/below the icon
+        float textH   = -48f;  // height of the stat-value label stacked above/below the icon
         float labelH  = 28f;  // height of the character-name label at the top of the card
         // Name label takes 54 % of card width so it fits between the two top corner icons.
         float nameW   = cardSize.x * 0.54f;
@@ -342,10 +351,61 @@ public class CharacterSelectionManager : MonoBehaviour
         // anchor/pivot (0.5, 1) centres the label horizontally and anchors its
         // top edge flush with the card top.  Y = –(pad × 0.5) gives a small
         // breathing gap without encroaching on the corner icons.
-        float character_name_pad = 164f;
+        float character_name_pad = 168f;
         CreateLabel(cardParent, character.characterName,
             new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(0f, character_name_pad),
             new Vector2(nameW, labelH), TextAlignmentOptions.Top);
+
+        // ── Ability labels (passive + spell names, hoverable for tooltip) ──
+        // Stacked below the character name; each label shows the ability name
+        // and shows a full description tooltip with keyword definitions on hover.
+        float abilityLabelH  = 22f;
+        float abilityLabelW  = cardSize.x * 0.72f;
+        float abilitySpacing = 3f;
+        float nextAbilityY   = character_name_pad - labelH - abilitySpacing;
+
+        foreach (PassiveAbility passive in character.characterPassiveAbilities)
+        {
+            CreateAbilityLabel(cardParent, passive.Name, passive.Description,
+                new Vector2(0f, nextAbilityY), new Vector2(abilityLabelW, abilityLabelH));
+            nextAbilityY -= abilityLabelH + abilitySpacing;
+        }
+        foreach (Spell spell in character.characterSpells)
+        {
+            CreateAbilityLabel(cardParent, spell.name, spell.description,
+                new Vector2(0f, nextAbilityY), new Vector2(abilityLabelW, abilityLabelH));
+            nextAbilityY -= abilityLabelH + abilitySpacing;
+        }
+    }
+
+    // Creates a hoverable ability-name label.  The label shows only the ability
+    // name; the full description (with keyword highlighting) appears in a tooltip
+    // when the pointer enters the label.
+    private void CreateAbilityLabel(Transform parent, string abilityName, string description,
+        Vector2 anchoredPos, Vector2 size)
+    {
+        GameObject obj = new GameObject("AbilityLabel_" + abilityName);
+        obj.transform.SetParent(parent, false);
+
+        TextMeshProUGUI tmp = obj.AddComponent<TextMeshProUGUI>();
+        tmp.text             = abilityName;
+        tmp.enableAutoSizing = true;
+        tmp.fontSizeMin      = 9f;
+        tmp.fontSizeMax      = 14f;
+        tmp.fontStyle        = FontStyles.Italic;
+        tmp.alignment        = TextAlignmentOptions.Center;
+        tmp.color            = new Color(0.15f, 0.15f, 0.15f);
+        tmp.font = Resources.Load<TMP_FontAsset>("Fonts/Baloo2-Bold SDF");
+
+        RectTransform rect = obj.GetComponent<RectTransform>();
+        rect.anchorMin        = new Vector2(0.5f, 0f); // bottom-centre anchor
+        rect.anchorMax        = new Vector2(0.5f, 0f);
+        rect.pivot            = new Vector2(0.5f, 1f); // top edge is the reference point
+        rect.sizeDelta        = size;
+        rect.anchoredPosition = anchoredPos;
+
+        CardAbilityHoverHandler handler = obj.AddComponent<CardAbilityHoverHandler>();
+        handler.Initialize(abilityName, description);
     }
 
     private void CreateLabel(Transform parent, string text, Vector2 anchor, Vector2 pivot,
@@ -357,11 +417,11 @@ public class CharacterSelectionManager : MonoBehaviour
         TextMeshProUGUI tmp = obj.AddComponent<TextMeshProUGUI>();
         tmp.text = text;
         tmp.enableAutoSizing = true;
-        tmp.fontSizeMin = 8f;
-        tmp.fontSizeMax = 20f;
+        tmp.fontSizeMin = 12f;
+        tmp.fontSizeMax = 24f;
         tmp.alignment = alignment;
         tmp.color = Color.black;
-        tmp.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+        tmp.font = Resources.Load<TMP_FontAsset>("Fonts/Baloo2-Bold SDF");
 
         RectTransform rect = obj.GetComponent<RectTransform>();
         // Collapsing anchorMin == anchorMax to a single point means anchoredPosition
@@ -421,12 +481,12 @@ public class CharacterSelectionManager : MonoBehaviour
         TextMeshProUGUI tmp = textObj.AddComponent<TextMeshProUGUI>();
         tmp.text             = statValue;
         tmp.enableAutoSizing = true;
-        tmp.fontSizeMin      = 8f;
-        tmp.fontSizeMax      = 20f;
+        tmp.fontSizeMin      = 24f;
+        tmp.fontSizeMax      = 32f;
         // Centre the number within the label so it aligns under/above the icon.
         tmp.alignment        = TextAlignmentOptions.Center;
         tmp.color            = Color.black;
-        tmp.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+        tmp.font = Resources.Load<TMP_FontAsset>("Fonts/Baloo2-Bold SDF");
 
         RectTransform textRect = textObj.GetComponent<RectTransform>();
         // Same corner anchor / pivot as the icon so both share the same origin.

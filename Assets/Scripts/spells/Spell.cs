@@ -2,32 +2,41 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Spell : MonoBehaviour
+public class Spell
 {
-    public Spell()
-    {
+    public string name;
+    public string description;
+    public int cost;
+    public int range;
+    public int area;
+    public int cooldown;
 
-    }
-
-    public enum SpellType
+    public Spell(string name, string description, int cost, int range, int area, int cooldown)
     {
-        FIRE,
-        WATER,
-        EARTH,
-        WIND,
-        DARK,
-        LIGHT,
-        PHYSICAL
+        this.name = name;
+        this.description = description;
+        this.cost = cost;
+        this.range = range;
+        this.area = area;
+        this.cooldown = cooldown;
     }
-    // Start is called before the first frame update
-    void Start()
+    public Spell(string name, string description)
     {
-        
+        this.name = name;
+        this.description = description;
+        this.cost = 0;
+        this.range = 0;
+        this.area = 0;
+        this.cooldown = 999;
     }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+}
+public enum SpellType
+{
+    FIRE,
+    WATER,
+    EARTH,
+    WIND,
+    DARK,
+    LIGHT,
+    PHYSICAL
 }

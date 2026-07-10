@@ -65,6 +65,7 @@ namespace BaaroForce.Map
             }
 
             FitCameraToMap(size, step);
+            SetupSceneLight();
 
             // Set up the deployment phase.
             if (deploymentManager == null)
@@ -111,6 +112,86 @@ namespace BaaroForce.Map
             deploymentManager = null;
             DeploymentManager existing = GetComponent<DeploymentManager>();
             if (existing != null) DestroyImmediate(existing);
+        }
+
+        /// <summary>
+        /// Creates (or reuses) a Directional Light that illuminates the whole map.
+        /// A Directional Light works like the sun — it has no position, only a direction,
+        /// and every surface in the scene receives the same amount of light from that angle.
+        /// </summary>
+        private void SetupSceneLight()
+        {
+            // ----------------------------------------------------------------
+            // Step 1 — Avoid duplicates.
+            // If this method is called more than once (e.g. via "Regenerate Map")
+            // we don't want to keep stacking new lights on top of each other.
+            // We search the scene for any Light component whose type is Directional.
+            // Light.GetAllLights() isn't available in older Unity versions, so we use
+            // FindObjectOfType which searches every active GameObject in the scene.
+            // ----------------------------------------------------------------
+            Light existingLight = FindObjectOfType<Light>();
+
+            // If a Directional Light already exists, there is nothing to do — bail out early.
+            if (existingLight != null && existingLight.type == LightType.Directional)
+                return;
+
+            // ----------------------------------------------------------------
+            // Step 2 — Create the GameObject that will hold our light component.
+            // In Unity every component must live on a GameObject, so we make one
+            // specifically for the light and give it a descriptive name.
+            // ----------------------------------------------------------------
+            GameObject lightGO = new GameObject("Map Directional Light");
+
+            // ----------------------------------------------------------------
+            // Step 3 — Add the Light component to our new GameObject.
+            // AddComponent<T>() attaches a Unity component of type T and returns
+            // the newly created instance so we can configure it immediately.
+            // ----------------------------------------------------------------
+            Light dirLight = lightGO.AddComponent<Light>();
+
+            // ----------------------------------------------------------------
+            // Step 4 — Set the light TYPE to Directional.
+            // Unity supports several light types (Point, Spot, Area, Directional).
+            // Directional is ideal for maps because it illuminates everything
+            // equally regardless of distance, just like sunlight.
+            // ----------------------------------------------------------------
+            dirLight.type = LightType.Directional;
+
+            // ----------------------------------------------------------------
+            // Step 5 — Set the colour.
+            // Color.white (1,1,1,1) is pure white, which gives neutral lighting
+            // that won't tint your tile colours.  You could use a warm colour
+            // like new Color(1f, 0.95f, 0.8f) for a sunlit afternoon look.
+            // ----------------------------------------------------------------
+            dirLight.color = Color.white;
+
+            // ----------------------------------------------------------------
+            // Step 6 — Set the brightness (intensity).
+            // 1.0f is Unity's default "daylight" brightness.  Raise it above 1
+            // if the scene still looks dark, or lower it for a dimmer mood.
+            // ----------------------------------------------------------------
+            dirLight.intensity = 1.2f;
+
+            // ----------------------------------------------------------------
+            // Step 7 — Rotate the light to choose the angle it shines from.
+            // Rotation is expressed as Euler angles (pitch, yaw, roll) in degrees.
+            // • X = 50  tilts it ~50° downward (straight down would be 90°)
+            //           so tiles AND their side faces both get some light.
+            // • Y = -30 rotates it slightly to the left, creating angled shadows
+            //           that give the isometric grid a sense of depth.
+            // • Z = 0   no roll needed.
+            // Quaternion.Euler() converts those three angles into the internal
+            // quaternion format Unity uses to store rotations.
+            // ----------------------------------------------------------------
+            lightGO.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+
+            // ----------------------------------------------------------------
+            // Step 8 — Enable shadows (optional but recommended for depth).
+            // ShadowType.SoftShadows produces smooth-edged shadows which look
+            // nicer on a stylised map than the harder ShadowType.HardShadows.
+            // Set to ShadowType.None if you want maximum performance.
+            // ----------------------------------------------------------------
+            dirLight.shadows = LightShadows.Soft;
         }
 
         /// <summary>
