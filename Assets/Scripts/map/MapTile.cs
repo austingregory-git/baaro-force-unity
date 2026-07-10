@@ -4,10 +4,10 @@ using BaaroForce.Characters;
 namespace BaaroForce.Map
 {
     /// <summary>
-    /// Represents a single square tile on the map.
-    /// Tracks terrain type, occupancy, and deployment-zone membership.
+    /// Represents a single cube tile in the 3D isometric map.
+    /// Spawned by MapGenerator via GameObject.CreatePrimitive(PrimitiveType.Cube),
+    /// so MeshFilter + MeshRenderer are already present.
     /// </summary>
-    [RequireComponent(typeof(SpriteRenderer))]
     public class MapTile : MonoBehaviour
     {
         // ------------------------------------------------------------------ //
@@ -23,9 +23,8 @@ namespace BaaroForce.Map
         // Private state                                                       //
         // ------------------------------------------------------------------ //
 
-        private SpriteRenderer spriteRenderer;
-        private GameObject     deploymentOverlay;
-        private GameObject     characterObject;
+        private GameObject characterObject;
+        private GameObject deploymentOverlay;
 
         private static readonly Color OverlayColor = new Color(0.3f, 0.6f, 1f, 0.45f);
 
@@ -33,24 +32,19 @@ namespace BaaroForce.Map
         // Lifecycle                                                           //
         // ------------------------------------------------------------------ //
 
-        private void Awake()
-        {
-            spriteRenderer = GetComponent<SpriteRenderer>();
-        }
+        // No Awake needed — MeshRenderer/MeshFilter come from CreatePrimitive.
 
         // ------------------------------------------------------------------ //
         // Initialisation                                                      //
         // ------------------------------------------------------------------ //
 
-        public void Initialize(TerrainTile.TerrainType type, Sprite sharedSprite)
+        /// <summary>Assigns the terrain colour to the cube's MeshRenderer material.</summary>
+        public void Initialize(TerrainTile.TerrainType type)
         {
             TerrainType = type;
-            if (spriteRenderer == null)
-                spriteRenderer = GetComponent<SpriteRenderer>();
-
-            spriteRenderer.sprite       = sharedSprite;
-            spriteRenderer.color        = GetTerrainColor(type);
-            spriteRenderer.sortingOrder = 0;
+            var mat = new Material(Shader.Find("Standard"));
+            mat.color = GetTerrainColor(type);
+            GetComponent<MeshRenderer>().material = mat;
         }
 
         // ------------------------------------------------------------------ //
@@ -66,15 +60,20 @@ namespace BaaroForce.Map
             {
                 if (deploymentOverlay != null) return;
 
-                deploymentOverlay = new GameObject("DeploymentOverlay");
+                deploymentOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                deploymentOverlay.name = "DeploymentOverlay";
+                Destroy(deploymentOverlay.GetComponent<Collider>());
+
                 deploymentOverlay.transform.SetParent(transform, false);
-                deploymentOverlay.transform.localPosition = Vector3.zero;
+                // Quad faces +Z by default; rotate 90° on X so it lies flat on the top face.
+                // In tile-local space the top face is at y = 0.5; use 0.52 to avoid Z-fighting.
+                deploymentOverlay.transform.localPosition = new Vector3(0f, 0.52f, 0f);
+                deploymentOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 deploymentOverlay.transform.localScale    = Vector3.one;
 
-                SpriteRenderer or = deploymentOverlay.AddComponent<SpriteRenderer>();
-                or.sprite       = spriteRenderer.sprite;   // reuse the shared 1×1 white square
-                or.color        = OverlayColor;
-                or.sortingOrder = 1;
+                var mat = new Material(Shader.Find("Standard"));
+                ApplyTransparency(mat, OverlayColor);
+                deploymentOverlay.GetComponent<MeshRenderer>().material = mat;
             }
             else
             {
@@ -90,34 +89,38 @@ namespace BaaroForce.Map
         // Occupancy                                                           //
         // ------------------------------------------------------------------ //
 
-        /// <summary>Spawns a character portrait on this tile and marks it occupied.</summary>
+        /// <summary>
+        /// Loads the character's 3D model and places it on top of this tile.
+        /// Parented to the grid root (tile's parent) to avoid non-uniform scale distortion.
+        /// </summary>
         public void PlaceCharacter(Character character)
         {
             if (IsOccupied) return;
-
             OccupyingCharacter = character;
 
-            characterObject = new GameObject($"Character_{character.characterName}");
-            characterObject.transform.SetParent(transform, false);
-            characterObject.transform.localPosition = Vector3.zero;
-
-            Sprite portrait = Resources.Load<Sprite>(character.characterImagePath);
-
-            SpriteRenderer cr = characterObject.AddComponent<SpriteRenderer>();
-            cr.sprite       = portrait;
-            cr.sortingOrder = 2;
-
-            if (portrait != null)
+            var prefab = Resources.Load<GameObject>(character.characterModelPath);
+            if (prefab != null)
             {
-                // Scale portrait to fill 90 % of the tile, preserving aspect ratio.
-                float spriteMax = Mathf.Max(portrait.bounds.size.x, portrait.bounds.size.y);
-                float charScale = (spriteMax > 0f) ? 0.9f / spriteMax : 1f;
-                characterObject.transform.localScale = new Vector3(charScale, charScale, 1f);
+                characterObject = Instantiate(prefab);
             }
             else
             {
-                Debug.LogWarning($"[MapTile] Sprite not found at path: '{character.characterImagePath}'");
+                Debug.LogWarning($"[MapTile] Model not found at '{character.characterModelPath}'. Using fallback.");
+                characterObject = CreateFallback();
             }
+
+            characterObject.name = $"Character_{character.characterName}";
+
+            // Parent to the MapGenerator (tile's parent) — it has uniform scale (1,1,1),
+            // so world-space and local-space transforms are equivalent.
+            characterObject.transform.SetParent(transform.parent, false);
+
+            // Sit model on top of this tile in world space.
+            float halfTileH = transform.lossyScale.y * 0.5f;
+            characterObject.transform.position = transform.position + Vector3.up * (halfTileH + 0.05f);
+
+            // Scale to 80 % of the tile's world footprint, preserving model proportions.
+            ScaleToFit(characterObject, transform.lossyScale.x * 0.8f);
         }
 
         /// <summary>Removes the occupying character from this tile.</summary>
@@ -132,8 +135,48 @@ namespace BaaroForce.Map
         }
 
         // ------------------------------------------------------------------ //
-        // Helpers                                                             //
+        // Private helpers                                                     //
         // ------------------------------------------------------------------ //
+
+        private static void ScaleToFit(GameObject obj, float targetWorldSize)
+        {
+            obj.transform.localScale = Vector3.one;   // reset before measuring
+            Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0)
+            {
+                obj.transform.localScale = Vector3.one * targetWorldSize;
+                return;
+            }
+
+            Bounds bounds = renderers[0].bounds;
+            foreach (Renderer r in renderers)
+                bounds.Encapsulate(r.bounds);
+
+            float maxDim = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+            obj.transform.localScale = Vector3.one * (maxDim > 0f ? targetWorldSize / maxDim : 1f);
+        }
+
+        private static GameObject CreateFallback()
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            Destroy(go.GetComponent<Collider>());
+            var mat = new Material(Shader.Find("Standard")) { color = Color.magenta };
+            go.GetComponent<MeshRenderer>().material = mat;
+            return go;
+        }
+
+        private static void ApplyTransparency(Material mat, Color color)
+        {
+            mat.SetFloat("_Mode", 3f);
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 0);
+            mat.DisableKeyword("_ALPHATEST_ON");
+            mat.EnableKeyword("_ALPHABLEND_ON");
+            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            mat.renderQueue = 3000;
+            mat.color = color;
+        }
 
         private static Color GetTerrainColor(TerrainTile.TerrainType type)
         {

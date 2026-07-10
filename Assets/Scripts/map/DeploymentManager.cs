@@ -19,7 +19,7 @@ namespace BaaroForce.Map
         private int         gridSize;
         private float       step;
         private float       originX;
-        private float       originY;
+        private float       originZ;
 
         private readonly List<MapTile>   deploymentTiles   = new List<MapTile>();
         private readonly List<Character> charactersToPlace = new List<Character>();
@@ -32,13 +32,13 @@ namespace BaaroForce.Map
         // ------------------------------------------------------------------ //
 
         public void Initialize(MapTile[,] grid, int size, float tileStep,
-                               float originWorldX, float originWorldY)
+                               float originWorldX, float originWorldZ)
         {
             tiles   = grid;
             gridSize = size;
             step    = tileStep;
             originX = originWorldX;
-            originY = originWorldY;
+            originZ = originWorldZ;
 
             deploymentTiles.Clear();
             charactersToPlace.Clear();
@@ -66,14 +66,14 @@ namespace BaaroForce.Map
         private void MarkDeploymentZone()
         {
             // Centre 4 columns, bottom 2 rows.
-            int startX = gridSize / 2 - DeployWidth / 2;   // e.g. 8/2-2 = 2 for small map
-            int startY = 0;
+            int startX = gridSize / 2 - DeployWidth / 2;
+            int startZ = 0;
 
             for (int x = startX; x < startX + DeployWidth; x++)
             {
-                for (int y = startY; y < startY + DeployHeight; y++)
+                for (int z = startZ; z < startZ + DeployHeight; z++)
                 {
-                    MapTile tile = tiles[x, y];
+                    MapTile tile = tiles[x, z];
                     tile.SetDeploymentZone(true);
                     deploymentTiles.Add(tile);
                 }
@@ -100,21 +100,23 @@ namespace BaaroForce.Map
 
         private void HandleClick()
         {
-            // Convert screen position to world position (orthographic camera).
-            Vector3 screenPos = new Vector3(
-                Input.mousePosition.x,
-                Input.mousePosition.y,
-                -Camera.main.transform.position.z);
-            Vector3 worldPos = Camera.main.ScreenToWorldPoint(screenPos);
+            // Cast a ray from the isometric camera onto the flat XZ grid plane (Y = 0).
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            Plane gridPlane = new Plane(Vector3.up, Vector3.zero);
 
-            // Derive grid indices from world position.
-            int gridX = Mathf.RoundToInt((worldPos.x - originX) / step);
-            int gridY = Mathf.RoundToInt((worldPos.y - originY) / step);
-
-            if (gridX < 0 || gridX >= gridSize || gridY < 0 || gridY >= gridSize)
+            if (!gridPlane.Raycast(ray, out float enter))
                 return;
 
-            MapTile tile = tiles[gridX, gridY];
+            Vector3 hitPoint = ray.GetPoint(enter);
+
+            // Derive grid indices from the XZ hit position.
+            int gridX = Mathf.RoundToInt((hitPoint.x - originX) / step);
+            int gridZ = Mathf.RoundToInt((hitPoint.z - originZ) / step);
+
+            if (gridX < 0 || gridX >= gridSize || gridZ < 0 || gridZ >= gridSize)
+                return;
+
+            MapTile tile = tiles[gridX, gridZ];
 
             if (!tile.IsInDeploymentZone || tile.IsOccupied)
                 return;

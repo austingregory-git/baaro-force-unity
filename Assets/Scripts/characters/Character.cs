@@ -14,7 +14,7 @@ namespace BaaroForce.Characters
         public List<PassiveAbility> characterPassiveAbilities { get; set; }
         public List<Spell> characterSpells { get; set; }
         //public List<Equipment> characterEquipment { get; set; }
-        public string characterImagePath { get; set; }
+        public string characterModelPath { get; set; }
 
         public Character(
                         CharacterClass characterClass, 
@@ -23,7 +23,7 @@ namespace BaaroForce.Characters
                         List<Realm> characterRealms, 
                         List<PassiveAbility> characterPassiveAbilities, 
                         List<Spell> characterSpells,
-                        string characterImagePath)
+                        string characterModelPath)
         {
             this.characterClass = characterClass;
             this.characterName = characterName;
@@ -31,7 +31,7 @@ namespace BaaroForce.Characters
             this.characterRealms = characterRealms ?? new List<Realm>();
             this.characterPassiveAbilities = characterPassiveAbilities ?? new List<PassiveAbility>();
             this.characterSpells = characterSpells ?? new List<Spell>();
-            this.characterImagePath = characterImagePath;
+            this.characterModelPath = characterModelPath;
             //this.characterEquipment = characterEquipment ?? new List<Equipment>();
         }
     }

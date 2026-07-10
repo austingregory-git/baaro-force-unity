@@ -5,14 +5,13 @@ using BaaroForce.Characters;
 namespace BaaroForce.Map
 {
     /// <summary>
-    /// Procedurally generates a 2D square-tile grid whose terrain distribution
+    /// Procedurally generates a 3D isometric cube-tile grid whose terrain distribution
     /// is driven by the chosen Realm and MapSize.
-    /// 
+    ///
     /// Scene setup:
-    ///   1. Create a GameObject named "MapGenerator" and attach this script.
-    ///   2. Set the Main Camera to Orthographic (recommended: Clear Flags = Solid Color).
-    ///   3. Press Play — the map generates automatically.
-    ///   4. Right-click this component in the Inspector → "Regenerate Map" to rebuild.
+    ///   1. Attach this script to a GameObject named "MapGenerator".
+    ///   2. Press Play — the grid and isometric camera are configured automatically.
+    ///   3. Right-click this component → "Regenerate Map" to rebuild without entering Play.
     /// </summary>
     public class MapGenerator : MonoBehaviour
     {
@@ -21,13 +20,13 @@ namespace BaaroForce.Map
         public Realm   realmType = Realm.EARTH;
 
         [Header("Tile Appearance")]
-        [Tooltip("World-unit side length of each tile.")]
-        public float tileSize = 1f;
+        [Tooltip("World-unit side length of each cube tile.")]
+        public float tileSize   = 1f;
+        [Tooltip("World-unit height (Y) of each cube tile.")]
+        public float tileHeight = 0.25f;
         [Tooltip("Gap between tiles in world units.")]
-        public float tileGap  = 0.05f;
+        public float tileGap    = 0.05f;
 
-        // Shared 1×1 white sprite — created once, reused for every tile.
-        private Sprite tileSprite;
         private MapTile[,] tiles;
         private DeploymentManager deploymentManager;
 
@@ -45,7 +44,6 @@ namespace BaaroForce.Map
         public void GenerateMap()
         {
             ClearExistingTiles();
-            CreateSharedSprite();
 
             int size = (int)mapSize;
             tiles = new MapTile[size, size];
@@ -55,16 +53,14 @@ namespace BaaroForce.Map
 
             float step    = tileSize + tileGap;
             float originX = -(size * step) / 2f + step / 2f;
-            float originY = -(size * step) / 2f + step / 2f;
+            float originZ = -(size * step) / 2f + step / 2f;
 
             for (int x = 0; x < size; x++)
             {
-                for (int y = 0; y < size; y++)
+                for (int z = 0; z < size; z++)
                 {
                     TerrainTile.TerrainType terrain = pool[Random.Range(0, pool.Count)];
-                    tiles[x, y] = SpawnTile(x, y, terrain,
-                                            originX + x * step,
-                                            originY + y * step);
+                    tiles[x, z] = SpawnTile(x, z, terrain, originX + x * step, originZ + z * step);
                 }
             }
 
@@ -73,55 +69,37 @@ namespace BaaroForce.Map
             // Set up the deployment phase.
             if (deploymentManager == null)
                 deploymentManager = gameObject.AddComponent<DeploymentManager>();
-            deploymentManager.Initialize(tiles, size, step, originX, originY);
+            deploymentManager.Initialize(tiles, size, step, originX, originZ);
         }
 
         // ------------------------------------------------------------------ //
         // Helpers                                                              //
         // ------------------------------------------------------------------ //
 
-        private MapTile SpawnTile(int x, int y, TerrainTile.TerrainType terrain,
-                                  float worldX, float worldY)
+        private MapTile SpawnTile(int x, int z, TerrainTile.TerrainType terrain,
+                                  float worldX, float worldZ)
         {
-            GameObject obj = new GameObject($"Tile_{x}_{y}");
+            GameObject obj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            obj.name = $"Tile_{x}_{z}";
             obj.transform.SetParent(transform, false);
-            obj.transform.localPosition = new Vector3(worldX, worldY, 0f);
-            obj.transform.localScale    = new Vector3(tileSize, tileSize, 1f);
+            // Grid lies on the XZ plane; Y=0 centres the cube so its top face is at Y = tileHeight/2.
+            obj.transform.localPosition = new Vector3(worldX, 0f, worldZ);
+            obj.transform.localScale    = new Vector3(tileSize, tileHeight, tileSize);
+            Destroy(obj.GetComponent<Collider>());
 
-            // SpriteRenderer is added by [RequireComponent] on MapTile.
             MapTile tile = obj.AddComponent<MapTile>();
-            tile.Initialize(terrain, tileSprite);
+            tile.Initialize(terrain);
             return tile;
         }
 
-        /// <summary>Builds a flat list where each entry appears <c>weight</c> times.</summary>
         private static List<TerrainTile.TerrainType> BuildWeightedPool(
             Dictionary<TerrainTile.TerrainType, int> weights)
         {
             var pool = new List<TerrainTile.TerrainType>();
             foreach (var pair in weights)
-            {
                 for (int i = 0; i < pair.Value; i++)
                     pool.Add(pair.Key);
-            }
             return pool;
-        }
-
-        /// <summary>One shared 1×1 white sprite that tiles colour themselves.</summary>
-        private void CreateSharedSprite()
-        {
-            if (tileSprite != null) return;
-
-            Texture2D tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Point;
-            tex.SetPixel(0, 0, Color.white);
-            tex.Apply();
-
-            // pixelsPerUnit = 1 → the sprite is exactly 1 Unity unit wide/tall.
-            tileSprite = Sprite.Create(tex,
-                                       new Rect(0, 0, 1, 1),
-                                       new Vector2(0.5f, 0.5f),
-                                       1f);
         }
 
         private void ClearExistingTiles()
@@ -130,30 +108,29 @@ namespace BaaroForce.Map
                 DestroyImmediate(transform.GetChild(i).gameObject);
 
             tiles             = null;
-            tileSprite        = null;
-            deploymentManager = null;   // AddComponent re-creates it on next GenerateMap()
+            deploymentManager = null;
             DeploymentManager existing = GetComponent<DeploymentManager>();
             if (existing != null) DestroyImmediate(existing);
         }
 
         /// <summary>
-        /// Repositions and sizes an Orthographic camera to frame the entire grid
-        /// with a small margin.
+        /// Positions the main camera for a classic isometric view centred on the grid.
+        /// Placing the camera at (d, d, d) and looking at the origin gives the standard
+        /// 45° azimuth / 35.26° elevation isometric projection.
         /// </summary>
         private void FitCameraToMap(int size, float step)
         {
             Camera cam = Camera.main;
-            if (cam == null || !cam.orthographic) return;
+            if (cam == null) return;
 
-            float halfMapW = (size * step) / 2f;
-            float halfMapH = (size * step) / 2f;
-            float margin   = step;
+            float gridWorldSize = size * step;
+            float dist          = gridWorldSize * 1.2f;
 
-            float neededVertical   = halfMapH + margin;
-            float neededHorizontal = (halfMapW + margin) / cam.aspect;
+            cam.transform.position = new Vector3(dist, dist, dist);
+            cam.transform.LookAt(Vector3.zero, Vector3.up);
 
-            cam.orthographicSize   = Mathf.Max(neededVertical, neededHorizontal);
-            cam.transform.position = new Vector3(0f, 0f, -10f);
+            cam.orthographic     = true;
+            cam.orthographicSize = gridWorldSize * 0.75f;
         }
     }
 }
