@@ -37,7 +37,12 @@ public class CharacterSelectionManager : MonoBehaviour
     // Change CornerIconSize to resize all four icons uniformly without touching
     // any anchor or padding values.
     private const float  CornerIconSize      = 48f;
-    private const string CornerIconSpritePath = "health_128x128";
+    private const string HealthSpritePath = "health_128x128";
+    private const string MeleeAttackSpritePath = "melee_attack_128x128";
+    private const string RangedAttackSpritePath = "ranged_attack_128x128";
+    private const string MagicAttackSpritePath = "magic_attack_128x128";
+    private const string ManaSpritePath = "mana_128x128";
+    private const string MovementSpritePath = "movement_128x128";
 
     // ── Sprite paths ───────────────────────────────────────────────────────
     private const string CharacterTemplateSpritePath = "card_template_512x768";
@@ -74,7 +79,11 @@ public class CharacterSelectionManager : MonoBehaviour
     {
         if (Camera.main != null)
         {
-            Camera.main.backgroundColor = Color.white;
+            // Match the camera clear colour to the realm background so that any
+            // transparent gap in the Canvas — such as the portrait window before the
+            // RenderTexture is ready, or the card template's transparent interior —
+            // blends against the realm colour instead of white.
+            Camera.main.backgroundColor = GetRealmBackgroundColor(PartyManager.Instance.CurrentRealm);
             Camera.main.clearFlags = CameraClearFlags.SolidColor;
         }
     }
@@ -157,10 +166,26 @@ public class CharacterSelectionManager : MonoBehaviour
         // overflowing the 1280×720 canvas if SetNativeSize() were called instead.
         cardRect.sizeDelta        = new Vector2(CardWidth, CardHeight);
 
-        // ── Sibling 0: portrait (renders BEHIND the card template) ─────────
+        // ── Sibling 0: realm-colour fill ───────────────────────────────────
+        // Covers the entire card so that any transparent gap in the template
+        // (above the roof peak, rounded corners, etc.) shows the realm colour
+        // instead of whatever the camera or canvas has behind it.
+        // This is a plain opaque Image — no sprite, just a colour fill.
+        GameObject cardBg          = new GameObject("CardBackground");
+        cardBg.transform.SetParent(card.transform, false);
+        Image cardBgImage          = cardBg.AddComponent<Image>();
+        cardBgImage.color          = GetRealmBackgroundColor(PartyManager.Instance.CurrentRealm);
+        RectTransform cardBgRect   = cardBg.GetComponent<RectTransform>();
+        // anchorMin (0,0) + anchorMax (1,1) + sizeDelta (0,0) = full card fill.
+        cardBgRect.anchorMin        = Vector2.zero;
+        cardBgRect.anchorMax        = Vector2.one;
+        cardBgRect.sizeDelta        = Vector2.zero;
+        cardBgRect.anchoredPosition = Vector2.zero;
+
+        // ── Sibling 1: portrait (renders over the fill, behind the template) ─
         CreatePortrait(card.transform, cardRect.sizeDelta.y, previewTexture);
 
-        // ── Sibling 1: card template overlay (renders IN FRONT of portrait) ─
+        // ── Sibling 2: card template overlay (renders IN FRONT of portrait) ─
         // The template png should be transparent in the portrait window area so
         // the 3-D preview shows through.
         Sprite templateSprite = Resources.Load<Sprite>(CharacterTemplateSpritePath);
@@ -185,7 +210,7 @@ public class CharacterSelectionManager : MonoBehaviour
             cardImage.color = new Color(0.85f, 0.85f, 0.85f, 0.5f);
         }
 
-        // ── Siblings 2+: stat icons / labels (render ON TOP of everything) ──
+        // ── Siblings 3+: stat icons / labels (render ON TOP of everything) ──
         AddCardStats(card.transform, cardRect.sizeDelta, character);
 
         CharacterCardHandler handler = card.AddComponent<CharacterCardHandler>();
@@ -250,7 +275,12 @@ public class CharacterSelectionManager : MonoBehaviour
         float nameW   = cardSize.x * 0.54f;
 
         // Load the shared corner icon once; all four corners reuse the same sprite for now.
-        Sprite cornerIcon = Resources.Load<Sprite>(CornerIconSpritePath);
+        Sprite healthIcon = Resources.Load<Sprite>(HealthSpritePath);
+        Sprite meleeAttackIcon = Resources.Load<Sprite>(MeleeAttackSpritePath);
+        Sprite rangedAttackIcon = Resources.Load<Sprite>(RangedAttackSpritePath);
+        Sprite magicAttackIcon = Resources.Load<Sprite>(MagicAttackSpritePath);
+        Sprite manaIcon = Resources.Load<Sprite>(ManaSpritePath);
+        Sprite movementIcon = Resources.Load<Sprite>(MovementSpritePath);
 
         // ── Top-left: HP ───────────────────────────────────────────────────
         // anchor (0,1) = top-left corner of the card.
@@ -259,7 +289,7 @@ public class CharacterSelectionManager : MonoBehaviour
         // (Y = –(pad + CornerIconSize + iconGap) pushes it further down).
         float health_pad_x = -16f;
         float health_pad_y = 64f;
-        CreateCornerStat(cardParent, cornerIcon,
+        CreateCornerStat(cardParent, healthIcon,
             character.characterStats.healthPoints.ToString(),
             new Vector2(0f, 1f), new Vector2(0f, 1f),
             new Vector2(health_pad_x, -health_pad_y),
@@ -273,7 +303,7 @@ public class CharacterSelectionManager : MonoBehaviour
         // Value text stacked BELOW the icon at the same right edge.
         float mana_pad_x = 16f;
         float mana_pad_y = 64f;
-        CreateCornerStat(cardParent, cornerIcon,
+        CreateCornerStat(cardParent, manaIcon,
             character.characterStats.mana.ToString(),
             new Vector2(1f, 1f), new Vector2(1f, 1f),
             new Vector2(mana_pad_x, -mana_pad_y),
@@ -287,7 +317,7 @@ public class CharacterSelectionManager : MonoBehaviour
         // since positive Y goes upward when the anchor is at the bottom).
         float movement_pad_x = -16f;
         float movement_pad_y = 132f;
-        CreateCornerStat(cardParent, cornerIcon,
+        CreateCornerStat(cardParent, healthIcon,
             character.characterStats.movement.ToString(),
             new Vector2(0f, 0f), new Vector2(0f, 0f),
             new Vector2(movement_pad_x, movement_pad_y),
@@ -301,7 +331,7 @@ public class CharacterSelectionManager : MonoBehaviour
         // Value text stacked ABOVE the icon at the same right edge.
         float attack_pad_x = 16f;
         float attack_pad_y = 132f;
-        CreateCornerStat(cardParent, cornerIcon,
+        CreateCornerStat(cardParent, healthIcon,
             character.characterStats.baseAttack.ToString(),
             new Vector2(1f, 0f), new Vector2(1f, 0f),
             new Vector2(attack_pad_x, attack_pad_y),
@@ -446,9 +476,13 @@ public class CharacterSelectionManager : MonoBehaviour
             cam.fieldOfView   = 30f;
             cam.nearClipPlane = 0.1f;
             cam.farClipPlane  = 20f;
+            // Use the realm colour as the background so the model sits on the same
+            // colour as the scene behind the card.  Transparent-clear approaches are
+            // unreliable across Unity render paths (alpha may not be written correctly),
+            // so matching the background colour is the guaranteed solution.
             cam.backgroundColor = bgColor;
-            cam.clearFlags    = CameraClearFlags.SolidColor;
-            cam.enabled       = false; // render on demand only
+            cam.clearFlags      = CameraClearFlags.SolidColor;
+            cam.enabled         = false; // render on demand only
         }
 
         /// <summary>
@@ -470,11 +504,8 @@ public class CharacterSelectionManager : MonoBehaviour
             model.transform.localScale    = Vector3.one;
             NormalizeScale(model, 1.5f);
 
-            // Capture at the portrait's display dimensions (256×384, 2:3 ratio)
-            // so the RenderTexture exactly matches PortraitWidth×PortraitHeight.
-            // This prevents the 3-D model preview from appearing stretched when
-            // displayed in the RawImage.  Unity derives the camera aspect ratio
-            // automatically from the RenderTexture dimensions.
+            // 256×384 matches PortraitWidth×PortraitHeight exactly (2:3 ratio) so the
+            // captured model preview fills the portrait without any stretching.
             var rt = new RenderTexture(256, 384, 16);
             cam.targetTexture = rt;
             cam.Render();
