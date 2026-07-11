@@ -7,6 +7,7 @@ using BaaroForce.Characters;
 using BaaroForce.Passives;
 using BaaroForce.Utils;
 using BaaroForce.UI;
+using BaaroForce.Classes;
 
 public class CharacterSelectionManager : MonoBehaviour
 {
@@ -283,6 +284,22 @@ public class CharacterSelectionManager : MonoBehaviour
         // Name label takes 54 % of card width so it fits between the two top corner icons.
         float nameW   = cardSize.x * 0.54f;
 
+        Sprite attackIcon = Resources.Load<Sprite>(MeleeAttackSpritePath); // default to melee attack icon
+
+        if(character.characterClass.classSpecialty == CharacterClass.ClassSpecialty.MELEE)
+        {
+            attackIcon = Resources.Load<Sprite>(MeleeAttackSpritePath);
+        }
+        else if(character.characterClass.classSpecialty == CharacterClass.ClassSpecialty.RANGED)
+        {
+            attackIcon = Resources.Load<Sprite>(RangedAttackSpritePath);
+        }
+        else if(character.characterClass.classSpecialty == CharacterClass.ClassSpecialty.MAGIC)
+        {
+            attackIcon = Resources.Load<Sprite>(MagicAttackSpritePath);
+
+        }
+
         // Load the shared corner icon once; all four corners reuse the same sprite for now.
         Sprite healthIcon = Resources.Load<Sprite>(HealthSpritePath);
         Sprite meleeAttackIcon = Resources.Load<Sprite>(MeleeAttackSpritePath);
@@ -340,7 +357,7 @@ public class CharacterSelectionManager : MonoBehaviour
         // Value text stacked ABOVE the icon at the same right edge.
         float attack_pad_x = 16f;
         float attack_pad_y = 132f;
-        CreateCornerStat(cardParent, healthIcon,
+        CreateCornerStat(cardParent, attackIcon,
             character.characterStats.baseAttack.ToString(),
             new Vector2(1f, 0f), new Vector2(1f, 0f),
             new Vector2(attack_pad_x, attack_pad_y),
