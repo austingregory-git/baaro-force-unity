@@ -14,16 +14,18 @@ namespace BaaroForce.Map
         // Properties                                                          //
         // ------------------------------------------------------------------ //
 
-        public TerrainTile.TerrainType TerrainType   { get; private set; }
-        public bool                IsInDeploymentZone { get; private set; }
-        public bool                IsOccupied    => OccupyingCharacter != null;
-        public Character           OccupyingCharacter { get; private set; }
+        public TerrainTile.TerrainType TerrainType      { get; private set; }
+        public bool                IsInDeploymentZone    { get; private set; }
+        public Character           OccupyingCharacter    { get; private set; }
+        public NPC                 OccupyingNpc          { get; private set; }
+        public bool                IsOccupied            => OccupyingCharacter != null || OccupyingNpc != null;
 
         // ------------------------------------------------------------------ //
         // Private state                                                       //
         // ------------------------------------------------------------------ //
 
         private GameObject characterObject;
+        private GameObject npcObject;
         private GameObject deploymentOverlay;
 
         private static readonly Color OverlayColor = new Color(0.3f, 0.6f, 1f, 0.45f);
@@ -131,6 +133,46 @@ namespace BaaroForce.Map
             {
                 Destroy(characterObject);
                 characterObject = null;
+            }
+        }
+
+        /// <summary>
+        /// Loads the NPC's 3D model and places it on top of this tile.
+        /// Parented to the grid root (tile's parent) to avoid non-uniform scale distortion.
+        /// </summary>
+        public void PlaceNpc(NPC npc)
+        {
+            if (IsOccupied) return;
+            OccupyingNpc = npc;
+
+            var prefab = Resources.Load<GameObject>(npc.characterModelPath);
+            if (prefab != null)
+            {
+                npcObject = Instantiate(prefab);
+            }
+            else
+            {
+                Debug.LogWarning($"[MapTile] NPC model not found at '{npc.characterModelPath}'. Using fallback.");
+                npcObject = CreateFallback();
+            }
+
+            npcObject.name = $"NPC_{npc.characterName}";
+            npcObject.transform.SetParent(transform.parent, false);
+
+            float halfTileH = transform.lossyScale.y * 0.5f;
+            npcObject.transform.position = transform.position + Vector3.up * (halfTileH + 0.05f);
+
+            ScaleToFit(npcObject, transform.lossyScale.x * 0.8f);
+        }
+
+        /// <summary>Removes the occupying NPC from this tile.</summary>
+        public void RemoveNpc()
+        {
+            OccupyingNpc = null;
+            if (npcObject != null)
+            {
+                Destroy(npcObject);
+                npcObject = null;
             }
         }
 

@@ -87,6 +87,39 @@ namespace BaaroForce.Map
         }
 
         // ------------------------------------------------------------------ //
+        // Enemy pack placement                                                //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Places each NPC in <paramref name="enemies"/> on a randomly chosen,
+        /// unoccupied tile in the far half of the grid (the side opposite the
+        /// player deployment zone).
+        /// </summary>
+        public void PlaceEnemyPack(List<NPC> enemies)
+        {
+            if (enemies == null || enemies.Count == 0) return;
+
+            // Collect all unoccupied tiles in the far half of the grid.
+            var candidateTiles = new List<MapTile>();
+            for (int x = 0; x < gridSize; x++)
+                for (int z = gridSize / 2; z < gridSize; z++)
+                    if (!tiles[x, z].IsOccupied)
+                        candidateTiles.Add(tiles[x, z]);
+
+            // Fisher-Yates shuffle so selections are uniformly random.
+            for (int i = candidateTiles.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                MapTile temp       = candidateTiles[i];
+                candidateTiles[i]  = candidateTiles[j];
+                candidateTiles[j]  = temp;
+            }
+
+            for (int i = 0; i < enemies.Count && i < candidateTiles.Count; i++)
+                candidateTiles[i].PlaceNpc(enemies[i]);
+        }
+
+        // ------------------------------------------------------------------ //
         // Input                                                               //
         // ------------------------------------------------------------------ //
 

@@ -19,6 +19,10 @@ namespace BaaroForce.Map
         public MapSize mapSize   = MapSize.SMALL;
         public Realm   realmType = Realm.EARTH;
 
+        [Header("Enemy Pack")]
+        [Tooltip("Cumulative NPC strength index to spawn on this map.")]
+        public int enemyPackStrength = 2;
+
         [Header("Tile Appearance")]
         [Tooltip("World-unit side length of each cube tile.")]
         public float tileSize   = 1f;
@@ -71,6 +75,10 @@ namespace BaaroForce.Map
             if (deploymentManager == null)
                 deploymentManager = gameObject.AddComponent<DeploymentManager>();
             deploymentManager.Initialize(tiles, size, step, originX, originZ);
+
+            // Build and place the enemy pack on the far side of the map.
+            List<NPC> enemyPack = EnemyPackBuilder.Build(enemyPackStrength);
+            deploymentManager.PlaceEnemyPack(enemyPack);
         }
 
         // ------------------------------------------------------------------ //
