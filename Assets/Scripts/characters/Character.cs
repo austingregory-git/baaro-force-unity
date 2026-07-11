@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using BaaroForce.Classes;
 using BaaroForce.Passives;
+using BaaroForce.Spells;
 
 namespace BaaroForce.Characters
 {   
@@ -29,10 +30,15 @@ namespace BaaroForce.Characters
             this.characterClass = characterClass;
             this.characterName = characterName;
             this.characterStats = characterStats;
-            this.characterRealms = characterRealms ?? new List<Realm>();
-            this.characterPassiveAbilities = characterPassiveAbilities ?? new List<PassiveAbility>();
-            this.characterSpells = characterSpells ?? new List<Spell>();
-            this.characterModelPath = characterModelPath;
+            this.characterRealms             = characterRealms             ?? new List<Realm>();
+            this.characterPassiveAbilities   = characterPassiveAbilities   ?? new List<PassiveAbility>();
+            this.characterSpells             = characterSpells             ?? new List<Spell>();
+            this.characterModelPath          = characterModelPath;
+
+            // Append one randomly selected class spell from this character's class.
+            ClassSpell classSpell = SpellRegistry.GetRandomClassSpell(characterClass?.classID);
+            if (classSpell != null)
+                this.characterSpells.Add(classSpell);
             //this.characterEquipment = characterEquipment ?? new List<Equipment>();
         }
     }

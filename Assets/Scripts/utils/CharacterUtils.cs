@@ -42,17 +42,6 @@ namespace BaaroForce.Utils
             return characterStats;
         }
 
-        // ------------------------------------------------------------------ //
-        // Character registry                                                  //
-        // Add new playable characters here as they are implemented.           //
-        // ------------------------------------------------------------------ //
-
-        private static readonly List<Func<Character>> CharacterRegistry = new List<Func<Character>>
-        {
-            () => new Winston(),
-            () => new Beepo(),
-        };
-
         /// <summary>
         /// Returns <paramref name="numCharacters"/> randomly selected characters,
         /// weighted towards <paramref name="realm"/>.
@@ -79,8 +68,8 @@ namespace BaaroForce.Utils
 
         private static List<(Func<Character> factory, float weight)> BuildWeightedEntries(Realm realm)
         {
-            var entries = new List<(Func<Character> factory, float weight)>(CharacterRegistry.Count);
-            foreach (Func<Character> factory in CharacterRegistry)
+            var entries = new List<(Func<Character> factory, float weight)>(CharacterRegistry.GetAll().Count);
+            foreach (Func<Character> factory in CharacterRegistry.GetAll())
             {
                 float weight = factory().characterRealms.Contains(realm) ? 0.5f : 0.1f;
                 entries.Add((factory, weight));

@@ -326,7 +326,7 @@ public class CharacterSelectionManager : MonoBehaviour
         // since positive Y goes upward when the anchor is at the bottom).
         float movement_pad_x = -16f;
         float movement_pad_y = 132f;
-        CreateCornerStat(cardParent, healthIcon,
+        CreateCornerStat(cardParent, movementIcon,
             character.characterStats.movement.ToString(),
             new Vector2(0f, 0f), new Vector2(0f, 0f),
             new Vector2(movement_pad_x, movement_pad_y),
