@@ -4,6 +4,7 @@ using UnityEngine;
 using BaaroForce.Classes;
 using BaaroForce.Passives;
 using BaaroForce.Spells;
+using BaaroForce.Statuses;
 
 namespace BaaroForce.Characters
 {   
@@ -19,6 +20,47 @@ namespace BaaroForce.Characters
         public string characterModelPath { get; set; }
         /// <summary>Current level; used for spell and ability power scaling. Defaults to 1.</summary>
         public int Level { get; set; } = 1;
+
+        /// <summary>Status effects currently active on this character.</summary>
+        public List<StatusEffect> ActiveEffects { get; } = new List<StatusEffect>();
+
+        /// <summary>
+        /// Applies a status effect to this character, calling its OnApply hook immediately.
+        /// If an effect of the same type is already active it is removed first.
+        /// </summary>
+        public void ApplyStatus(StatusEffect effect)
+        {
+            for (int i = ActiveEffects.Count - 1; i >= 0; i--)
+            {
+                if (ActiveEffects[i].Name == effect.Name)
+                {
+                    ActiveEffects[i].OnRemove(characterStats);
+                    ActiveEffects.RemoveAt(i);
+                }
+            }
+            effect.OnApply(characterStats);
+            ActiveEffects.Add(effect);
+            Debug.Log($"[Character] '{characterName}' afflicted with {effect.Name} ({effect.RemainingTurns} turn(s)).");
+        }
+
+        /// <summary>
+        /// Ticks all active effects at the start of this character's turn.
+        /// Expired effects are removed and their OnRemove hooks are called.
+        /// </summary>
+        public void TickStatusEffects()
+        {
+            for (int i = ActiveEffects.Count - 1; i >= 0; i--)
+            {
+                StatusEffect fx = ActiveEffects[i];
+                fx.OnTurnStart(characterStats);
+                if (fx.Tick())
+                {
+                    fx.OnRemove(characterStats);
+                    ActiveEffects.RemoveAt(i);
+                    Debug.Log($"[Character] '{characterName}': {fx.Name} has expired.");
+                }
+            }
+        }
 
         public Character(
                         CharacterClass characterClass, 

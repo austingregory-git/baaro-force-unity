@@ -66,5 +66,39 @@ namespace BaaroForce.Spells
 
             return true;
         }
+
+        /// <summary>
+        /// NPC-cast version: targets a player Character instead of an NPC.
+        /// Deals dark damage and inflicts Fear on the character.
+        /// </summary>
+        public override bool Execute(NpcSpellContext context)
+        {
+            Character target = context.TargetTile?.OccupyingCharacter;
+            if (target == null)
+            {
+                Debug.LogWarning("[DeathStare] No character found on the target tile.");
+                return false;
+            }
+
+            int level = context.CasterLevel;
+
+            int fearDuration = Mathf.FloorToInt(1f + 0.25f * level);
+            var fear = new FearStatus(durationTurns: fearDuration, attackPenalty: 2);
+            target.ApplyStatus(fear);
+
+            int damage = Mathf.FloorToInt(1f + 0.5f * level);
+            target.characterStats.healthPoints -= damage;
+
+            Debug.Log($"[DeathStare] '{context.Caster.characterName}' casts Death Stare on "
+                    + $"'{target.characterName}'.  Damage: {damage}, "
+                    + $"Fear: {fearDuration} turn(s).  "
+                    + $"HP: {Mathf.Max(0, target.characterStats.healthPoints)}"
+                    + $"/{target.characterStats.maxHealthPoints}");
+
+            if (target.characterStats.healthPoints <= 0)
+                Debug.Log($"[DeathStare] '{target.characterName}' has been defeated!");
+
+            return true;
+        }
     }
 }

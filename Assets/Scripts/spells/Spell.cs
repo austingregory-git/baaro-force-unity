@@ -62,6 +62,17 @@ namespace BaaroForce.Spells
         }
 
         /// <summary>
+        /// Executes this spell's effects when cast by an NPC.
+        /// Override in subclasses that should be usable by NPC casters.
+        /// Returns true if the spell resolved successfully.
+        /// </summary>
+        public virtual bool Execute(NpcSpellContext context)
+        {
+            Debug.LogWarning($"[Spell] '{name}' has no NPC Execute implementation.");
+            return false;
+        }
+
+        /// <summary>
         /// Returns the tile the caster should physically move to before the
         /// spell's effect resolves, or null when no repositioning is needed.
         /// Override in spells that close distance as part of their effect

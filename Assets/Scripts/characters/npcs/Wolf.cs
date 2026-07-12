@@ -9,12 +9,13 @@ namespace BaaroForce.Characters
     {
         public override int BaseStrengthIndex => 1;
 
-        static readonly CharacterStats WOLF_BASE_STATS = new CharacterStats(healthPoints: 5, baseAttack: 2, mana: 1, movement: 5);
         static readonly string WOLF_MODEL_PATH = "Characters/frog_wizard_test";
+
         public Wolf()
             : base(
                 //ClassRegistry.Get("Beast"), 
-                "Wolf", WOLF_BASE_STATS, new List<Realm> { Realm.EARTH },
+                "Wolf", new CharacterStats(healthPoints: 5, baseAttack: 2, mana: 1, movement: 5),
+                new List<Realm> { Realm.EARTH },
                 new List<PassiveAbility>
                 {
                     new PassiveAbility("Autumnal Growth",
@@ -26,6 +27,7 @@ namespace BaaroForce.Characters
                 },
                 WOLF_MODEL_PATH)
         {
+            AI = new AggressiveNpcAI();
         }
 
         public PassiveAbility GetWolfPassiveAbility()

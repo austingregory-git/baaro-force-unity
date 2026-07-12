@@ -30,6 +30,11 @@ namespace BaaroForce.Characters
         /// <summary>Effective strength used when building an enemy pack: BaseStrengthIndex × Level.</summary>
         public int StrengthIndex => BaseStrengthIndex * Level;
 
+        /// <summary>The AI strategy that drives this NPC's decisions during the enemy turn.
+        /// Set in each concrete subclass constructor.  NPCs with a null AI are skipped
+        /// during the enemy turn.</summary>
+        public NpcAI AI { get; set; }
+
         /// <summary>Status effects currently active on this NPC.</summary>
         public List<StatusEffect> ActiveEffects { get; } = new List<StatusEffect>();
 

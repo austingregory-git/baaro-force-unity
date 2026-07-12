@@ -122,6 +122,7 @@ namespace BaaroForce.Map
             if (members != null)
                 foreach (Character c in members)
                 {
+                    c.TickStatusEffects();
                     remainingMovement[c] = c.characterStats.movement;
                     remainingActions[c]  = c.characterStats.maxActionPoints;
                 }
@@ -731,7 +732,171 @@ namespace BaaroForce.Map
         {
             CurrentPhase = TurnPhase.EnemyTurn;
             Deselect();
-            Debug.Log("[TurnManager] All player characters have acted.  Enemy turn — AI not yet implemented.");
+            Debug.Log("[TurnManager] Enemy turn started.");
+            StartCoroutine(RunEnemyTurns());
+        }
+
+        /// <summary>
+        /// Runs every living NPC's AI turn sequentially, then returns control
+        /// to the player by calling StartPlayerTurn.
+        /// </summary>
+        private IEnumerator RunEnemyTurns()
+        {
+            // Snapshot NPC list before acting — NPCs that die mid-turn are skipped.
+            var npcTiles = new List<(NPC npc, MapTile tile)>();
+            for (int x = 0; x < gridSize; x++)
+                for (int z = 0; z < gridSize; z++)
+                {
+                    MapTile t = tiles[x, z];
+                    if (t.OccupyingNpc != null)
+                        npcTiles.Add((t.OccupyingNpc, t));
+                }
+
+            if (npcTiles.Count == 0)
+            {
+                Debug.Log("[TurnManager] No NPCs remain.  Starting player turn.");
+                StartPlayerTurn();
+                yield break;
+            }
+
+            foreach (var (npc, _) in npcTiles)
+            {
+                if (npc.characterStats.healthPoints <= 0) continue;
+                if (npc.AI == null) continue;
+
+                // Tick status effects at the start of each NPC's individual turn.
+                npc.TickStatusEffects();
+
+                // Re-locate the NPC's current tile (it may have moved earlier this round).
+                MapTile currentTile = FindNpcTile(npc);
+                if (currentTile == null) continue;
+
+                var context = new NpcTurnContext(
+                    npc:               npc,
+                    currentTile:       currentTile,
+                    allTiles:          tiles,
+                    gridSize:          gridSize,
+                    remainingMovement: npc.characterStats.movement,
+                    remainingActions:  npc.characterStats.maxActionPoints);
+
+                context.BfsReachable   = BfsReachable;
+                context.FindPath       = FindShortestPath;
+                context.AnimateNpcMove = path => AnimateNpcMoveCoroutine(npc, context, path);
+                context.ExecuteAttack  = targetTile => NpcExecuteAttack(npc, targetTile);
+                context.ExecuteSpell   = (spell, targetTile)
+                    => NpcExecuteSpell(npc, context.CurrentTile, spell, targetTile);
+
+                yield return StartCoroutine(npc.AI.ExecuteTurn(context));
+
+                // Small pause between NPC turns so the player can follow the action.
+                yield return new WaitForSeconds(0.25f);
+            }
+
+            Debug.Log("[TurnManager] Enemy turn complete.  Starting player turn.");
+            StartPlayerTurn();
+        }
+
+        /// <summary>Scans the grid for the tile currently occupied by <paramref name="npc"/>.</summary>
+        private MapTile FindNpcTile(NPC npc)
+        {
+            for (int x = 0; x < gridSize; x++)
+                for (int z = 0; z < gridSize; z++)
+                    if (tiles[x, z].OccupyingNpc == npc)
+                        return tiles[x, z];
+            return null;
+        }
+
+        /// <summary>
+        /// Animates an NPC moving along <paramref name="path"/> tile by tile.
+        /// Updates <c>context.CurrentTile</c> on completion.
+        /// </summary>
+        private IEnumerator AnimateNpcMoveCoroutine(NPC npc, NpcTurnContext context,
+                                                     List<MapTile> path)
+        {
+            if (path == null || path.Count <= 1) yield break;
+
+            GameObject model = path[0].NpcObject;
+            if (model == null)
+            {
+                Debug.LogWarning($"[TurnManager] NPC '{npc.characterName}' model not found during move.");
+                yield break;
+            }
+
+            MapTile currentTile = path[0];
+            for (int i = 1; i < path.Count; i++)
+            {
+                MapTile next     = path[i];
+                Vector3 startPos = model.transform.position;
+                float   halfH    = next.transform.lossyScale.y * 0.5f;
+                Vector3 endPos   = next.transform.position + Vector3.up * (halfH + 0.05f);
+                float   elapsed  = 0f;
+                float   duration = step / MoveSpeed;
+
+                while (elapsed < duration)
+                {
+                    elapsed += Time.deltaTime;
+                    model.transform.position = Vector3.Lerp(startPos, endPos, elapsed / duration);
+                    yield return null;
+                }
+
+                model.transform.position = endPos;
+                currentTile.ReleaseNpc();
+                next.AssignNpc(npc, model);
+                currentTile = next;
+            }
+
+            context.CurrentTile = currentTile;
+            Debug.Log($"[TurnManager] '{npc.characterName}' moved to "
+                    + $"({currentTile.GridX}, {currentTile.GridZ}).");
+        }
+
+        /// <summary>Executes a basic attack from <paramref name="attacker"/> against the
+        /// player Character on <paramref name="targetTile"/>.</summary>
+        private void NpcExecuteAttack(NPC attacker, MapTile targetTile)
+        {
+            Character target = targetTile.OccupyingCharacter;
+            if (target == null) return;
+
+            int damage = attacker.characterStats.TotalAttack;
+            target.characterStats.healthPoints -= damage;
+
+            Debug.Log($"[TurnManager] '{attacker.characterName}' attacks '{target.characterName}' "
+                    + $"for {damage} damage.  "
+                    + $"HP: {Mathf.Max(0, target.characterStats.healthPoints)}"
+                    + $"/{target.characterStats.maxHealthPoints}");
+
+            if (target.characterStats.healthPoints <= 0)
+            {
+                Debug.Log($"[TurnManager] '{target.characterName}' has been defeated!");
+                targetTile.RemoveCharacter();
+            }
+        }
+
+        /// <summary>
+        /// Builds an <see cref="NpcSpellContext"/> and invokes the spell's NPC Execute overload.
+        /// Deducts mana from <paramref name="caster"/> on success.
+        /// Returns true if the spell resolved.
+        /// </summary>
+        private bool NpcExecuteSpell(NPC caster, MapTile casterTile,
+                                     Spell spell, MapTile targetTile)
+        {
+            if (spell.cost > 0 && caster.characterStats.mana < spell.cost) return false;
+
+            var ctx = new NpcSpellContext(
+                caster:      caster,
+                casterLevel: caster.Level,
+                casterTile:  casterTile,
+                targetTile:  targetTile,
+                allTiles:    tiles,
+                gridSize:    gridSize);
+
+            bool resolved = spell.Execute(ctx);
+
+            if (resolved)
+                caster.characterStats.mana =
+                    Mathf.Max(0, caster.characterStats.mana - spell.cost);
+
+            return resolved;
         }
 
         /// <summary>

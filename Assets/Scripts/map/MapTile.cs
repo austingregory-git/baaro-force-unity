@@ -25,8 +25,10 @@ namespace BaaroForce.Map
         /// <summary>Row index in the grid array.</summary>
         public int GridZ { get; private set; }
 
-        /// <summary>The instantiated model currently sitting on this tile (may be null).</summary>
+        /// <summary>The instantiated player-character model on this tile (may be null).</summary>
         public GameObject CharacterObject => characterObject;
+        /// <summary>The instantiated NPC model on this tile (may be null).</summary>
+        public GameObject NpcObject => npcObject;
 
         // ------------------------------------------------------------------ //
         // Private state                                                       //
@@ -320,6 +322,27 @@ namespace BaaroForce.Map
                 Destroy(npcObject);
                 npcObject = null;
             }
+        }
+
+        /// <summary>
+        /// Clears NPC occupancy without destroying the model GameObject.
+        /// Used by TurnManager during NPC movement animation so the model can be
+        /// handed off to the destination tile.
+        /// </summary>
+        public void ReleaseNpc()
+        {
+            OccupyingNpc = null;
+            npcObject    = null;   // we no longer own this reference
+        }
+
+        /// <summary>
+        /// Assigns an already-existing NPC model to this tile.
+        /// Called by TurnManager after the model has been moved in world-space.
+        /// </summary>
+        public void AssignNpc(NPC npc, GameObject model)
+        {
+            OccupyingNpc = npc;
+            npcObject    = model;
         }
 
         // ------------------------------------------------------------------ //
