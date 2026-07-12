@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using BaaroForce.Classes;
 using BaaroForce.Passives;
+using BaaroForce.Spells;
 
 namespace BaaroForce.Characters
 {
@@ -21,8 +22,7 @@ namespace BaaroForce.Characters
                 },
                 new List<Spell>
                 {
-                    new Spell("Death Stare",
-                        "[Fear] an enemy for 1 + 0.25 x [Level] turns"),
+                    new DeathStare(),
                 },
                 WOLF_MODEL_PATH)
         {
@@ -32,12 +32,6 @@ namespace BaaroForce.Characters
         {
             return new PassiveAbility("Autumnal Growth",
                 "[Regen] 1 + 0.25 x [Level] health points per turn");
-        }
-
-        public Spell GetWolfSpell()
-        {
-            return new Spell("Death Stare",
-                "[Fear] an enemy for 1 + 0.25 x [Level] turns");
         }
     }
 }

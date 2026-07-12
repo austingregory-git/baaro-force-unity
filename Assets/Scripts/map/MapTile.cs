@@ -37,6 +37,7 @@ namespace BaaroForce.Map
         private GameObject deploymentOverlay;
         private GameObject moveHighlightOverlay;
         private GameObject attackHighlightOverlay;
+        private GameObject spellHighlightOverlay;
 
         private static readonly Color OverlayColor         = new Color(0.3f, 0.6f, 1f, 0.45f);
         private static readonly Color MoveHighlightColor    = new Color(0.3f, 0.6f, 1f, 0.92f);
@@ -173,6 +174,40 @@ namespace BaaroForce.Map
                 {
                     Destroy(attackHighlightOverlay);
                     attackHighlightOverlay = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Shows or hides a coloured spell-range overlay on this tile.
+        /// The colour is determined by the spell's target type and passed in by TurnManager:
+        ///   red = enemy spells, green = ally spells, purple = either.
+        /// </summary>
+        public void SetSpellHighlight(bool active, Color color)
+        {
+            if (active)
+            {
+                if (spellHighlightOverlay != null) return;
+
+                spellHighlightOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                spellHighlightOverlay.name = "SpellHighlight";
+                Destroy(spellHighlightOverlay.GetComponent<Collider>());
+
+                spellHighlightOverlay.transform.SetParent(transform, false);
+                spellHighlightOverlay.transform.localPosition = new Vector3(0f, 0.55f, 0f);
+                spellHighlightOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                spellHighlightOverlay.transform.localScale    = Vector3.one;
+
+                var mat = new Material(Shader.Find("Standard"));
+                ApplyTransparency(mat, color);
+                spellHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
+            }
+            else
+            {
+                if (spellHighlightOverlay != null)
+                {
+                    Destroy(spellHighlightOverlay);
+                    spellHighlightOverlay = null;
                 }
             }
         }

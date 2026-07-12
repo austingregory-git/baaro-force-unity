@@ -8,6 +8,7 @@ using BaaroForce.Passives;
 using BaaroForce.Utils;
 using BaaroForce.UI;
 using BaaroForce.Classes;
+using BaaroForce.Spells;
 
 public class CharacterSelectionManager : MonoBehaviour
 {

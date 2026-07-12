@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using BaaroForce.Classes;
 using BaaroForce.Passives;
+using BaaroForce.Spells;
 
 namespace BaaroForce.Characters
 {
@@ -19,8 +20,7 @@ namespace BaaroForce.Characters
                 },
                 new List<Spell>
                 {
-                    new Spell("Death Stare",
-                        "[Fear] an enemy for 1 + 0.25 x [Level] turns"),
+                    new DeathStare(),
                 },
                 WINSTON_MODEL_PATH)
         {
@@ -34,8 +34,14 @@ namespace BaaroForce.Characters
 
         public Spell GetWinstonSpell()
         {
-            return new Spell("Death Stare",
-                "[Fear] an enemy for 1 + 0.25 x [Level] turns");
+            // return new Spell("Death Stare",
+            //     "[Fear] an enemy for 1 + 0.25 x [Level] turns");
+            return new Spell(name: "Death Stare",
+                             description: "Deals 2 + 0.25 x [Level] damage",
+                             cost: 2,
+                             range: 3,
+                             area: 1,
+                             cooldown: 1);
         }
     }
 }

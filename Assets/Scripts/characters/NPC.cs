@@ -4,6 +4,7 @@ using UnityEngine;
 using BaaroForce.Classes;
 using BaaroForce.Passives;
 using BaaroForce.Spells;
+using BaaroForce.Statuses;
 
 namespace BaaroForce.Characters
 {   
@@ -29,6 +30,9 @@ namespace BaaroForce.Characters
         /// <summary>Effective strength used when building an enemy pack: BaseStrengthIndex × Level.</summary>
         public int StrengthIndex => BaseStrengthIndex * Level;
 
+        /// <summary>Status effects currently active on this NPC.</summary>
+        public List<StatusEffect> ActiveEffects { get; } = new List<StatusEffect>();
+
         public NPC(
                         string characterName, 
                         CharacterStats characterStats, 
@@ -50,6 +54,45 @@ namespace BaaroForce.Characters
             // if (classSpell != null)
             //     this.characterSpells.Add(classSpell);
             //this.characterEquipment = characterEquipment ?? new List<Equipment>();
+        }
+
+        /// <summary>
+        /// Applies a status effect to this NPC, calling its OnApply hook immediately.
+        /// If an effect of the same type is already active it is removed first.
+        /// </summary>
+        public void ApplyStatus(StatusEffect effect)
+        {
+            // Remove any existing effect of the same name to avoid stacking.
+            for (int i = ActiveEffects.Count - 1; i >= 0; i--)
+            {
+                if (ActiveEffects[i].Name == effect.Name)
+                {
+                    ActiveEffects[i].OnRemove(characterStats);
+                    ActiveEffects.RemoveAt(i);
+                }
+            }
+            effect.OnApply(characterStats);
+            ActiveEffects.Add(effect);
+            Debug.Log($"[NPC] '{characterName}' afflicted with {effect.Name} ({effect.RemainingTurns} turn(s)).");
+        }
+
+        /// <summary>
+        /// Ticks all active effects at the start of this NPC's turn.
+        /// Expired effects are removed and their OnRemove hooks are called.
+        /// </summary>
+        public void TickStatusEffects()
+        {
+            for (int i = ActiveEffects.Count - 1; i >= 0; i--)
+            {
+                StatusEffect fx = ActiveEffects[i];
+                fx.OnTurnStart(characterStats);
+                if (fx.Tick())
+                {
+                    fx.OnRemove(characterStats);
+                    ActiveEffects.RemoveAt(i);
+                    Debug.Log($"[NPC] '{characterName}': {fx.Name} has expired.");
+                }
+            }
         }
     }
 }

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using BaaroForce.Classes;
 using BaaroForce.Passives;
-
+using BaaroForce.Spells;
 namespace BaaroForce.Characters
 {
     public class Beepo : Character

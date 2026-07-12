@@ -1,8 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using BaaroForce.Characters;
 using BaaroForce.Classes;
+using BaaroForce.Spells;
+using BaaroForce.UI;
 
 namespace BaaroForce.Map
 {
@@ -59,13 +62,17 @@ namespace BaaroForce.Map
         // Input mode and highlights                                           //
         // ------------------------------------------------------------------ //
 
-        private enum InputMode { None, Move, Attack }
+        private enum InputMode { None, Move, Attack, Spell }
         private InputMode currentMode = InputMode.None;
 
         private readonly List<MapTile> highlightedMoveTiles   = new List<MapTile>();
         private readonly List<MapTile> highlightedAttackTiles = new List<MapTile>();
+        private readonly List<MapTile> highlightedSpellTiles  = new List<MapTile>();
 
-        private bool isMoving;
+        private Spell         selectedSpell;
+        private ActionPanelUI  _actionPanel;
+        private SpellPanelUI   _spellPanel;
+        private bool           isMoving;
 
         private const float MoveSpeed = 5f;   // world-units per second
 
@@ -82,6 +89,18 @@ namespace BaaroForce.Map
             step     = tileStep;
             originX  = originWorldX;
             originZ  = originWorldZ;
+
+            EnsureMapUI();
+
+            _actionPanel = gameObject.AddComponent<ActionPanelUI>();
+            _actionPanel.OnMoveClicked   = ToggleMoveMode;
+            _actionPanel.OnAttackClicked = ToggleAttackMode;
+            _actionPanel.OnSpellsClicked = ShowSpellPanel;
+            _actionPanel.OnItemsClicked  = () => Debug.Log("[TurnManager] Items — not yet implemented.");
+
+            _spellPanel = gameObject.AddComponent<SpellPanelUI>();
+            _spellPanel.OnSpellSelected = ActivateSpell;
+            _spellPanel.OnBackClicked   = ShowActionPanel;
         }
 
         // ------------------------------------------------------------------ //
@@ -130,6 +149,10 @@ namespace BaaroForce.Map
         private void HandleClick()
         {
             if (!Input.GetMouseButtonDown(0)) return;
+            // Prevent grid clicks when the pointer is over a UI element
+            // (e.g. clicking a spell button must not also deselect the character).
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+                return;
             if (!TryGetClickedTile(out MapTile clicked)) return;
 
             switch (currentMode)
@@ -144,6 +167,13 @@ namespace BaaroForce.Map
                 case InputMode.Attack:
                     if (highlightedAttackTiles.Contains(clicked) && clicked.OccupyingNpc != null)
                         CommitAttack(clicked);
+                    else
+                        SetMode(InputMode.None);
+                    break;
+
+                case InputMode.Spell:
+                    if (highlightedSpellTiles.Contains(clicked))
+                        CommitSpell(clicked);
                     else
                         SetMode(InputMode.None);
                     break;
@@ -179,7 +209,12 @@ namespace BaaroForce.Map
 
         private void HandleKeys()
         {
-            if (Input.GetKeyDown(KeyCode.Escape)) { SetMode(InputMode.None); return; }
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                SetMode(InputMode.None);
+                ShowActionPanel();
+                return;
+            }
 
             if (Input.GetKeyDown(KeyCode.E))
             {
@@ -194,7 +229,7 @@ namespace BaaroForce.Map
             else if (Input.GetKeyDown(KeyCode.A))
                 ToggleAttackMode();
             else if (Input.GetKeyDown(KeyCode.S))
-                Debug.Log("[TurnManager] Spells — not yet implemented.");
+                ToggleSpellMode();
             else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.I))
                 Debug.Log("[TurnManager] Items — not yet implemented.");
         }
@@ -215,6 +250,7 @@ namespace BaaroForce.Map
             selectedTile      = tile;
             Debug.Log($"[TurnManager] Selected '{character.characterName}'  " +
                       $"MP: {RemainingMove(character)}  AP: {RemainingActions(character)}");
+            ShowActionPanel();
         }
 
         private void Deselect()
@@ -222,6 +258,8 @@ namespace BaaroForce.Map
             SetMode(InputMode.None);
             selectedCharacter = null;
             selectedTile      = null;
+            _actionPanel?.Hide();
+            _spellPanel?.Hide();
         }
 
         // ------------------------------------------------------------------ //
@@ -233,6 +271,8 @@ namespace BaaroForce.Map
         {
             ClearMoveHighlights();
             ClearAttackHighlights();
+            ClearSpellHighlights();
+            if (mode != InputMode.Spell) selectedSpell = null;
             currentMode = mode;
         }
 
@@ -348,6 +388,7 @@ namespace BaaroForce.Map
             }
 
             CheckAndHandleTurnEnd(selectedCharacter);
+            if (selectedCharacter != null) ShowActionPanel();
         }
 
         /// <summary>Attack range in Manhattan-distance tiles based on class specialty.</summary>
@@ -361,6 +402,285 @@ namespace BaaroForce.Map
                 case CharacterClass.ClassSpecialty.RANGED: return 3;
                 default:                                   return 1;
             }
+        }
+
+        // ------------------------------------------------------------------ //
+        // Spell mode                                                          //
+        // ------------------------------------------------------------------ //
+
+        private void ToggleSpellMode()
+        {
+            // Cancel active tile-targeting and return to the spell panel.
+            if (currentMode == InputMode.Spell)
+            {
+                SetMode(InputMode.None);
+                if (selectedCharacter != null) ShowSpellPanel();
+                return;
+            }
+
+            // Toggle the spell panel off if it is already showing.
+            if (_spellPanel != null && _spellPanel.IsVisible)
+            {
+                ShowActionPanel();
+                return;
+            }
+
+            if (selectedCharacter == null) return;
+            ShowSpellPanel();
+        }
+
+        private void ShowSpellRange(MapTile origin, Spell spell)
+        {
+            if (spell.targetType == SpellTargetType.Self) return;
+
+            Color color = GetSpellHighlightColor(spell.targetType);
+            int ox = origin.GridX, oz = origin.GridZ;
+
+            for (int x = 0; x < gridSize; x++)
+            {
+                for (int z = 0; z < gridSize; z++)
+                {
+                    int dist = Mathf.Abs(x - ox) + Mathf.Abs(z - oz);
+                    if (dist <= 0 || dist > spell.range) continue;
+
+                    MapTile tile = tiles[x, z];
+                    bool valid;
+                    switch (spell.targetType)
+                    {
+                        case SpellTargetType.Enemy: valid = tile.OccupyingNpc       != null; break;
+                        case SpellTargetType.Ally:  valid = tile.OccupyingCharacter != null; break;
+                        case SpellTargetType.Both:  valid = tile.IsOccupied;                 break;
+                        default:                    valid = false;                           break;
+                    }
+                    if (!valid) continue;
+
+                    tile.SetSpellHighlight(true, color);
+                    highlightedSpellTiles.Add(tile);
+                }
+            }
+        }
+
+        private void ClearSpellHighlights()
+        {
+            foreach (MapTile t in highlightedSpellTiles)
+                t.SetSpellHighlight(false, Color.clear);
+            highlightedSpellTiles.Clear();
+        }
+
+        private void CommitSpell(MapTile targetTile)
+        {
+            if (selectedSpell == null) return;
+
+            Spell spell = selectedSpell;
+            SetMode(InputMode.None);   // clears highlights and nulls selectedSpell
+
+            if (spell.cost > 0 && selectedCharacter.characterStats.mana < spell.cost)
+            {
+                Debug.Log($"[TurnManager] '{selectedCharacter.characterName}' " +
+                           "does not have enough mana to cast this spell.");
+                return;
+            }
+
+            var context = new SpellContext(
+                caster:      selectedCharacter,
+                casterLevel: selectedCharacter.Level,
+                casterTile:  selectedTile,
+                targetTile:  targetTile,
+                allTiles:    tiles,
+                gridSize:    gridSize);
+
+            // If the spell physically repositions the caster first (e.g. Charge),
+            // animate the movement and resolve the effect at the end of that coroutine.
+            MapTile landingTile = spell.GetCasterLandingTile(context);
+            if (landingTile != null)
+            {
+                StartCoroutine(SpellWithMovement(selectedCharacter, selectedTile,
+                                                 landingTile, spell, context));
+                return;
+            }
+
+            bool resolved = spell.Execute(context);
+
+            // Always spend one action point — the attempt was made.
+            remainingActions[selectedCharacter] =
+                Mathf.Max(0, RemainingActions(selectedCharacter) - 1);
+
+            // Only deduct mana on a successful cast.
+            if (resolved)
+                selectedCharacter.characterStats.mana =
+                    Mathf.Max(0, selectedCharacter.characterStats.mana - spell.cost);
+
+            CheckAndHandleTurnEnd(selectedCharacter);
+            if (selectedCharacter != null)
+                ShowActionPanel();
+        }
+
+        /// <summary>
+        /// Animates the caster moving to <paramref name="landingTile"/> along the grid,
+        /// then resolves the spell's Execute.  Input is blocked while moving.
+        /// Movement does NOT consume movement points — it is part of the spell effect.
+        /// </summary>
+        private IEnumerator SpellWithMovement(Character caster, MapTile fromTile,
+                                               MapTile landingTile, Spell spell,
+                                               SpellContext context)
+        {
+            isMoving = true;
+
+            List<MapTile> path  = FindShortestPath(fromTile, landingTile);
+            GameObject    model = fromTile.CharacterObject;
+
+            if (model != null && path.Count > 1)
+            {
+                MapTile currentTile = fromTile;
+
+                for (int i = 1; i < path.Count; i++)
+                {
+                    MapTile next     = path[i];
+                    Vector3 startPos = model.transform.position;
+                    float   halfH    = next.transform.lossyScale.y * 0.5f;
+                    Vector3 endPos   = next.transform.position + Vector3.up * (halfH + 0.05f);
+                    float   elapsed  = 0f;
+                    float   duration = step / MoveSpeed;
+
+                    while (elapsed < duration)
+                    {
+                        elapsed += Time.deltaTime;
+                        model.transform.position = Vector3.Lerp(startPos, endPos, elapsed / duration);
+                        yield return null;
+                    }
+
+                    model.transform.position = endPos;
+                    currentTile.ReleaseCharacter();
+                    next.AssignCharacter(caster, model);
+                    currentTile = next;
+                }
+
+                selectedTile = currentTile;
+            }
+
+            isMoving = false;
+
+            // Caster is now in position — resolve the spell's damage / effect.
+            bool resolved = spell.Execute(context);
+
+            remainingActions[caster] =
+                Mathf.Max(0, RemainingActions(caster) - 1);
+
+            if (resolved)
+                caster.characterStats.mana =
+                    Mathf.Max(0, caster.characterStats.mana - spell.cost);
+
+            CheckAndHandleTurnEnd(caster);
+            if (selectedCharacter != null)
+                ShowActionPanel();
+        }
+
+        private Color GetSpellHighlightColor(SpellTargetType targetType)
+        {
+            switch (targetType)
+            {
+                case SpellTargetType.Enemy: return new Color(0.9f, 0.15f, 0.10f, 0.55f); // red
+                case SpellTargetType.Ally:  return new Color(0.1f, 0.80f, 0.20f, 0.55f); // green
+                case SpellTargetType.Both:  return new Color(0.6f, 0.10f, 0.85f, 0.55f); // purple
+                default:                   return new Color(0.9f, 0.15f, 0.10f, 0.55f);
+            }
+        }
+
+        private Spell GetFirstUsableSpell(Character character)
+        {
+            if (character.characterSpells == null) return null;
+            foreach (Spell spell in character.characterSpells)
+                if (character.characterStats.mana >= spell.cost)
+                    return spell;
+            return null;
+        }
+
+        /// <summary>
+        /// Activates a spell for the currently selected character.
+        /// Self-targeting spells execute immediately; all others enter targeting mode.
+        /// Called by both the S key shortcut and the spell panel buttons.
+        /// </summary>
+        public void ActivateSpell(Spell spell)
+        {
+            if (selectedCharacter == null) return;
+
+            // Toggle off when the same spell is already queued.
+            if (currentMode == InputMode.Spell && selectedSpell == spell)
+            {
+                SetMode(InputMode.None);
+                return;
+            }
+
+            int ap = RemainingActions(selectedCharacter);
+            if (ap <= 0)
+            {
+                Debug.Log($"[TurnManager] '{selectedCharacter.characterName}' has no actions remaining.");
+                return;
+            }
+
+            if (spell.cost > 0 && selectedCharacter.characterStats.mana < spell.cost)
+            {
+                Debug.Log($"[TurnManager] Not enough mana to cast '{spell.name}'.");
+                return;
+            }
+
+            if (spell.targetType == SpellTargetType.Self)
+            {
+                // Self spells need no target tile — execute immediately.
+                SetMode(InputMode.None);
+                var selfContext = new SpellContext(
+                    caster:      selectedCharacter,
+                    casterLevel: selectedCharacter.Level,
+                    casterTile:  selectedTile,
+                    targetTile:  null,
+                    allTiles:    tiles,
+                    gridSize:    gridSize);
+
+                bool selfResolved = spell.Execute(selfContext);
+
+                remainingActions[selectedCharacter] =
+                    Mathf.Max(0, RemainingActions(selectedCharacter) - 1);
+
+                if (selfResolved)
+                    selectedCharacter.characterStats.mana =
+                        Mathf.Max(0, selectedCharacter.characterStats.mana - spell.cost);
+
+                CheckAndHandleTurnEnd(selectedCharacter);
+                if (selectedCharacter != null)
+                    ShowActionPanel();
+                return;
+            }
+
+            // Targeted spell — hide panels and show range highlights.
+            _actionPanel?.Hide();
+            _spellPanel?.Hide();
+            SetMode(InputMode.Spell);
+            selectedSpell = spell;
+            ShowSpellRange(selectedTile, spell);
+            Debug.Log($"[TurnManager] Spell mode: '{spell.name}'  " +
+                      $"(Range: {spell.range}, Cost: {spell.cost} mana)");
+        }
+
+        // ------------------------------------------------------------------ //
+        // Panel management                                                    //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>Returns to the character action menu.  Clears any active input mode.</summary>
+        private void ShowActionPanel()
+        {
+            SetMode(InputMode.None);
+            _spellPanel?.Hide();
+            if (selectedCharacter != null)
+                _actionPanel?.Show(selectedCharacter);
+        }
+
+        /// <summary>Opens the spell selection panel.  Clears any active input mode.</summary>
+        private void ShowSpellPanel()
+        {
+            SetMode(InputMode.None);
+            _actionPanel?.Hide();
+            if (selectedCharacter != null)
+                _spellPanel?.Show(selectedCharacter);
         }
 
         // ------------------------------------------------------------------ //
@@ -544,7 +864,11 @@ namespace BaaroForce.Map
             isMoving = false;
 
             if (selectedCharacter == character)
+            {
                 CheckAndHandleTurnEnd(character);
+                if (selectedCharacter != null)
+                    ShowActionPanel();
+            }
         }
 
         // ------------------------------------------------------------------ //
@@ -561,6 +885,19 @@ namespace BaaroForce.Map
         {
             int ap;
             return remainingActions.TryGetValue(character, out ap) ? ap : 0;
+        }
+
+        /// <summary>Ensures an EventSystem and TooltipSystem exist in the scene.</summary>
+        private void EnsureMapUI()
+        {
+            if (FindObjectOfType<EventSystem>() == null)
+            {
+                var es = new GameObject("EventSystem");
+                es.AddComponent<EventSystem>();
+                es.AddComponent<StandaloneInputModule>();
+            }
+            if (TooltipSystem.Instance == null)
+                new GameObject("[TooltipSystem]").AddComponent<TooltipSystem>();
         }
     }
 }

@@ -17,6 +17,8 @@ namespace BaaroForce.Characters
         public List<Spell> characterSpells { get; set; }
         //public List<Equipment> characterEquipment { get; set; }
         public string characterModelPath { get; set; }
+        /// <summary>Current level; used for spell and ability power scaling. Defaults to 1.</summary>
+        public int Level { get; set; } = 1;
 
         public Character(
                         CharacterClass characterClass, 
