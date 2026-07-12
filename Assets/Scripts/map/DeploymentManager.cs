@@ -27,6 +27,12 @@ namespace BaaroForce.Map
 
         private bool   deploymentComplete;
 
+        /// <summary>
+        /// Fired when the last party member has been placed (or immediately if the
+        /// party is empty).  MapGenerator subscribes TurnManager.StartPlayerTurn here.
+        /// </summary>
+        public System.Action OnDeploymentComplete;
+
         // ------------------------------------------------------------------ //
         // Initialisation (called by MapGenerator after the grid is built)     //
         // ------------------------------------------------------------------ //
@@ -53,6 +59,7 @@ namespace BaaroForce.Map
             if (charactersToPlace.Count == 0)
             {
                 deploymentComplete = true;
+                OnDeploymentComplete?.Invoke();
                 return;
             }
 
@@ -163,6 +170,7 @@ namespace BaaroForce.Map
             {
                 deploymentComplete = true;
                 ClearDeploymentOverlays();
+                OnDeploymentComplete?.Invoke();
             }
         }
     }

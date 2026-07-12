@@ -20,6 +20,14 @@ namespace BaaroForce.Map
         public NPC                 OccupyingNpc          { get; private set; }
         public bool                IsOccupied            => OccupyingCharacter != null || OccupyingNpc != null;
 
+        /// <summary>Column index in the grid array.</summary>
+        public int GridX { get; private set; }
+        /// <summary>Row index in the grid array.</summary>
+        public int GridZ { get; private set; }
+
+        /// <summary>The instantiated model currently sitting on this tile (may be null).</summary>
+        public GameObject CharacterObject => characterObject;
+
         // ------------------------------------------------------------------ //
         // Private state                                                       //
         // ------------------------------------------------------------------ //
@@ -27,8 +35,12 @@ namespace BaaroForce.Map
         private GameObject characterObject;
         private GameObject npcObject;
         private GameObject deploymentOverlay;
+        private GameObject moveHighlightOverlay;
+        private GameObject attackHighlightOverlay;
 
-        private static readonly Color OverlayColor = new Color(0.3f, 0.6f, 1f, 0.45f);
+        private static readonly Color OverlayColor         = new Color(0.3f, 0.6f, 1f, 0.45f);
+        private static readonly Color MoveHighlightColor    = new Color(0.3f, 0.6f, 1f, 0.92f);
+        private static readonly Color AttackHighlightColor  = new Color(0.9f, 0.15f, 0.1f, 0.55f);
 
         // ------------------------------------------------------------------ //
         // Lifecycle                                                           //
@@ -39,6 +51,13 @@ namespace BaaroForce.Map
         // ------------------------------------------------------------------ //
         // Initialisation                                                      //
         // ------------------------------------------------------------------ //
+
+        /// <summary>Stores the tile's position in the grid array (called by MapGenerator).</summary>
+        public void SetGridCoords(int x, int z)
+        {
+            GridX = x;
+            GridZ = z;
+        }
 
         /// <summary>Assigns the terrain colour to the cube's MeshRenderer material.</summary>
         public void Initialize(TerrainTile.TerrainType type)
@@ -88,6 +107,77 @@ namespace BaaroForce.Map
         }
 
         // ------------------------------------------------------------------ //
+        // Move highlight                                                      //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Shows or hides the near-opaque blue overlay used to indicate tiles
+        /// the selected character can move to during the player's turn.
+        /// </summary>
+        public void SetMoveHighlight(bool active)
+        {
+            if (active)
+            {
+                if (moveHighlightOverlay != null) return;
+
+                moveHighlightOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                moveHighlightOverlay.name = "MoveHighlight";
+                Destroy(moveHighlightOverlay.GetComponent<Collider>());
+
+                moveHighlightOverlay.transform.SetParent(transform, false);
+                // Sit slightly above the deployment overlay (0.52) to avoid Z-fighting.
+                moveHighlightOverlay.transform.localPosition = new Vector3(0f, 0.54f, 0f);
+                moveHighlightOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                moveHighlightOverlay.transform.localScale    = Vector3.one;
+
+                var mat = new Material(Shader.Find("Standard"));
+                ApplyTransparency(mat, MoveHighlightColor);
+                moveHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
+            }
+            else
+            {
+                if (moveHighlightOverlay != null)
+                {
+                    Destroy(moveHighlightOverlay);
+                    moveHighlightOverlay = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Shows or hides the translucent red overlay used to indicate tiles
+        /// within the selected character's attack range during the player's turn.
+        /// </summary>
+        public void SetAttackHighlight(bool active)
+        {
+            if (active)
+            {
+                if (attackHighlightOverlay != null) return;
+
+                attackHighlightOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                attackHighlightOverlay.name = "AttackHighlight";
+                Destroy(attackHighlightOverlay.GetComponent<Collider>());
+
+                attackHighlightOverlay.transform.SetParent(transform, false);
+                attackHighlightOverlay.transform.localPosition = new Vector3(0f, 0.54f, 0f);
+                attackHighlightOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                attackHighlightOverlay.transform.localScale    = Vector3.one;
+
+                var mat = new Material(Shader.Find("Standard"));
+                ApplyTransparency(mat, AttackHighlightColor);
+                attackHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
+            }
+            else
+            {
+                if (attackHighlightOverlay != null)
+                {
+                    Destroy(attackHighlightOverlay);
+                    attackHighlightOverlay = null;
+                }
+            }
+        }
+
+        // ------------------------------------------------------------------ //
         // Occupancy                                                           //
         // ------------------------------------------------------------------ //
 
@@ -125,7 +215,7 @@ namespace BaaroForce.Map
             ScaleToFit(characterObject, transform.lossyScale.x * 0.8f);
         }
 
-        /// <summary>Removes the occupying character from this tile.</summary>
+        /// <summary>Removes the occupying character from this tile and destroys its model.</summary>
         public void RemoveCharacter()
         {
             OccupyingCharacter = null;
@@ -134,6 +224,27 @@ namespace BaaroForce.Map
                 Destroy(characterObject);
                 characterObject = null;
             }
+        }
+
+        /// <summary>
+        /// Clears occupancy without destroying the model GameObject.
+        /// Used by TurnManager during movement animation so the model can be
+        /// handed off to the destination tile.
+        /// </summary>
+        public void ReleaseCharacter()
+        {
+            OccupyingCharacter = null;
+            characterObject    = null;   // we no longer own this reference
+        }
+
+        /// <summary>
+        /// Assigns an already-existing character model to this tile.
+        /// Called by TurnManager after the model has been moved in world-space.
+        /// </summary>
+        public void AssignCharacter(Character character, GameObject model)
+        {
+            OccupyingCharacter = character;
+            characterObject    = model;
         }
 
         /// <summary>

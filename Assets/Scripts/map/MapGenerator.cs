@@ -33,6 +33,7 @@ namespace BaaroForce.Map
 
         private MapTile[,] tiles;
         private DeploymentManager deploymentManager;
+        private TurnManager       turnManager;
 
         private void Start()
         {
@@ -71,9 +72,15 @@ namespace BaaroForce.Map
             FitCameraToMap(size, step);
             SetupSceneLight();
 
+            // Set up the turn manager first so it can subscribe to deployment complete.
+            if (turnManager == null)
+                turnManager = gameObject.AddComponent<TurnManager>();
+            turnManager.Initialize(tiles, size, step, originX, originZ);
+
             // Set up the deployment phase.
             if (deploymentManager == null)
                 deploymentManager = gameObject.AddComponent<DeploymentManager>();
+            deploymentManager.OnDeploymentComplete += turnManager.StartPlayerTurn;
             deploymentManager.Initialize(tiles, size, step, originX, originZ);
 
             // Build and place the enemy pack on the far side of the map.
@@ -98,6 +105,7 @@ namespace BaaroForce.Map
 
             MapTile tile = obj.AddComponent<MapTile>();
             tile.Initialize(terrain);
+            tile.SetGridCoords(x, z);
             return tile;
         }
 
@@ -118,8 +126,13 @@ namespace BaaroForce.Map
 
             tiles             = null;
             deploymentManager = null;
-            DeploymentManager existing = GetComponent<DeploymentManager>();
-            if (existing != null) DestroyImmediate(existing);
+            turnManager       = null;
+
+            DeploymentManager existingDM = GetComponent<DeploymentManager>();
+            if (existingDM != null) DestroyImmediate(existingDM);
+
+            TurnManager existingTM = GetComponent<TurnManager>();
+            if (existingTM != null) DestroyImmediate(existingTM);
         }
 
         /// <summary>
