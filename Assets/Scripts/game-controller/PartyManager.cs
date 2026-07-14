@@ -26,6 +26,7 @@ public class PartyManager : MonoBehaviour
     }
 
     public Party Party { get; private set; }
+    public List<Relic> Relics { get; private set; } = new List<Relic>();
 
     /// <summary>The Realm chosen for this game session. Null until set by MainMenu.</summary>
     public Realm? CurrentRealm { get; private set; }

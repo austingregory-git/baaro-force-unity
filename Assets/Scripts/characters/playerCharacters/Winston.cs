@@ -25,23 +25,5 @@ namespace BaaroForce.Characters
                 WINSTON_MODEL_PATH)
         {
         }
-
-        public PassiveAbility GetWinstonPassiveAbility()
-        {
-            return new PassiveAbility("Autumnal Growth",
-                "[Regen] 1 + 0.25 x [Level] health points per turn");
-        }
-
-        public Spell GetWinstonSpell()
-        {
-            // return new Spell("Death Stare",
-            //     "[Fear] an enemy for 1 + 0.25 x [Level] turns");
-            return new Spell(name: "Death Stare",
-                             description: "Deals 2 + 0.25 x [Level] damage",
-                             cost: 2,
-                             range: 3,
-                             area: 1,
-                             cooldown: 1);
-        }
     }
 }

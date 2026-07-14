@@ -25,9 +25,14 @@ namespace BaaroForce.Spells
         public int            cooldown;
         /// <summary>Who the spell can be aimed at; drives highlight colour in the UI.</summary>
         public SpellTargetType targetType;
+        /// <summary>The shape of the area-of-effect pattern.
+        /// Only meaningful when <see cref="targetType"/> is <see cref="SpellTargetType.AoE"/>.
+        /// Used by <see cref="SpellAreaUtils"/> to resolve the affected tiles.</summary>
+        public SpellAreaType areaType;
 
         public Spell(string name, string description, int cost, int range, int area, int cooldown,
-                     SpellTargetType targetType = SpellTargetType.Enemy)
+                     SpellTargetType targetType = SpellTargetType.Enemy,
+                     SpellAreaType areaType = SpellAreaType.None)
         {
             this.name        = name;
             this.description = description;
@@ -36,6 +41,7 @@ namespace BaaroForce.Spells
             this.area        = area;
             this.cooldown    = cooldown;
             this.targetType  = targetType;
+            this.areaType    = areaType;
         }
 
         /// <summary>Convenience constructor for name/description-only data stubs.</summary>

@@ -18,5 +18,7 @@ namespace BaaroForce.Spells
 
         /// <summary>Targets the caster; no tile selection is required.</summary>
         Self,
+        /// <summary>Targets an area of effect around the chosen tile — yellow highlight.</summary>
+        Area
     }
 }

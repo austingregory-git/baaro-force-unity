@@ -14,11 +14,11 @@ namespace BaaroForce.Spells
         public Charge() : base(
             characterClass: ClassRegistry.Get("Warrior"),
             name:        "Charge",
-            description: "Charge up to 4 squares at an enemy, dealing damage equal to your basic attack.",
+            description: "Charge up to 3 squares at an enemy, dealing damage equal to your basic attack.",
             cost:        0,
-            range:       4,
+            range:       3,
             area:        0,
-            cooldown:    0,
+            cooldown:    3,
             targetType:  SpellTargetType.Enemy)
         { }
 

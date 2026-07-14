@@ -6,6 +6,7 @@ using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Spells;
 using BaaroForce.UI;
+using System;
 
 namespace BaaroForce.Map
 {
@@ -67,12 +68,17 @@ namespace BaaroForce.Map
 
         private readonly List<MapTile> highlightedMoveTiles   = new List<MapTile>();
         private readonly List<MapTile> highlightedAttackTiles = new List<MapTile>();
-        private readonly List<MapTile> highlightedSpellTiles  = new List<MapTile>();
+
+        //spellTargetTiles
+        private readonly List<MapTile> spellTargetTiles = new List<MapTile>();
+        private readonly List<MapTile> spellPreviewTiles = new List<MapTile>();
 
         private Spell         selectedSpell;
         private ActionPanelUI  _actionPanel;
         private SpellPanelUI   _spellPanel;
         private bool           isMoving;
+        private MapTile hoveredTile;
+
 
         private const float MoveSpeed = 5f;   // world-units per second
 
@@ -127,6 +133,9 @@ namespace BaaroForce.Map
                     remainingActions[c]  = c.characterStats.maxActionPoints;
                 }
 
+            var relics = PartyManager.Instance?.Relics;
+            CheckAndHandlePlayerTurnEnd(members, relics);
+
             Debug.Log("[TurnManager] Player turn started.");
         }
 
@@ -139,8 +148,55 @@ namespace BaaroForce.Map
             if (CurrentPhase != TurnPhase.PlayerTurn) return;
             if (isMoving) return;
 
+            UpdateHoveredTile();
+
+            if (currentMode == InputMode.Spell &&
+                selectedSpell != null &&
+                selectedSpell.targetType == SpellTargetType.Area)
+            {
+                UpdateSpellPreview();
+            }
+
             HandleClick();
             HandleKeys();
+        }
+
+        // ------------------------------------------------------------------ //
+        // Hovered tile handling                                               //
+        // ------------------------------------------------------------------ //
+
+        private void UpdateHoveredTile()
+        {
+            if (!TryGetTileUnderMouse(out MapTile tile))
+            {
+                hoveredTile = null;
+                return;
+            }
+
+            hoveredTile = tile;
+        }
+
+        private bool TryGetTileUnderMouse(out MapTile tile)
+        {
+            tile = null;
+
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            Plane gridPlane = new Plane(Vector3.up, Vector3.zero);
+
+            if (!gridPlane.Raycast(ray, out float enter))
+                return false;
+
+            Vector3 hit = ray.GetPoint(enter);
+
+            int gridX = Mathf.RoundToInt((hit.x - originX) / step);
+            int gridZ = Mathf.RoundToInt((hit.z - originZ) / step);
+
+            if (gridX < 0 || gridX >= gridSize ||
+                gridZ < 0 || gridZ >= gridSize)
+                return false;
+
+            tile = tiles[gridX, gridZ];
+            return true;
         }
 
         // ------------------------------------------------------------------ //
@@ -173,7 +229,7 @@ namespace BaaroForce.Map
                     break;
 
                 case InputMode.Spell:
-                    if (highlightedSpellTiles.Contains(clicked))
+                    if (spellTargetTiles.Contains(clicked))
                         CommitSpell(clicked);
                     else
                         SetMode(InputMode.None);
@@ -273,7 +329,11 @@ namespace BaaroForce.Map
             ClearMoveHighlights();
             ClearAttackHighlights();
             ClearSpellHighlights();
-            if (mode != InputMode.Spell) selectedSpell = null;
+            ClearPreviewTiles();
+
+            if (mode != InputMode.Spell)
+                selectedSpell = null;
+
             currentMode = mode;
         }
 
@@ -445,27 +505,59 @@ namespace BaaroForce.Map
                     if (dist <= 0 || dist > spell.range) continue;
 
                     MapTile tile = tiles[x, z];
-                    bool valid;
-                    switch (spell.targetType)
-                    {
-                        case SpellTargetType.Enemy: valid = tile.OccupyingNpc       != null; break;
-                        case SpellTargetType.Ally:  valid = tile.OccupyingCharacter != null; break;
-                        case SpellTargetType.Both:  valid = tile.IsOccupied;                 break;
-                        default:                    valid = false;                           break;
-                    }
-                    if (!valid) continue;
 
                     tile.SetSpellHighlight(true, color);
-                    highlightedSpellTiles.Add(tile);
+                    spellTargetTiles.Add(tile);
                 }
             }
         }
 
+        private void UpdateSpellPreview()
+        {
+            ClearPreviewTiles();
+
+            if (hoveredTile == null)
+                return;
+
+            int distance =
+                Mathf.Abs(hoveredTile.GridX - selectedTile.GridX) +
+                Mathf.Abs(hoveredTile.GridZ - selectedTile.GridZ);
+
+            if (distance == 0 || distance > selectedSpell.range)
+                return;
+
+            List<MapTile> areaTiles =
+                SpellAreaUtils.GetHorizontalLineTiles(
+                    selectedTile,
+                    hoveredTile,
+                    selectedSpell.range,
+                    selectedSpell.area,
+                    tiles,
+                    gridSize);
+
+            foreach (var tile in areaTiles)
+            {
+                tile.SetSpellHighlight(
+                    true,
+                    new Color(1f, 0.5f, 0f, 0.8f));
+
+                spellPreviewTiles.Add(tile);
+            }
+        }
+
+        private void ClearPreviewTiles()
+        {
+            foreach (var tile in spellPreviewTiles)
+                tile.SetSpellHighlight(false, Color.clear);
+
+            spellPreviewTiles.Clear();
+        }
+
         private void ClearSpellHighlights()
         {
-            foreach (MapTile t in highlightedSpellTiles)
+            foreach (MapTile t in spellTargetTiles)
                 t.SetSpellHighlight(false, Color.clear);
-            highlightedSpellTiles.Clear();
+            spellTargetTiles.Clear();
         }
 
         private void CommitSpell(MapTile targetTile)
@@ -660,6 +752,7 @@ namespace BaaroForce.Map
             ShowSpellRange(selectedTile, spell);
             Debug.Log($"[TurnManager] Spell mode: '{spell.name}'  " +
                       $"(Range: {spell.range}, Cost: {spell.cost} mana)");
+
         }
 
         // ------------------------------------------------------------------ //
@@ -698,6 +791,13 @@ namespace BaaroForce.Map
                 EndCharacterTurn(character);
         }
 
+        private void CheckAndHandlePlayerTurnEnd(List<Character> members, List<Relic> relics)
+        {
+            // Implement logic to handle the end of the player's turn.
+            // This could include checking if all characters have finished their turns,
+            // applying relic effects, or other end-of-turn mechanics.
+        }
+
         /// <summary>
         /// Marks a character as having finished their turn (called manually via E or
         /// automatically when resources are depleted).  Transitions to the enemy phase
@@ -724,6 +824,9 @@ namespace BaaroForce.Map
             foreach (Character c in members)
                 if (!finishedCharacters.Contains(c) && c.characterStats.healthPoints > 0)
                     return;
+
+            var relics = PartyManager.Instance?.Relics;
+            CheckAndHandlePlayerTurnEnd(members, relics);
 
             StartEnemyTurn();
         }
