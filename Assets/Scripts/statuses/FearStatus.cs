@@ -16,7 +16,8 @@ namespace BaaroForce.Statuses
             : base(
                 name:        "Fear",
                 description: $"Attack reduced by {attackPenalty} for {durationTurns} turns.",
-                durationTurns: durationTurns)
+                durationTurns: durationTurns,
+                effectType: StatusEffectType.DEBUFF)
         {
             this.attackPenalty = attackPenalty;
         }

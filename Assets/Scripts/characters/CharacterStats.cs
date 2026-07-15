@@ -15,19 +15,21 @@ namespace BaaroForce.Characters
         public int attackBonus;
         /// <summary>Effective attack used in damage calculations (baseAttack + attackBonus).</summary>
         public int TotalAttack => baseAttack + attackBonus;
+        public int maxMana;
         public int mana;
         public int movement;
         /// <summary>Actions (attack / spell / item) available per turn. Defaults to 1.</summary>
         public int maxActionPoints;
 
-        public CharacterStats(int healthPoints, int baseAttack, int mana, int movement,
+        public CharacterStats(int maxHealthPoints, int baseAttack, int maxMana, int movement,
                               int maxActionPoints = 1)
         {
-            this.maxHealthPoints = healthPoints;
-            this.healthPoints    = healthPoints;
+            this.maxHealthPoints = maxHealthPoints;
+            this.healthPoints    = maxHealthPoints;
             this.baseAttack      = baseAttack;
             this.attackBonus     = 0;
-            this.mana            = mana;
+            this.maxMana         = maxMana;
+            this.mana            = maxMana;
             this.movement        = movement;
             this.maxActionPoints = maxActionPoints;
         }

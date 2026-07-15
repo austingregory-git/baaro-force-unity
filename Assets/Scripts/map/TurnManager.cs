@@ -129,7 +129,6 @@ namespace BaaroForce.Map
             if (members != null)
                 foreach (Character c in members)
                 {
-                    c.TickStatusEffects();
                     remainingMovement[c] = c.characterStats.movement;
                     remainingActions[c]  = c.characterStats.maxActionPoints;
                 }
@@ -831,6 +830,12 @@ namespace BaaroForce.Map
             // This could include checking if all characters have finished their turns,
             // applying relic effects, or other end-of-turn mechanics.
             Debug.Log("[TurnManager] Checking and handling end of player turn.");
+
+            foreach (Character c in members)
+            {
+                c.TickStatusEffects();
+            }
+
             CheckAndHandlePlayerTurnEndPassives(members);
 
             CheckAndHandleTurnEndRelics(relics);
@@ -927,9 +932,6 @@ namespace BaaroForce.Map
                 if (npc.characterStats.healthPoints <= 0) continue;
                 if (npc.AI == null) continue;
 
-                // Tick status effects at the start of each NPC's individual turn.
-                npc.TickStatusEffects();
-
                 // Re-locate the NPC's current tile (it may have moved earlier this round).
                 MapTile currentTile = FindNpcTile(npc);
                 if (currentTile == null) continue;
@@ -956,6 +958,13 @@ namespace BaaroForce.Map
             }
 
             Debug.Log("[TurnManager] Enemy turn complete.  Starting player turn.");
+            // Tick status effects for all NPCs at the end of the enemy turn.
+            foreach (var (npc, _) in npcTiles)
+            {
+                if (npc.characterStats.healthPoints <= 0) continue;
+                npc.TickStatusEffects();
+            }
+
             StartPlayerTurn();
         }
 

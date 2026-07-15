@@ -19,6 +19,7 @@ namespace BaaroForce.Statuses
     {
         public string Name            { get; protected set; }
         public string Description     { get; protected set; }
+        public StatusEffectType EffectType { get; protected set; }
 
         /// <summary>
         /// Turns remaining before this effect expires.
@@ -28,11 +29,12 @@ namespace BaaroForce.Statuses
 
         public bool IsExpired => RemainingTurns == 0;
 
-        protected StatusEffect(string name, string description, int durationTurns)
+        protected StatusEffect(string name, string description, int durationTurns, StatusEffectType effectType)
         {
             Name           = name;
             Description    = description;
             RemainingTurns = durationTurns;
+            EffectType = effectType;
         }
 
         /// <summary>Apply the initial stat modification.</summary>
@@ -53,6 +55,13 @@ namespace BaaroForce.Statuses
             if (RemainingTurns < 0) return false;   // permanent
             if (RemainingTurns > 0) RemainingTurns--;
             return RemainingTurns == 0;
+        }
+
+        public enum StatusEffectType
+        {
+            BUFF,
+            DEBUFF,
+            CUSTOM
         }
     }
 }

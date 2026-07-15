@@ -15,6 +15,7 @@ namespace BaaroForce.Passives
         {
             int bonus = Mathf.FloorToInt(1f + 0.25f * context.CharacterLevel);
             context.Character.characterStats.healthPoints += bonus;
+            
 
             Debug.Log($"[AutumnalGrowth] '{context.Character.characterName}' gained {bonus} HP.  " +
                       $"HP: {context.Character.characterStats.healthPoints}" +

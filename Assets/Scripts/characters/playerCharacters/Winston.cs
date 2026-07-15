@@ -7,7 +7,7 @@ namespace BaaroForce.Characters
 {
     public class Winston : Character
     {
-        static readonly CharacterStats WINSTON_BASE_STATS = new CharacterStats(healthPoints: 8, baseAttack: 3, mana: 5, movement: 4);
+        static readonly CharacterStats WINSTON_BASE_STATS = new CharacterStats(maxHealthPoints: 8, baseAttack: 3, maxMana: 5, movement: 4);
         static readonly string WINSTON_MODEL_PATH = "Characters/frog_wizard_test";
         public Winston()
             : base(

@@ -6,7 +6,7 @@ namespace BaaroForce.Characters
 {
     public class Beepo : Character
     {
-        static readonly CharacterStats BEEPO_BASE_STATS = new CharacterStats(healthPoints: 8, baseAttack: 2, mana: 4, movement: 3);
+        static readonly CharacterStats BEEPO_BASE_STATS = new CharacterStats(maxHealthPoints: 8, baseAttack: 2, maxMana: 4, movement: 3);
         static readonly string BEEPO_MODEL_PATH = "Characters/frog_wizard_test";
         public Beepo()
             : base(

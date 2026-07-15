@@ -14,7 +14,8 @@ namespace BaaroForce.Characters
         public Wolf()
             : base(
                 //ClassRegistry.Get("Beast"), 
-                "Wolf", new CharacterStats(healthPoints: 5, baseAttack: 2, mana: 1, movement: 5),
+                "Wolf", 
+                new CharacterStats(maxHealthPoints: 5, baseAttack: 2, maxMana: 2, movement: 5),
                 new List<Realm> { Realm.EARTH },
                 new List<PassiveAbility>
                 {

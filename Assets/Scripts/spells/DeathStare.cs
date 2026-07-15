@@ -23,7 +23,7 @@ namespace BaaroForce.Spells
             : base(
                 name:        "Death Stare",
                 description: "[Fear] an enemy for 1 + 0.25 × [Level] turns, " +
-                             "dealing 1 + 0.5 × [Level] dark damage.",
+                             "dealing 2 + 0.5 × [Level] dark damage.",
                 cost:        2,
                 range:       3,
                 area:        0,
@@ -49,7 +49,7 @@ namespace BaaroForce.Spells
             target.ApplyStatus(fear);
 
             // Deal dark damage.
-            int damage = Mathf.FloorToInt(1f + 0.5f * level);
+            int damage = Mathf.FloorToInt(2f + 0.5f * level);
             target.characterStats.healthPoints -= damage;
 
             Debug.Log($"[DeathStare] '{context.Caster.characterName}' casts Death Stare on " +
@@ -86,7 +86,7 @@ namespace BaaroForce.Spells
             var fear = new FearStatus(durationTurns: fearDuration, attackPenalty: 2);
             target.ApplyStatus(fear);
 
-            int damage = Mathf.FloorToInt(1f + 0.5f * level);
+            int damage = Mathf.FloorToInt(2f + 0.5f * level);
             target.characterStats.healthPoints -= damage;
 
             Debug.Log($"[DeathStare] '{context.Caster.characterName}' casts Death Stare on "

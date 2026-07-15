@@ -19,10 +19,11 @@ namespace BaaroForce.Characters
         public List<Spell> characterSpells { get; set; }
         //public List<Equipment> characterEquipment { get; set; }
         public string characterModelPath { get; set; }
-        /// <summary>Current level; used for spell and ability power scaling. Defaults to 1.</summary>
+
         /// Should a character have their current tile stored here?  Or should the map manager handle that?
         public MapTile characterCurrentTile { get; set; }
 
+        /// <summary>Current level; used for spell and ability power scaling. Defaults to 1.</summary>
         public int Level { get; set; } = 1;
 
         /// <summary>Status effects currently active on this character.</summary>
