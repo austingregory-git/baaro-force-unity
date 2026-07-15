@@ -15,8 +15,7 @@ namespace BaaroForce.Characters
                 "Winston", WINSTON_BASE_STATS, new List<Realm> { Realm.DARK },
                 new List<PassiveAbility>
                 {
-                    new PassiveAbility("Autumnal Growth",
-                        "[Regen] 1 + 0.25 x [Level] health points per turn")
+                    new AutumnalGrowth()
                 },
                 new List<Spell>
                 {

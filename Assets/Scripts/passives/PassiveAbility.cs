@@ -1,17 +1,48 @@
+using UnityEngine;
+
 namespace BaaroForce.Passives
 {
     public class PassiveAbility
     {
-        private string name;
-        private string description;
+        private readonly string name;
+        private readonly string description;
 
         public string Name        => name;
         public string Description => description;
+        public PassiveAbilityType AbilityType { get; private set; }
+
+        public PassiveAbility(string name, string description, PassiveAbilityType abilityType)
+        {
+            this.name = name;
+            this.description = description;
+            this.AbilityType = abilityType;
+        }
 
         public PassiveAbility(string name, string description)
         {
             this.name = name;
             this.description = description;
+            this.AbilityType = PassiveAbilityType.CUSTOM;
+        }
+
+        public enum PassiveAbilityType
+        {
+            END_OF_TURN,
+            START_OF_TURN,
+            END_OF_COMBAT,
+            START_OF_COMBAT,
+            CUSTOM
+        }
+
+        /// <summary>
+        /// Executes this passive ability's effects given the context.
+        /// Override in concrete subclasses; the default is a no-op stub.
+        /// Returns true if the ability resolved successfully.
+        /// </summary>
+        public virtual bool Execute(PassiveAbilityContext context)
+        {
+            Debug.LogWarning($"[PassiveAbility] '{name}' has no Execute implementation.");
+            return false;
         }
     }
 }

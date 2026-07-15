@@ -12,23 +12,23 @@ namespace BaaroForce.Spells
     /// </summary>
     public class Spell
     {
-        public string         name;
-        public string         description;
+        public readonly string         name;
+        public readonly string         description;
         /// <summary>Mana required to cast.</summary>
-        public int            cost;
+        public readonly int            cost;
         /// <summary>Maximum Manhattan-distance at which a target tile can be selected.</summary>
-        public int            range;
+        public readonly int            range;
         /// <summary>AoE radius around the chosen target tile (0 = single tile). Spells may
         /// override Execute to use their own area logic instead.</summary>
-        public int            area;
+        public readonly int            area;
         /// <summary>Turns until this spell can be used again (0 = no cooldown).</summary>
-        public int            cooldown;
+        public readonly int            cooldown;
         /// <summary>Who the spell can be aimed at; drives highlight colour in the UI.</summary>
-        public SpellTargetType targetType;
+        public readonly SpellTargetType targetType;
         /// <summary>The shape of the area-of-effect pattern.
         /// Only meaningful when <see cref="targetType"/> is <see cref="SpellTargetType.AoE"/>.
         /// Used by <see cref="SpellAreaUtils"/> to resolve the affected tiles.</summary>
-        public SpellAreaType areaType;
+        public readonly SpellAreaType areaType;
 
         public Spell(string name, string description, int cost, int range, int area, int cooldown,
                      SpellTargetType targetType = SpellTargetType.Enemy,
@@ -54,6 +54,7 @@ namespace BaaroForce.Spells
             this.area        = 0;
             this.cooldown    = 999;
             this.targetType  = SpellTargetType.Enemy;
+            this.areaType    = SpellAreaType.None;
         }
 
         /// <summary>

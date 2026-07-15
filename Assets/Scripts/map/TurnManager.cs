@@ -7,6 +7,7 @@ using BaaroForce.Classes;
 using BaaroForce.Spells;
 using BaaroForce.UI;
 using System;
+using BaaroForce.Passives;
 
 namespace BaaroForce.Map
 {
@@ -134,9 +135,42 @@ namespace BaaroForce.Map
                 }
 
             var relics = PartyManager.Instance?.Relics;
-            CheckAndHandlePlayerTurnEnd(members, relics);
+            CheckAndHandlePlayerTurnStart(members, relics);
 
             Debug.Log("[TurnManager] Player turn started.");
+        }
+
+        private void CheckAndHandlePlayerTurnStart(List<Character> members, List<Relic> relics)
+        {
+            // Implement logic to handle the start of the player's turn.
+            // This could include checking if all characters have finished their turns,
+            // applying relic effects, or other start-of-turn mechanics.
+            Debug.Log("[TurnManager] Checking and handling start of player turn.");
+            CheckAndHandlePlayerTurnStartPassives(members);
+
+            CheckAndHandleTurnStartRelics(relics);
+        }
+
+        private void CheckAndHandleTurnStartRelics(List<Relic> relics)
+        {
+            return;
+            //throw new NotImplementedException();
+        }
+
+        private void CheckAndHandlePlayerTurnStartPassives(List<Character> members)
+        {
+            foreach (Character c in members)
+            {
+                foreach (var passive in c.characterPassiveAbilities)
+                {
+                    Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{c.characterName}' at start of turn.");
+                    if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.START_OF_TURN)
+                    {
+                        Debug.Log($"[TurnManager] Executing passive ability '{passive.Name}' for character '{c.characterName}'.");
+                        passive.Execute(new PassiveAbilityContext(character: c, characterLevel: c.Level, characterTile: c.characterCurrentTile, allTiles: tiles, gridSize: gridSize));
+                    }
+                }
+            }
         }
 
         // ------------------------------------------------------------------ //
@@ -796,6 +830,32 @@ namespace BaaroForce.Map
             // Implement logic to handle the end of the player's turn.
             // This could include checking if all characters have finished their turns,
             // applying relic effects, or other end-of-turn mechanics.
+            Debug.Log("[TurnManager] Checking and handling end of player turn.");
+            CheckAndHandlePlayerTurnEndPassives(members);
+
+            CheckAndHandleTurnEndRelics(relics);
+        }
+
+        private void CheckAndHandleTurnEndRelics(List<Relic> relics)
+        {
+            return;
+            //throw new NotImplementedException();
+        }
+
+        private void CheckAndHandlePlayerTurnEndPassives(List<Character> members)
+        {
+            foreach (Character c in members)
+            {
+                foreach (var passive in c.characterPassiveAbilities)
+                {
+                    Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{c.characterName}' at end of turn.");
+                    if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.END_OF_TURN)
+                    {
+                        Debug.Log($"[TurnManager] Executing passive ability '{passive.Name}' for character '{c.characterName}'.");
+                        passive.Execute(new PassiveAbilityContext(character: c, characterLevel: c.Level, characterTile: c.characterCurrentTile, allTiles: tiles, gridSize: gridSize));
+                    }
+                }
+            }
         }
 
         /// <summary>
