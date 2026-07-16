@@ -14,5 +14,11 @@ namespace BaaroForce.Keywords
             this.description = description;
             this.color = color;
         }
+
+        public Keyword(string name, Color color)
+        {
+            this.name = name;
+            this.color = color;
+        }
     }
 }

@@ -92,7 +92,7 @@ namespace BaaroForce.Characters
 
             foreach (Spell spell in npc.characterSpells)
             {
-                if (spell.cost > npc.characterStats.mana) continue;
+                if (spell.manaCost > npc.characterStats.mana) continue;
 
                 MapTile target = FindSpellTarget(context, spell);
                 if (target == null) continue;

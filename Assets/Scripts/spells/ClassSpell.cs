@@ -6,10 +6,10 @@ namespace BaaroForce.Spells
     {
         public CharacterClass characterClass { get; set; }
 
-        public ClassSpell(CharacterClass characterClass, string name, string description, int cost, int range, int area, int cooldown,
+        public ClassSpell(CharacterClass characterClass, string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
                           SpellTargetType targetType = SpellTargetType.Enemy,
                           SpellAreaType areaType = SpellAreaType.None)
-            : base(name, description, cost, range, area, cooldown, targetType, areaType)
+            : base(name, description, manaCost, actionPointCost, range, area, cooldown, targetType, areaType)
         {
             this.characterClass = characterClass;
         }

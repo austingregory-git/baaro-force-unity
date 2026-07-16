@@ -2,9 +2,9 @@ namespace BaaroForce.Spells
 {
     public class CharacterSpell : Spell
     {
-        public CharacterSpell(string name, string description, int cost, int range, int area, int cooldown,
+        public CharacterSpell(string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
                               SpellTargetType targetType = SpellTargetType.Enemy)
-            : base(name, description, cost, range, area, cooldown, targetType)
+            : base(name, description, manaCost, actionPointCost, range, area, cooldown, targetType)
         {
         }
 

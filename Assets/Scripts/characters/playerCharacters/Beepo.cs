@@ -6,22 +6,18 @@ namespace BaaroForce.Characters
 {
     public class Beepo : Character
     {
-        static readonly CharacterStats BEEPO_BASE_STATS = new CharacterStats(maxHealthPoints: 8, baseAttack: 2, maxMana: 4, movement: 3);
-        static readonly string BEEPO_MODEL_PATH = "Characters/frog_wizard_test";
+        static readonly CharacterStats BeepoBaseStats = new CharacterStats(maxHealthPoints: 8, baseAttack: 2, maxMana: 4, movement: 3);
+        static readonly string BeepoModelPath = "Characters/frog_wizard_test";
         public Beepo()
             : base(
-                ClassRegistry.Get("Warrior"), 
-                "Beepo", BEEPO_BASE_STATS, 
-                new List<Realm> { Realm.FIRE }, 
-                new List<PassiveAbility>(), 
-                new List<Spell>(), 
-                BEEPO_MODEL_PATH)
+                characterClass: ClassRegistry.Get("Warrior"),
+                characterName: "Beepo",
+                characterStats: BeepoBaseStats, 
+                characterRealms: new List<Realm> { Realm.FIRE }, 
+                characterPassiveAbilities: new List<PassiveAbility>(), 
+                characterSpells: new List<Spell>(), 
+                characterModelPath: BeepoModelPath)
         {
-        }
-
-        public PassiveAbility GetBeepoPassiveAbility()
-        {
-            return new PassiveAbility("Beepo's Passive Ability", "This is Beepo's passive ability description.");
         }
     }
 }

@@ -20,6 +20,7 @@ namespace BaaroForce.Keywords
                 { "Fear",  new Fear()  },
                 { "Regen", new Regen() },
                 { "Level", new Level() },
+                { "Dark",  new Dark()  },
             };
 
         // ------------------------------------------------------------------ //

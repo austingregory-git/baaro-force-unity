@@ -410,9 +410,9 @@ namespace BaaroForce.Map
         {
             SetMode(InputMode.None);
             List<MapTile> path = FindShortestPath(selectedTile, destination);
-            int cost = path.Count - 1;
+            int manaCost = path.Count - 1;
             remainingMovement[selectedCharacter] =
-                Mathf.Max(0, RemainingMove(selectedCharacter) - cost);
+                Mathf.Max(0, RemainingMove(selectedCharacter) - manaCost);
             StartCoroutine(AnimateMove(selectedCharacter, selectedTile, path));
         }
 
@@ -600,7 +600,7 @@ namespace BaaroForce.Map
             Spell spell = selectedSpell;
             SetMode(InputMode.None);   // clears highlights and nulls selectedSpell
 
-            if (spell.cost > 0 && selectedCharacter.characterStats.mana < spell.cost)
+            if (spell.manaCost > 0 && selectedCharacter.characterStats.mana < spell.manaCost)
             {
                 Debug.Log($"[TurnManager] '{selectedCharacter.characterName}' " +
                            "does not have enough mana to cast this spell.");
@@ -634,7 +634,7 @@ namespace BaaroForce.Map
             // Only deduct mana on a successful cast.
             if (resolved)
                 selectedCharacter.characterStats.mana =
-                    Mathf.Max(0, selectedCharacter.characterStats.mana - spell.cost);
+                    Mathf.Max(0, selectedCharacter.characterStats.mana - spell.manaCost);
 
             CheckAndHandleTurnEnd(selectedCharacter);
             if (selectedCharacter != null)
@@ -694,7 +694,7 @@ namespace BaaroForce.Map
 
             if (resolved)
                 caster.characterStats.mana =
-                    Mathf.Max(0, caster.characterStats.mana - spell.cost);
+                    Mathf.Max(0, caster.characterStats.mana - spell.manaCost);
 
             CheckAndHandleTurnEnd(caster);
             if (selectedCharacter != null)
@@ -716,7 +716,7 @@ namespace BaaroForce.Map
         {
             if (character.characterSpells == null) return null;
             foreach (Spell spell in character.characterSpells)
-                if (character.characterStats.mana >= spell.cost)
+                if (character.characterStats.mana >= spell.manaCost)
                     return spell;
             return null;
         }
@@ -744,7 +744,7 @@ namespace BaaroForce.Map
                 return;
             }
 
-            if (spell.cost > 0 && selectedCharacter.characterStats.mana < spell.cost)
+            if (spell.manaCost > 0 && selectedCharacter.characterStats.mana < spell.manaCost)
             {
                 Debug.Log($"[TurnManager] Not enough mana to cast '{spell.name}'.");
                 return;
@@ -769,7 +769,7 @@ namespace BaaroForce.Map
 
                 if (selfResolved)
                     selectedCharacter.characterStats.mana =
-                        Mathf.Max(0, selectedCharacter.characterStats.mana - spell.cost);
+                        Mathf.Max(0, selectedCharacter.characterStats.mana - spell.manaCost);
 
                 CheckAndHandleTurnEnd(selectedCharacter);
                 if (selectedCharacter != null)
@@ -784,7 +784,7 @@ namespace BaaroForce.Map
             selectedSpell = spell;
             ShowSpellRange(selectedTile, spell);
             Debug.Log($"[TurnManager] Spell mode: '{spell.name}'  " +
-                      $"(Range: {spell.range}, Cost: {spell.cost} mana)");
+                      $"(Range: {spell.range}, manaCost: {spell.manaCost} mana)");
 
         }
 
@@ -1052,7 +1052,7 @@ namespace BaaroForce.Map
         private bool NpcExecuteSpell(NPC caster, MapTile casterTile,
                                      Spell spell, MapTile targetTile)
         {
-            if (spell.cost > 0 && caster.characterStats.mana < spell.cost) return false;
+            if (spell.manaCost > 0 && caster.characterStats.mana < spell.manaCost) return false;
 
             var ctx = new NpcSpellContext(
                 caster:      caster,
@@ -1066,7 +1066,7 @@ namespace BaaroForce.Map
 
             if (resolved)
                 caster.characterStats.mana =
-                    Mathf.Max(0, caster.characterStats.mana - spell.cost);
+                    Mathf.Max(0, caster.characterStats.mana - spell.manaCost);
 
             return resolved;
         }

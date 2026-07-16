@@ -7,21 +7,23 @@ namespace BaaroForce.Characters
 {
     public class Winston : Character
     {
-        static readonly CharacterStats WINSTON_BASE_STATS = new CharacterStats(maxHealthPoints: 8, baseAttack: 3, maxMana: 5, movement: 4);
-        static readonly string WINSTON_MODEL_PATH = "Characters/frog_wizard_test";
+        static readonly CharacterStats WinstonBaseStats = new CharacterStats(maxHealthPoints: 8, baseAttack: 3, maxMana: 5, movement: 4);
+        static readonly string WinstonModelPath = "Characters/frog_wizard_test";
         public Winston()
             : base(
-                ClassRegistry.Get("Warrior"), 
-                "Winston", WINSTON_BASE_STATS, new List<Realm> { Realm.DARK },
-                new List<PassiveAbility>
+                characterClass: ClassRegistry.Get("Warrior"),
+                characterName: "Winston", 
+                characterStats: WinstonBaseStats, 
+                characterRealms: new List<Realm> { Realm.DARK },
+                characterPassiveAbilities: new List<PassiveAbility>
                 {
                     new AutumnalGrowth()
                 },
-                new List<Spell>
+                characterSpells: new List<Spell>
                 {
                     new DeathStare(),
                 },
-                WINSTON_MODEL_PATH)
+                characterModelPath: WinstonModelPath)
         {
         }
     }

@@ -12,7 +12,7 @@ namespace BaaroForce.Statuses
 
         /// <param name="durationTurns">How many of the target's turns the effect lasts.</param>
         /// <param name="attackPenalty">How much to subtract from the target's attackBonus.</param>
-        public FearStatus(int durationTurns, int attackPenalty = 2)
+        public FearStatus(int durationTurns, int attackPenalty)
             : base(
                 name:        "Fear",
                 description: $"Attack reduced by {attackPenalty} for {durationTurns} turns.",

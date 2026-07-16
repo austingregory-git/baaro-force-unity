@@ -15,7 +15,8 @@ namespace BaaroForce.Spells
         public readonly string         name;
         public readonly string         description;
         /// <summary>Mana required to cast.</summary>
-        public readonly int            cost;
+        public readonly int            manaCost;
+        public readonly int            actionPointCost;
         /// <summary>Maximum Manhattan-distance at which a target tile can be selected.</summary>
         public readonly int            range;
         /// <summary>AoE radius around the chosen target tile (0 = single tile). Spells may
@@ -30,13 +31,14 @@ namespace BaaroForce.Spells
         /// Used by <see cref="SpellAreaUtils"/> to resolve the affected tiles.</summary>
         public readonly SpellAreaType areaType;
 
-        public Spell(string name, string description, int cost, int range, int area, int cooldown,
+        public Spell(string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
                      SpellTargetType targetType = SpellTargetType.Enemy,
                      SpellAreaType areaType = SpellAreaType.None)
         {
             this.name        = name;
             this.description = description;
-            this.cost        = cost;
+            this.manaCost    = manaCost;
+            this.actionPointCost = actionPointCost;
             this.range       = range;
             this.area        = area;
             this.cooldown    = cooldown;
@@ -49,7 +51,8 @@ namespace BaaroForce.Spells
         {
             this.name        = name;
             this.description = description;
-            this.cost        = 0;
+            this.manaCost    = 0;
+            this.actionPointCost = 1;
             this.range       = 0;
             this.area        = 0;
             this.cooldown    = 999;

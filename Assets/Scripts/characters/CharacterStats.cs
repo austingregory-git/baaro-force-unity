@@ -20,6 +20,7 @@ namespace BaaroForce.Characters
         public int movement;
         /// <summary>Actions (attack / spell / item) available per turn. Defaults to 1.</summary>
         public int maxActionPoints;
+        public int shieldPoints;  // temporary shield that absorbs damage before health is affected
 
         public CharacterStats(int maxHealthPoints, int baseAttack, int maxMana, int movement,
                               int maxActionPoints = 1)
@@ -32,6 +33,7 @@ namespace BaaroForce.Characters
             this.mana            = maxMana;
             this.movement        = movement;
             this.maxActionPoints = maxActionPoints;
+            this.shieldPoints     = 0;
         }
     }
 }

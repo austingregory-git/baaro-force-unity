@@ -22,9 +22,10 @@ namespace BaaroForce.Spells
         public DeathStare()
             : base(
                 name:        "Death Stare",
-                description: "[Fear] an enemy for 1 + 0.25 × [Level] turns, " +
-                             "dealing 2 + 0.5 × [Level] dark damage.",
-                cost:        2,
+                description: "Apply [Fear] 1 to an enemy for 1 + 0.25 × [Level] turns" +
+                             "and deal 2 + 0.5 × [Level] [Dark] damage.",
+                manaCost:        2,
+                actionPointCost: 1,
                 range:       3,
                 area:        0,
                 cooldown:    1,
@@ -45,7 +46,7 @@ namespace BaaroForce.Spells
 
             // Apply Fear — reduces target's attack for N turns.
             int fearDuration = Mathf.FloorToInt(1f + 0.25f * level);
-            var fear = new FearStatus(durationTurns: fearDuration, attackPenalty: 2);
+            var fear = new FearStatus(durationTurns: fearDuration, attackPenalty: 1);
             target.ApplyStatus(fear);
 
             // Deal dark damage.

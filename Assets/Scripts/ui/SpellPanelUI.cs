@@ -217,7 +217,7 @@ namespace BaaroForce.UI
 
         private void AddSpellRow(Spell spell, int currentMana)
         {
-            bool canAfford = currentMana >= spell.cost;
+            bool canAfford = currentMana >= spell.manaCost;
 
             // ── Row container ────────────────────────────────────────────────
             var rowGo   = new GameObject($"Row_{spell.name}");
@@ -276,23 +276,23 @@ namespace BaaroForce.UI
             var nameLe         = nameGo.AddComponent<LayoutElement>();
             nameLe.flexibleWidth = 1f;
 
-            // ── Mana cost label (only shown when cost > 0) ───────────────────
-            if (spell.cost > 0)
+            // ── Mana manaCost label (only shown when manaCost > 0) ───────────────────
+            if (spell.manaCost > 0)
             {
-                var costGo = new GameObject("Cost");
-                costGo.transform.SetParent(rowGo.transform, false);
+                var manaCostGo = new GameObject("Cost");
+                manaCostGo.transform.SetParent(rowGo.transform, false);
 
-                var costTmp      = costGo.AddComponent<TextMeshProUGUI>();
-                costTmp.text      = $"{spell.cost}MP";
-                costTmp.fontSize  = 11f;
-                costTmp.color     = canAfford
+                var manaCostTmp      = manaCostGo.AddComponent<TextMeshProUGUI>();
+                manaCostTmp.text      = $"{spell.manaCost}MP";
+                manaCostTmp.fontSize  = 11f;
+                manaCostTmp.color     = canAfford
                     ? new Color(0.10f, 0.30f, 0.80f)
                     : new Color(0.40f, 0.40f, 0.55f);
-                costTmp.alignment = TextAlignmentOptions.MidlineRight;
-                costTmp.font      = Resources.Load<TMP_FontAsset>(FontPath);
+                manaCostTmp.alignment = TextAlignmentOptions.MidlineRight;
+                manaCostTmp.font      = Resources.Load<TMP_FontAsset>(FontPath);
 
-                var costLe           = costGo.AddComponent<LayoutElement>();
-                costLe.preferredWidth = CostWidth;
+                var manaCostLe           = manaCostGo.AddComponent<LayoutElement>();
+                manaCostLe.preferredWidth = CostWidth;
             }
         }
 
@@ -308,8 +308,8 @@ namespace BaaroForce.UI
             else if (spell.range > 0)
                 sb.Append($"\nRange: {spell.range} tiles");
 
-            if (spell.cost > 0)
-                sb.Append($"\nMana cost: {spell.cost}");
+            if (spell.manaCost > 0)
+                sb.Append($"\nMana cost: {spell.manaCost}");
 
             if (spell.cooldown > 0 && spell.cooldown < 999)
                 sb.Append($"\nCooldown: {spell.cooldown} turn(s)");

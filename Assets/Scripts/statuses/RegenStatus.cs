@@ -1,4 +1,5 @@
 using BaaroForce.Characters;
+using UnityEngine;
 
 namespace BaaroForce.Statuses
 {
@@ -30,6 +31,7 @@ namespace BaaroForce.Statuses
         public override void OnTurnStart(CharacterStats stats)
         {
             stats.healthPoints += healAmount;
+            stats.healthPoints = Mathf.Min(stats.healthPoints, stats.maxHealthPoints);
         }
 
         public override void OnRemove(CharacterStats stats)
