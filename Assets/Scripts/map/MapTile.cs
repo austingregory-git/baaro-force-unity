@@ -16,26 +16,30 @@ namespace BaaroForce.Map
 
         public TerrainTile.TerrainType TerrainType      { get; private set; }
         public bool                IsInDeploymentZone    { get; private set; }
-        public Character           OccupyingCharacter    { get; private set; }
-        public NPC                 OccupyingNpc          { get; private set; }
-        public bool                IsOccupied            => OccupyingCharacter != null || OccupyingNpc != null;
+
+        /// <summary>The single unit (player Character or NPC) occupying this tile, or null.</summary>
+        public Character OccupyingUnit { get; private set; }
+
+        /// <summary>The occupying unit if it's a player Character (not an NPC), or null.</summary>
+        public Character OccupyingCharacter => OccupyingUnit is NPC ? null : OccupyingUnit;
+        /// <summary>The occupying unit if it's an NPC, or null.</summary>
+        public NPC       OccupyingNpc       => OccupyingUnit as NPC;
+
+        public bool IsOccupied => OccupyingUnit != null;
 
         /// <summary>Column index in the grid array.</summary>
         public int GridX { get; private set; }
         /// <summary>Row index in the grid array.</summary>
         public int GridZ { get; private set; }
 
-        /// <summary>The instantiated player-character model on this tile (may be null).</summary>
-        public GameObject CharacterObject => characterObject;
-        /// <summary>The instantiated NPC model on this tile (may be null).</summary>
-        public GameObject NpcObject => npcObject;
+        /// <summary>The instantiated model (player Character or NPC) on this tile (may be null).</summary>
+        public GameObject UnitObject => unitObject;
 
         // ------------------------------------------------------------------ //
         // Private state                                                       //
         // ------------------------------------------------------------------ //
 
-        private GameObject characterObject;
-        private GameObject npcObject;
+        private GameObject unitObject;
         private GameObject deploymentOverlay;
         private GameObject moveHighlightOverlay;
         private GameObject attackHighlightOverlay;
@@ -219,51 +223,51 @@ namespace BaaroForce.Map
         // ------------------------------------------------------------------ //
 
         /// <summary>
-        /// Loads the character's 3D model and places it on top of this tile.
+        /// Loads the unit's 3D model and places it on top of this tile.
         /// Parented to the grid root (tile's parent) to avoid non-uniform scale distortion.
         /// </summary>
-        public void PlaceCharacter(Character character)
+        public void PlaceUnit(Character unit)
         {
             if (IsOccupied) return;
-            OccupyingCharacter = character;
-            character.characterCurrentTile = this;
+            OccupyingUnit = unit;
+            unit.characterCurrentTile = this;
 
-            var prefab = Resources.Load<GameObject>(character.characterModelPath);
+            var prefab = Resources.Load<GameObject>(unit.characterModelPath);
             if (prefab != null)
             {
-                characterObject = Instantiate(prefab);
+                unitObject = Instantiate(prefab);
             }
             else
             {
-                Debug.LogWarning($"[MapTile] Model not found at '{character.characterModelPath}'. Using fallback.");
-                characterObject = CreateFallback();
+                Debug.LogWarning($"[MapTile] Model not found at '{unit.characterModelPath}'. Using fallback.");
+                unitObject = CreateFallback();
             }
 
-            characterObject.name = $"Character_{character.characterName}";
+            unitObject.name = $"{(unit is NPC ? "NPC" : "Character")}_{unit.characterName}";
 
             // Parent to the MapGenerator (tile's parent) — it has uniform scale (1,1,1),
             // so world-space and local-space transforms are equivalent.
-            characterObject.transform.SetParent(transform.parent, false);
+            unitObject.transform.SetParent(transform.parent, false);
 
             // Sit model on top of this tile in world space.
             float halfTileH = transform.lossyScale.y * 0.5f;
-            characterObject.transform.position = transform.position + Vector3.up * (halfTileH + 0.05f);
+            unitObject.transform.position = transform.position + Vector3.up * (halfTileH + 0.05f);
 
             // Scale to 80 % of the tile's world footprint, preserving model proportions.
-            ScaleToFit(characterObject, transform.lossyScale.x * 0.8f);
+            ScaleToFit(unitObject, transform.lossyScale.x * 0.8f);
         }
 
-        /// <summary>Removes the occupying character from this tile and destroys its model.</summary>
-        public void RemoveCharacter()
+        /// <summary>Removes the occupying unit from this tile and destroys its model.</summary>
+        public void RemoveUnit()
         {
-            if (OccupyingCharacter != null)
-                OccupyingCharacter.characterCurrentTile = null;
+            if (OccupyingUnit != null)
+                OccupyingUnit.characterCurrentTile = null;
 
-            OccupyingCharacter = null;
-            if (characterObject != null)
+            OccupyingUnit = null;
+            if (unitObject != null)
             {
-                Destroy(characterObject);
-                characterObject = null;
+                Destroy(unitObject);
+                unitObject = null;
             }
         }
 
@@ -272,87 +276,21 @@ namespace BaaroForce.Map
         /// Used by TurnManager during movement animation so the model can be
         /// handed off to the destination tile.
         /// </summary>
-        public void ReleaseCharacter()
+        public void ReleaseUnit()
         {
-            OccupyingCharacter = null;
-            characterObject    = null;   // we no longer own this reference
+            OccupyingUnit = null;
+            unitObject    = null;   // we no longer own this reference
         }
 
         /// <summary>
-        /// Assigns an already-existing character model to this tile.
+        /// Assigns an already-existing unit model to this tile.
         /// Called by TurnManager after the model has been moved in world-space.
         /// </summary>
-        public void AssignCharacter(Character character, GameObject model)
+        public void AssignUnit(Character unit, GameObject model)
         {
-            OccupyingCharacter = character;
-            characterObject    = model;
-            character.characterCurrentTile = this;
-        }
-
-        /// <summary>
-        /// Loads the NPC's 3D model and places it on top of this tile.
-        /// Parented to the grid root (tile's parent) to avoid non-uniform scale distortion.
-        /// </summary>
-        public void PlaceNpc(NPC npc)
-        {
-            if (IsOccupied) return;
-            OccupyingNpc = npc;
-            npc.characterCurrentTile = this;
-
-            var prefab = Resources.Load<GameObject>(npc.characterModelPath);
-            if (prefab != null)
-            {
-                npcObject = Instantiate(prefab);
-            }
-            else
-            {
-                Debug.LogWarning($"[MapTile] NPC model not found at '{npc.characterModelPath}'. Using fallback.");
-                npcObject = CreateFallback();
-            }
-
-            npcObject.name = $"NPC_{npc.characterName}";
-            npcObject.transform.SetParent(transform.parent, false);
-
-            float halfTileH = transform.lossyScale.y * 0.5f;
-            npcObject.transform.position = transform.position + Vector3.up * (halfTileH + 0.05f);
-
-            ScaleToFit(npcObject, transform.lossyScale.x * 0.8f);
-        }
-
-        /// <summary>Removes the occupying NPC from this tile.</summary>
-        public void RemoveNpc()
-        {
-            if (OccupyingNpc != null)
-                OccupyingNpc.characterCurrentTile = null;
-
-            OccupyingNpc = null;
-            if (npcObject != null)
-            {
-                Destroy(npcObject);
-                npcObject = null;
-            }
-        }
-
-        /// <summary>
-        /// Clears NPC occupancy without destroying the model GameObject.
-        /// Used by TurnManager during NPC movement animation so the model can be
-        /// handed off to the destination tile.
-        /// </summary>
-        public void ReleaseNpc()
-        {
-            OccupyingNpc = null;
-            npcObject    = null;   // we no longer own this reference
-        }
-
-        /// <summary>
-        /// Assigns an already-existing NPC model to this tile.
-        /// Called by TurnManager after the model has been moved in world-space.
-        /// </summary>
-        public void AssignNpc(NPC npc, GameObject model)
-        {
-            OccupyingNpc = npc;
-            npcObject    = model;
-            npc.characterCurrentTile = this;
+            OccupyingUnit = unit;
+            unitObject    = model;
+            unit.characterCurrentTile = this;
         }
 
         // ------------------------------------------------------------------ //

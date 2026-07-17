@@ -14,16 +14,16 @@ namespace BaaroForce.Passives
     public sealed class PassiveOnReceivingAttackContext
     {
         /// <summary>
-        ///  The NPC who is attacking the character with this passive ability.
+        ///  The unit who is attacking the character with this passive ability.
         /// </summary>
-        public readonly NPC Attacker;
+        public readonly Character Attacker;
 
         /// <summary>The character who is receiving the attack.</summary>
         public readonly Character ReceivingCharacter;
 
 
-        /// <summary>The tile the caster is standing on when the passive ability is activated.</summary>
-        public readonly MapTile AttackingNPCTile;
+        /// <summary>The tile the attacker is standing on when the passive ability is activated.</summary>
+        public readonly MapTile AttackerTile;
 
         /// <summary>The tile targeted by the passive ability, if applicable.</summary>
         public readonly MapTile ReceivingCharacterTile;
@@ -35,16 +35,16 @@ namespace BaaroForce.Passives
         public readonly int GridSize;
 
         public PassiveOnReceivingAttackContext(
-            NPC attacker, 
+            Character attacker,
             Character receivingCharacter,
-            MapTile attackingNPCTile,
+            MapTile attackerTile,
             MapTile receivingCharacterTile,
-            MapTile[,] allTiles, 
+            MapTile[,] allTiles,
             int gridSize)
         {
             ReceivingCharacter = receivingCharacter;
             Attacker           = attacker;
-            AttackingNPCTile   = attackingNPCTile;
+            AttackerTile       = attackerTile;
             ReceivingCharacterTile = receivingCharacterTile;
             AllTiles           = allTiles;
             GridSize           = gridSize;

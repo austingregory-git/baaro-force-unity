@@ -86,7 +86,7 @@ namespace BaaroForce.Spells
             if (target.characterStats.healthPoints <= 0)
             {
                 Debug.Log($"[Charge] '{target.characterName}' has been defeated!");
-                context.TargetTile.RemoveNpc();
+                context.TargetTile.RemoveUnit();
             }
 
             return true;

@@ -150,7 +150,7 @@ namespace BaaroForce.Map
             // Light.GetAllLights() isn't available in older Unity versions, so we use
             // FindObjectOfType which searches every active GameObject in the scene.
             // ----------------------------------------------------------------
-            Light existingLight = FindObjectOfType<Light>();
+            Light existingLight = FindAnyObjectByType<Light>();
 
             // If a Directional Light already exists, there is nothing to do — bail out early.
             if (existingLight != null && existingLight.type == LightType.Directional)

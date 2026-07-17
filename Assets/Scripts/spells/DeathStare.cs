@@ -35,18 +35,26 @@ namespace BaaroForce.Spells
 
         public override bool Execute(SpellContext context)
         {
-            NPC target = context.TargetTile?.OccupyingNpc;
+            bool casterIsNpc = context.Caster is NPC;
+
+            // From an NPC's perspective the enemy is a player Character; from a
+            // player Character's perspective the enemy is an NPC.
+            Character target = casterIsNpc
+                ? context.TargetTile?.OccupyingCharacter
+                : context.TargetTile?.OccupyingNpc;
+
             if (target == null)
             {
-                Debug.LogWarning("[DeathStare] No enemy found on the target tile.");
+                Debug.LogWarning("[DeathStare] No valid target on the target tile.");
                 return false;
             }
 
             int level = context.CasterLevel;
 
-            // Apply Fear — reduces target's attack for N turns.
+            // Apply Fear — reduces target's attack for N turns.  NPC-cast Death
+            // Stare hits harder (attackPenalty 2) than the player-cast version (1).
             int fearDuration = Mathf.FloorToInt(1f + 0.25f * level);
-            var fear = new FearStatus(durationTurns: fearDuration, attackPenalty: 1);
+            var fear = new FearStatus(durationTurns: fearDuration, attackPenalty: casterIsNpc ? 2 : 1);
             target.ApplyStatus(fear);
 
             // Deal dark damage.
@@ -62,42 +70,8 @@ namespace BaaroForce.Spells
             if (target.characterStats.healthPoints <= 0)
             {
                 Debug.Log($"[DeathStare] '{target.characterName}' has been defeated!");
-                context.TargetTile.RemoveNpc();
+                context.TargetTile.RemoveUnit();
             }
-
-            return true;
-        }
-
-        /// <summary>
-        /// NPC-cast version: targets a player Character instead of an NPC.
-        /// Deals dark damage and inflicts Fear on the character.
-        /// </summary>
-        public override bool Execute(NpcSpellContext context)
-        {
-            Character target = context.TargetTile?.OccupyingCharacter;
-            if (target == null)
-            {
-                Debug.LogWarning("[DeathStare] No character found on the target tile.");
-                return false;
-            }
-
-            int level = context.CasterLevel;
-
-            int fearDuration = Mathf.FloorToInt(1f + 0.25f * level);
-            var fear = new FearStatus(durationTurns: fearDuration, attackPenalty: 2);
-            target.ApplyStatus(fear);
-
-            int damage = Mathf.FloorToInt(2f + 0.5f * level);
-            target.characterStats.healthPoints -= damage;
-
-            Debug.Log($"[DeathStare] '{context.Caster.characterName}' casts Death Stare on "
-                    + $"'{target.characterName}'.  Damage: {damage}, "
-                    + $"Fear: {fearDuration} turn(s).  "
-                    + $"HP: {Mathf.Max(0, target.characterStats.healthPoints)}"
-                    + $"/{target.characterStats.maxHealthPoints}");
-
-            if (target.characterStats.healthPoints <= 0)
-                Debug.Log($"[DeathStare] '{target.characterName}' has been defeated!");
 
             return true;
         }

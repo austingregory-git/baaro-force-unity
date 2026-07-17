@@ -45,7 +45,7 @@ namespace BaaroForce.Characters
             }
             effect.OnApply(characterStats);
             ActiveEffects.Add(effect);
-            Debug.Log($"[Character] '{characterName}' afflicted with {effect.Name} ({effect.RemainingTurns} turn(s)).");
+            Debug.Log($"[{GetType().Name}] '{characterName}' afflicted with {effect.Name} ({effect.RemainingTurns} turn(s)).");
         }
 
         /// <summary>
@@ -62,7 +62,7 @@ namespace BaaroForce.Characters
                 {
                     fx.OnRemove(characterStats);
                     ActiveEffects.RemoveAt(i);
-                    Debug.Log($"[Character] '{characterName}': {fx.Name} has expired.");
+                    Debug.Log($"[{GetType().Name}] '{characterName}': {fx.Name} has expired.");
                 }
             }
         }

@@ -123,7 +123,7 @@ namespace BaaroForce.Map
             }
 
             for (int i = 0; i < enemies.Count && i < candidateTiles.Count; i++)
-                candidateTiles[i].PlaceNpc(enemies[i]);
+                candidateTiles[i].PlaceUnit(enemies[i]);
         }
 
         // ------------------------------------------------------------------ //
@@ -163,7 +163,7 @@ namespace BaaroForce.Map
 
             // Place the next queued character.
             Character character = charactersToPlace[placedCount];
-            tile.PlaceCharacter(character);
+            tile.PlaceUnit(character);
             placedCount++;
 
             if (placedCount >= charactersToPlace.Count)

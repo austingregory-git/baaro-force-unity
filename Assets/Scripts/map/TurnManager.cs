@@ -79,9 +79,25 @@ namespace BaaroForce.Map
         private SpellPanelUI   _spellPanel;
         private bool           isMoving;
         private MapTile hoveredTile;
+        private NPC     hoveredTarget;
 
 
         private const float MoveSpeed = 5f;   // world-units per second
+
+        // ------------------------------------------------------------------ //
+        // HUD events — consumed by CharacterHudController.                    //
+        // TurnManager stays UI-agnostic; it just reports what happened.       //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>Fired when a party member is selected — the "current turn" unit.</summary>
+        public event Action<Character> OnCharacterSelected;
+        /// <summary>Fired when the current selection is cleared.</summary>
+        public event Action OnCharacterDeselected;
+        /// <summary>Fired when the mouse hovers an enemy NPC (a potential attack target),
+        /// and again with updated stats whenever that target takes damage.</summary>
+        public event Action<NPC> OnTargetHighlighted;
+        /// <summary>Fired when the hovered/attacked target is no longer relevant (mouse left, or it died).</summary>
+        public event Action OnTargetCleared;
 
         // ------------------------------------------------------------------ //
         // Initialisation                                                      //
@@ -203,10 +219,22 @@ namespace BaaroForce.Map
             if (!TryGetTileUnderMouse(out MapTile tile))
             {
                 hoveredTile = null;
+                UpdateHoveredTarget(null);
                 return;
             }
 
             hoveredTile = tile;
+            UpdateHoveredTarget(tile.OccupyingNpc);
+        }
+
+        /// <summary>Raises OnTargetHighlighted/OnTargetCleared only when the hovered NPC actually changes.</summary>
+        private void UpdateHoveredTarget(NPC npc)
+        {
+            if (npc == hoveredTarget) return;
+
+            hoveredTarget = npc;
+            if (npc != null) OnTargetHighlighted?.Invoke(npc);
+            else              OnTargetCleared?.Invoke();
         }
 
         private bool TryGetTileUnderMouse(out MapTile tile)
@@ -341,6 +369,7 @@ namespace BaaroForce.Map
             Debug.Log($"[TurnManager] Selected '{character.characterName}'  " +
                       $"MP: {RemainingMove(character)}  AP: {RemainingActions(character)}");
             ShowActionPanel();
+            OnCharacterSelected?.Invoke(character);
         }
 
         private void Deselect()
@@ -350,6 +379,7 @@ namespace BaaroForce.Map
             selectedTile      = null;
             _actionPanel?.Hide();
             _spellPanel?.Hide();
+            OnCharacterDeselected?.Invoke();
         }
 
         // ------------------------------------------------------------------ //
@@ -413,6 +443,7 @@ namespace BaaroForce.Map
             int manaCost = path.Count - 1;
             remainingMovement[selectedCharacter] =
                 Mathf.Max(0, RemainingMove(selectedCharacter) - manaCost);
+            OnCharacterSelected?.Invoke(selectedCharacter);
             StartCoroutine(AnimateMove(selectedCharacter, selectedTile, path));
         }
 
@@ -464,25 +495,29 @@ namespace BaaroForce.Map
             NPC target = targetTile.OccupyingNpc;
             if (target == null) return;
 
-            int damage = selectedCharacter.characterStats.TotalAttack;
-            target.characterStats.healthPoints -= damage;
-
-            Debug.Log($"[TurnManager] '{selectedCharacter.characterName}' attacks " +
-                      $"'{target.characterName}' for {damage} damage.  " +
-                      $"HP: {Mathf.Max(0, target.characterStats.healthPoints)}" +
-                      $"/{target.characterStats.maxHealthPoints}");
+            ResolveBasicAttack(selectedCharacter, target, targetTile);
 
             remainingActions[selectedCharacter] =
                 Mathf.Max(0, RemainingActions(selectedCharacter) - 1);
 
             if (target.characterStats.healthPoints <= 0)
             {
-                Debug.Log($"[TurnManager] '{target.characterName}' has been defeated!");
-                targetTile.RemoveNpc();
+                OnTargetCleared?.Invoke();
+                hoveredTarget = null;
+            }
+            else
+            {
+                // Push the post-damage stats to the right-side HUD panel.
+                OnTargetHighlighted?.Invoke(target);
             }
 
             CheckAndHandleTurnEnd(selectedCharacter);
-            if (selectedCharacter != null) ShowActionPanel();
+            if (selectedCharacter != null)
+            {
+                ShowActionPanel();
+                // Push updated AP/HP/mana to the left-side HUD panel.
+                OnCharacterSelected?.Invoke(selectedCharacter);
+            }
         }
 
         /// <summary>Attack range in Manhattan-distance tiles based on class specialty.</summary>
@@ -638,7 +673,10 @@ namespace BaaroForce.Map
 
             CheckAndHandleTurnEnd(selectedCharacter);
             if (selectedCharacter != null)
+            {
                 ShowActionPanel();
+                OnCharacterSelected?.Invoke(selectedCharacter);
+            }
         }
 
         /// <summary>
@@ -652,37 +690,11 @@ namespace BaaroForce.Map
         {
             isMoving = true;
 
-            List<MapTile> path  = FindShortestPath(fromTile, landingTile);
-            GameObject    model = fromTile.CharacterObject;
-
-            if (model != null && path.Count > 1)
+            List<MapTile> path = FindShortestPath(fromTile, landingTile);
+            yield return StartCoroutine(MoveUnitAlongPath(caster, fromTile, path, finalTile =>
             {
-                MapTile currentTile = fromTile;
-
-                for (int i = 1; i < path.Count; i++)
-                {
-                    MapTile next     = path[i];
-                    Vector3 startPos = model.transform.position;
-                    float   halfH    = next.transform.lossyScale.y * 0.5f;
-                    Vector3 endPos   = next.transform.position + Vector3.up * (halfH + 0.05f);
-                    float   elapsed  = 0f;
-                    float   duration = step / MoveSpeed;
-
-                    while (elapsed < duration)
-                    {
-                        elapsed += Time.deltaTime;
-                        model.transform.position = Vector3.Lerp(startPos, endPos, elapsed / duration);
-                        yield return null;
-                    }
-
-                    model.transform.position = endPos;
-                    currentTile.ReleaseCharacter();
-                    next.AssignCharacter(caster, model);
-                    currentTile = next;
-                }
-
-                selectedTile = currentTile;
-            }
+                selectedTile = finalTile;
+            }));
 
             isMoving = false;
 
@@ -985,93 +997,28 @@ namespace BaaroForce.Map
         private IEnumerator AnimateNpcMoveCoroutine(NPC npc, NpcTurnContext context,
                                                      List<MapTile> path)
         {
-            if (path == null || path.Count <= 1) yield break;
+            if (path == null || path.Count == 0) yield break;
 
-            GameObject model = path[0].NpcObject;
-            if (model == null)
+            yield return StartCoroutine(MoveUnitAlongPath(npc, path[0], path, finalTile =>
             {
-                Debug.LogWarning($"[TurnManager] NPC '{npc.characterName}' model not found during move.");
-                yield break;
-            }
-
-            MapTile currentTile = path[0];
-            for (int i = 1; i < path.Count; i++)
-            {
-                MapTile next     = path[i];
-                Vector3 startPos = model.transform.position;
-                float   halfH    = next.transform.lossyScale.y * 0.5f;
-                Vector3 endPos   = next.transform.position + Vector3.up * (halfH + 0.05f);
-                float   elapsed  = 0f;
-                float   duration = step / MoveSpeed;
-
-                while (elapsed < duration)
-                {
-                    elapsed += Time.deltaTime;
-                    model.transform.position = Vector3.Lerp(startPos, endPos, elapsed / duration);
-                    yield return null;
-                }
-
-                model.transform.position = endPos;
-                currentTile.ReleaseNpc();
-                next.AssignNpc(npc, model);
-                currentTile = next;
-            }
-
-            context.CurrentTile = currentTile;
-            Debug.Log($"[TurnManager] '{npc.characterName}' moved to "
-                    + $"({currentTile.GridX}, {currentTile.GridZ}).");
+                context.CurrentTile = finalTile;
+                Debug.Log($"[TurnManager] '{npc.characterName}' moved to "
+                        + $"({finalTile.GridX}, {finalTile.GridZ}).");
+            }));
         }
 
-        private void NPCExecuteBasicAttackDamage(NPC attacker, Character target, int damage)
+        /// <summary>
+        /// Resolves a basic attack: applies damage, checks the target's
+        /// ON_RECEIVING_ATTACK passives, logs, and clears the target's tile on defeat.
+        /// Shared by player-on-NPC (<see cref="CommitAttack"/>) and NPC-on-player
+        /// (<see cref="NpcExecuteAttack"/>) attacks.
+        /// </summary>
+        private void ResolveBasicAttack(Character attacker, Character target, MapTile targetTile)
         {
-            damage = CheckAndHandleReceivingBasicAttackDamage(attacker, target, damage);
-            int finalDamage = Mathf.Max(0, damage);
-            target.characterStats.healthPoints -= finalDamage;
+            CheckAndHandleReceivingBasicAttackDamage(attacker, target);
 
-            Debug.Log($"[TurnManager] '{attacker.characterName}' hits '{target.characterName}' for {finalDamage} damage.  "
-                    + $"HP: {Mathf.Max(0, target.characterStats.healthPoints)}"
-                    + $"/{target.characterStats.maxHealthPoints}");
-
-            if (target.characterStats.healthPoints <= 0)
-            {
-                Debug.Log($"[TurnManager] '{target.characterName}' has been defeated!");
-                MapTile tile = target.characterCurrentTile;
-                if (tile != null)
-                    tile.RemoveCharacter();
-            }
-        }
-
-        private int CheckAndHandleReceivingBasicAttackDamage(NPC attacker, Character target, int damage)
-        {
-            // Check for passive abilities that may modify incoming damage.
-            foreach (var passive in target.characterPassiveAbilities)
-            {
-                if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.ON_RECEIVING_ATTACK)
-                {
-                    Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{target.characterName}' on receiving damage.");
-                    passive.Execute(new PassiveOnReceivingAttackContext(
-                        attacker: attacker,
-                        receivingCharacter: target,
-                        attackingNPCTile: attacker.characterCurrentTile,
-                        receivingCharacterTile: target.characterCurrentTile,
-                        allTiles: tiles,
-                        gridSize: gridSize));
-                    //damage = passive.Execute(damage, target);
-                }
-            }
-
-            return damage;
-        }
-
-        /// <summary>Executes a basic attack from <paramref name="attacker"/> against the
-        /// player Character on <paramref name="targetTile"/>.</summary>
-        private void NpcExecuteAttack(NPC attacker, MapTile targetTile)
-        {
-            Character target = targetTile.OccupyingCharacter;
-            if (target == null) return;
-
-            int damage = attacker.characterStats.TotalAttack;
-            NPCExecuteBasicAttackDamage(attacker, target, damage);
+            int damage = Mathf.Max(0, attacker.characterStats.TotalAttack);
+            target.characterStats.healthPoints -= damage;
 
             Debug.Log($"[TurnManager] '{attacker.characterName}' attacks '{target.characterName}' "
                     + $"for {damage} damage.  "
@@ -1081,12 +1028,40 @@ namespace BaaroForce.Map
             if (target.characterStats.healthPoints <= 0)
             {
                 Debug.Log($"[TurnManager] '{target.characterName}' has been defeated!");
-                targetTile.RemoveCharacter();
+                targetTile.RemoveUnit();
             }
         }
 
+        private void CheckAndHandleReceivingBasicAttackDamage(Character attacker, Character target)
+        {
+            foreach (var passive in target.characterPassiveAbilities)
+            {
+                if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.ON_RECEIVING_ATTACK)
+                {
+                    Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{target.characterName}' on receiving damage.");
+                    passive.Execute(new PassiveOnReceivingAttackContext(
+                        attacker: attacker,
+                        receivingCharacter: target,
+                        attackerTile: attacker.characterCurrentTile,
+                        receivingCharacterTile: target.characterCurrentTile,
+                        allTiles: tiles,
+                        gridSize: gridSize));
+                }
+            }
+        }
+
+        /// <summary>Executes a basic attack from <paramref name="attacker"/> against the
+        /// player Character on <paramref name="targetTile"/>.</summary>
+        private void NpcExecuteAttack(NPC attacker, MapTile targetTile)
+        {
+            Character target = targetTile.OccupyingCharacter;
+            if (target == null) return;
+
+            ResolveBasicAttack(attacker, target, targetTile);
+        }
+
         /// <summary>
-        /// Builds an <see cref="NpcSpellContext"/> and invokes the spell's NPC Execute overload.
+        /// Builds a <see cref="SpellContext"/> for an NPC caster and invokes the spell's Execute.
         /// Deducts mana from <paramref name="caster"/> on success.
         /// Returns true if the spell resolved.
         /// </summary>
@@ -1095,7 +1070,7 @@ namespace BaaroForce.Map
         {
             if (spell.manaCost > 0 && caster.characterStats.mana < spell.manaCost) return false;
 
-            var ctx = new NpcSpellContext(
+            var context = new SpellContext(
                 caster:      caster,
                 casterLevel: caster.Level,
                 casterTile:  casterTile,
@@ -1103,7 +1078,7 @@ namespace BaaroForce.Map
                 allTiles:    tiles,
                 gridSize:    gridSize);
 
-            bool resolved = spell.Execute(ctx);
+            bool resolved = spell.Execute(context);
 
             if (resolved)
                 caster.characterStats.mana =
@@ -1195,16 +1170,23 @@ namespace BaaroForce.Map
         // Movement animation                                                  //
         // ------------------------------------------------------------------ //
 
-        private IEnumerator AnimateMove(Character character, MapTile fromTile,
-                                        List<MapTile> path)
+        /// <summary>
+        /// Walks <paramref name="unit"/> along <paramref name="path"/> tile-by-tile at
+        /// <see cref="MoveSpeed"/>, handing tile occupancy off at each step. Invokes
+        /// <paramref name="onArrived"/> with the final tile once movement completes.
+        /// No-ops (without invoking <paramref name="onArrived"/>) if the path is trivial
+        /// or the unit has no model on <paramref name="fromTile"/>.
+        /// Shared by player movement, NPC movement, and caster repositioning (e.g. Charge).
+        /// </summary>
+        private IEnumerator MoveUnitAlongPath(Character unit, MapTile fromTile,
+                                               List<MapTile> path, Action<MapTile> onArrived)
         {
-            isMoving = true;
+            if (path == null || path.Count <= 1) yield break;
 
-            GameObject model = fromTile.CharacterObject;
+            GameObject model = fromTile.UnitObject;
             if (model == null)
             {
-                Debug.LogWarning("[TurnManager] Character model not found during move animation.");
-                isMoving = false;
+                Debug.LogWarning($"[TurnManager] '{unit.characterName}' model not found during move.");
                 yield break;
             }
 
@@ -1222,22 +1204,32 @@ namespace BaaroForce.Map
                 while (elapsed < duration)
                 {
                     elapsed += Time.deltaTime;
-                    model.transform.position = Vector3.Lerp(startPos, endPos,
-                                                            elapsed / duration);
+                    model.transform.position = Vector3.Lerp(startPos, endPos, elapsed / duration);
                     yield return null;
                 }
 
                 // Snap to exact position and transfer occupancy.
                 model.transform.position = endPos;
-                currentTile.ReleaseCharacter();
-                next.AssignCharacter(character, model);
+                currentTile.ReleaseUnit();
+                next.AssignUnit(unit, model);
                 currentTile = next;
             }
 
-            selectedTile = currentTile;
-            Debug.Log($"[TurnManager] '{character.characterName}' arrived at " +
-                      $"({currentTile.GridX}, {currentTile.GridZ}).  " +
-                      $"MP: {RemainingMove(character)}  AP: {RemainingActions(character)}");
+            onArrived?.Invoke(currentTile);
+        }
+
+        private IEnumerator AnimateMove(Character character, MapTile fromTile,
+                                        List<MapTile> path)
+        {
+            isMoving = true;
+
+            yield return StartCoroutine(MoveUnitAlongPath(character, fromTile, path, finalTile =>
+            {
+                selectedTile = finalTile;
+                Debug.Log($"[TurnManager] '{character.characterName}' arrived at " +
+                          $"({finalTile.GridX}, {finalTile.GridZ}).  " +
+                          $"MP: {RemainingMove(character)}  AP: {RemainingActions(character)}");
+            }));
 
             isMoving = false;
 
@@ -1268,7 +1260,7 @@ namespace BaaroForce.Map
         /// <summary>Ensures an EventSystem and TooltipSystem exist in the scene.</summary>
         private void EnsureMapUI()
         {
-            if (FindObjectOfType<EventSystem>() == null)
+            if (FindAnyObjectByType<EventSystem>() == null)
             {
                 var es = new GameObject("EventSystem");
                 es.AddComponent<EventSystem>();

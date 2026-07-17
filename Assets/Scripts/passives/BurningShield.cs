@@ -19,7 +19,7 @@ namespace BaaroForce.Passives
             if (context.Attacker.characterStats.healthPoints <= 0)
             {
                 Debug.Log($"[BurningShield] '{context.Attacker.characterName}' has been defeated!");
-                context.AttackingNPCTile.RemoveNpc();
+                context.AttackerTile.RemoveUnit();
             }
 
             Debug.Log($"[BurningShield] '{context.Attacker.characterName}' took {value} fire damage.  " +

@@ -1,0 +1,195 @@
+/* =====================================================================
+   CombatHud.uss
+   Port of the web Combat HUD kit into Unity UI Toolkit.
+
+   Honest limitations vs. the HTML version, so nothing here surprises you:
+   - USS has no clip-path, so the chamfered/octagon badge and portrait
+     shapes are approximated with rounded corners here. For the exact
+     chamfered silhouette, export those shapes as sprite textures and set
+     them as backgroundImage on .stat-badge / .portrait instead.
+   - USS has no box-shadow, so the "glow" is approximated with a solid
+     border in the zone color. A soft glow would need a blurred sprite
+     or a shader.
+   - Custom properties (--var) ARE supported by UI Toolkit and are used
+     below the same way the HTML version uses CSS variables.
+   ===================================================================== */
+
+.hud-panel {
+    position: absolute;
+    width: 280px;
+    top: 5%;
+}
+
+.hud-panel--left  { left: 6%; }
+.hud-panel--right { right: 6%; }
+
+/* ---------------- Zone theme tokens (mirror the web kit's palette) --- */
+
+.zone-fire  { --glow-color: rgb(227, 91, 45);  --glow-soft: rgba(227, 91, 45, 0.35); }
+.zone-water { --glow-color: rgb(46, 127, 174); --glow-soft: rgba(46, 127, 174, 0.35); }
+.zone-earth { --glow-color: rgb(110, 140, 70); --glow-soft: rgba(110, 140, 70, 0.35); }
+.zone-wind  { --glow-color: rgb(95, 191, 160); --glow-soft: rgba(95, 191, 160, 0.35); }
+.zone-light { --glow-color: rgb(232, 194, 94); --glow-soft: rgba(232, 194, 94, 0.35); }
+.zone-dark  { --glow-color: rgb(107, 78, 158); --glow-soft: rgba(107, 78, 158, 0.35); }
+
+/* ---------------- Elemental crest (top-right corner seal) ------------ */
+
+.crest {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    width: 52px;
+    height: 52px;
+    border-radius: 26px;
+    background-color: rgb(21, 10, 30);
+    border-width: 3px;
+    border-color: var(--glow-color);
+    align-items: center;
+    justify-content: center;
+}
+
+/* ---------------- Chassis (the main dark panel) ----------------------- */
+
+.chassis {
+    background-color: rgb(24, 17, 27);
+    border-radius: 16px;
+    border-width: 2px;
+    border-color: var(--glow-color);
+    padding: 18px 16px 14px 16px;
+}
+
+.rivet {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border-radius: 4px;
+    background-color: rgb(201, 163, 90);
+}
+.rivet-tl { top: 8px; left: 8px; }
+.rivet-tr { top: 8px; right: 8px; }
+.rivet-bl { bottom: 8px; left: 8px; }
+.rivet-br { bottom: 8px; right: 8px; }
+
+/* ---------------- Header: portrait + name/level ------------------------ */
+
+.chassis-top {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.portrait {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    background-color: rgb(58, 42, 52);
+    border-width: 2px;
+    border-color: var(--glow-color);
+    margin-right: 12px;
+    /* Swap in the character's icon per-instance via C#:
+       portrait.style.backgroundImage = new StyleBackground(sprite); */
+}
+
+.who {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.unit-name {
+    font-size: 16px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+    margin-bottom: 4px;
+}
+
+.lv {
+    font-size: 10px;
+    -unity-font-style: bold;
+    color: rgb(16, 12, 20);
+    background-color: rgb(201, 163, 90);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* ---------------- Stat rows -------------------------------------------- */
+
+.stat-list {
+    flex-direction: column;
+}
+
+.stat-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 9px;
+}
+
+.stat-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background-color: rgb(58, 42, 40);
+    margin-right: 10px;
+    /* Set backgroundImage per stat/weapon-type in C#, or via the
+       weapon-melee / weapon-ranged / weapon-magic classes below. */
+}
+.stat-badge-hp   { background-color: rgb(90, 33, 40); }
+.stat-badge-mana { background-color: var(--glow-soft); }
+.stat-badge-move { background-color: rgb(74, 63, 52); }
+
+.weapon-melee  { background-color: rgb(90, 70, 46); }
+.weapon-ranged { background-color: rgb(70, 82, 60); }
+.weapon-magic  { background-color: rgb(50, 46, 84); }
+
+/* ---------------- Segmented bar (HP / Mana) ----------------------------- */
+
+.seg-bar {
+    flex-direction: row;
+    width: 130px;
+    height: 14px;
+    background-color: rgb(20, 16, 24);
+    border-radius: 5px;
+    padding: 2px;
+    margin-right: 10px;
+}
+
+.seg {
+    flex-grow: 1;
+    margin-right: 2px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.06);
+}
+.seg:last-child { margin-right: 0; }
+
+.seg-fill-hp   { background-color: rgb(227, 91, 107); }
+.seg-fill-mana { background-color: var(--glow-color); }
+
+/* ---------------- Movement pips ----------------------------------------- */
+
+.pips {
+    flex-direction: row;
+    align-items: center;
+    margin-right: 10px;
+}
+
+.pip {
+    width: 10px;
+    height: 10px;
+    rotate: 45deg;
+    margin-right: 5px;
+    background-color: rgb(20, 16, 24);
+    border-radius: 2px;
+}
+.pip-on {
+    background-color: rgb(201, 163, 90);
+}
+
+/* ---------------- Numbers ----------------------------------------------- */
+
+.stat-num {
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+    min-width: 34px;
+    -unity-text-align: middle-right;
+}
+.stat-num-big { font-size: 20px; }

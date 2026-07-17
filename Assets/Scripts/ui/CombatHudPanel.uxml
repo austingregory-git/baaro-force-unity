@@ -1,0 +1,45 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:VisualElement name="crest" class="crest" />
+
+    <ui:VisualElement name="chassis" class="chassis">
+        <ui:VisualElement name="rivet-tl" class="rivet rivet-tl" />
+        <ui:VisualElement name="rivet-tr" class="rivet rivet-tr" />
+        <ui:VisualElement name="rivet-bl" class="rivet rivet-bl" />
+        <ui:VisualElement name="rivet-br" class="rivet rivet-br" />
+
+        <ui:VisualElement name="chassis-top" class="chassis-top">
+            <ui:VisualElement name="portrait" class="portrait" />
+            <ui:VisualElement name="who" class="who">
+                <ui:Label name="unit-name" text="Unit Name" class="unit-name" />
+                <ui:Label name="unit-level" text="Lv 1" class="lv" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="stat-list" class="stat-list">
+
+            <ui:VisualElement class="stat-row">
+                <ui:VisualElement class="stat-badge stat-badge-hp" />
+                <ui:VisualElement name="hp-bar" class="seg-bar" />
+                <ui:Label name="hp-num" text="0/0" class="stat-num" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="stat-row">
+                <ui:VisualElement class="stat-badge stat-badge-mana" />
+                <ui:VisualElement name="mana-bar" class="seg-bar" />
+                <ui:Label name="mana-num" text="0/0" class="stat-num" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="stat-row">
+                <ui:VisualElement class="stat-badge stat-badge-move" />
+                <ui:VisualElement name="move-pips" class="pips" />
+                <ui:Label name="move-num" text="0" class="stat-num" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="stat-row">
+                <ui:VisualElement name="atk-badge" class="stat-badge weapon-melee" />
+                <ui:Label name="atk-num" text="0" class="stat-num stat-num-big" />
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
