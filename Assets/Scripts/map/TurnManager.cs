@@ -166,7 +166,7 @@ namespace BaaroForce.Map
                     if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.START_OF_TURN)
                     {
                         Debug.Log($"[TurnManager] Executing passive ability '{passive.Name}' for character '{c.characterName}'.");
-                        passive.Execute(new PassiveAbilityContext(character: c, characterLevel: c.Level, characterTile: c.characterCurrentTile, allTiles: tiles, gridSize: gridSize));
+                        passive.Execute(new PassiveOnTurnContext(character: c, characterLevel: c.Level, characterTile: c.characterCurrentTile, allTiles: tiles, gridSize: gridSize));
                     }
                 }
             }
@@ -857,7 +857,7 @@ namespace BaaroForce.Map
                     if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.END_OF_TURN)
                     {
                         Debug.Log($"[TurnManager] Executing passive ability '{passive.Name}' for character '{c.characterName}'.");
-                        passive.Execute(new PassiveAbilityContext(character: c, characterLevel: c.Level, characterTile: c.characterCurrentTile, allTiles: tiles, gridSize: gridSize));
+                        passive.Execute(new PassiveOnTurnContext(character: c, characterLevel: c.Level, characterTile: c.characterCurrentTile, allTiles: tiles, gridSize: gridSize));
                     }
                 }
             }
@@ -1022,6 +1022,47 @@ namespace BaaroForce.Map
                     + $"({currentTile.GridX}, {currentTile.GridZ}).");
         }
 
+        private void NPCExecuteBasicAttackDamage(NPC attacker, Character target, int damage)
+        {
+            damage = CheckAndHandleReceivingBasicAttackDamage(attacker, target, damage);
+            int finalDamage = Mathf.Max(0, damage);
+            target.characterStats.healthPoints -= finalDamage;
+
+            Debug.Log($"[TurnManager] '{attacker.characterName}' hits '{target.characterName}' for {finalDamage} damage.  "
+                    + $"HP: {Mathf.Max(0, target.characterStats.healthPoints)}"
+                    + $"/{target.characterStats.maxHealthPoints}");
+
+            if (target.characterStats.healthPoints <= 0)
+            {
+                Debug.Log($"[TurnManager] '{target.characterName}' has been defeated!");
+                MapTile tile = target.characterCurrentTile;
+                if (tile != null)
+                    tile.RemoveCharacter();
+            }
+        }
+
+        private int CheckAndHandleReceivingBasicAttackDamage(NPC attacker, Character target, int damage)
+        {
+            // Check for passive abilities that may modify incoming damage.
+            foreach (var passive in target.characterPassiveAbilities)
+            {
+                if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.ON_RECEIVING_ATTACK)
+                {
+                    Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{target.characterName}' on receiving damage.");
+                    passive.Execute(new PassiveOnReceivingAttackContext(
+                        attacker: attacker,
+                        receivingCharacter: target,
+                        attackingNPCTile: attacker.characterCurrentTile,
+                        receivingCharacterTile: target.characterCurrentTile,
+                        allTiles: tiles,
+                        gridSize: gridSize));
+                    //damage = passive.Execute(damage, target);
+                }
+            }
+
+            return damage;
+        }
+
         /// <summary>Executes a basic attack from <paramref name="attacker"/> against the
         /// player Character on <paramref name="targetTile"/>.</summary>
         private void NpcExecuteAttack(NPC attacker, MapTile targetTile)
@@ -1030,7 +1071,7 @@ namespace BaaroForce.Map
             if (target == null) return;
 
             int damage = attacker.characterStats.TotalAttack;
-            target.characterStats.healthPoints -= damage;
+            NPCExecuteBasicAttackDamage(attacker, target, damage);
 
             Debug.Log($"[TurnManager] '{attacker.characterName}' attacks '{target.characterName}' "
                     + $"for {damage} damage.  "

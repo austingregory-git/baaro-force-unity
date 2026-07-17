@@ -2,20 +2,21 @@ using System.Collections.Generic;
 using BaaroForce.Classes;
 using BaaroForce.Passives;
 using BaaroForce.Spells;
+using BaaroForce.Map;
 
 namespace BaaroForce.Characters
 {
-    public class Wolf : NPC
+    public class MozeemArcher : NPC
     {
         public override int BaseStrengthIndex => 1;
 
-        static readonly string WolfModelPath = "Characters/frog_wizard_test";
+        static readonly string MozeemArcherModelPath = "Characters/frog_wizard_test";
 
-        public Wolf()
+        public MozeemArcher()
             : base(
                 //ClassRegistry.Get("Beast"), 
-                characterName: "Wolf", 
-                characterStats: new CharacterStats(maxHealthPoints: 5, baseAttack: 2, maxMana: 2, movement: 5),
+                characterName: "Mozeem Archer", 
+                characterStats: new CharacterStats(maxHealthPoints: 4, baseAttack: 2, maxMana: 2, movement: 3),
                 characterRealms: new List<Realm> { Realm.EARTH },
                 characterPassiveAbilities: new List<PassiveAbility>
                 {
@@ -25,8 +26,8 @@ namespace BaaroForce.Characters
                 {
                     
                 },
-                characterModelPath: WolfModelPath,
-                specialty: NPCSpecialty.MELEE)
+                characterModelPath: MozeemArcherModelPath,
+                specialty: NPCSpecialty.RANGED)
         {
             AI = new AggressiveNpcAI();
         }

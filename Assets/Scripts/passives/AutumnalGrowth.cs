@@ -11,7 +11,7 @@ namespace BaaroForce.Passives
         {
         }
 
-        public override bool Execute(PassiveAbilityContext context)
+        public override bool Execute(PassiveOnTurnContext context)
         {
             int bonus = Mathf.FloorToInt(1f + 0.25f * context.CharacterLevel);
             context.Character.characterStats.healthPoints += bonus;

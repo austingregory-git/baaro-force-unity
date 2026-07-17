@@ -53,6 +53,12 @@ namespace BaaroForce.Spells
                     target.characterStats.healthPoints -= damage;
                     Debug.Log($"[Cleave] '{context.Caster.characterName}' dealt {damage} damage to '{target.characterName}'. " +
                               $"HP: {target.characterStats.healthPoints}/{target.characterStats.maxHealthPoints}");
+                    if (target.characterStats.healthPoints <= 0)
+                    {
+                        Debug.Log($"[Cleave] '{target.characterName}' has been defeated!");
+                        tile.RemoveNpc();
+                    }
+                              
                 }
             }
             return true;

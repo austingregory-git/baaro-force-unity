@@ -11,10 +11,11 @@ namespace BaaroForce.Passives
     /// into the map or turn-management systems directly — they receive everything
     /// they need in one clean package.
     /// </summary>
-    public sealed class PassiveAbilityContext
+    public sealed class PassiveOnTurnContext
     {
         /// <summary>The character who activated this passive ability.</summary>
         public readonly Character Character;
+
 
         /// <summary>Character's level for damage/duration scaling.</summary>
         public readonly int CharacterLevel;
@@ -31,15 +32,15 @@ namespace BaaroForce.Passives
         /// <summary>Side length of the grid.</summary>
         public readonly int GridSize;
 
-        public PassiveAbilityContext(Character character, int characterLevel,
+        public PassiveOnTurnContext(Character character, int characterLevel,
                                       MapTile characterTile,
                                       MapTile[,] allTiles, int gridSize)
         {
             Character      = character;
             CharacterLevel = characterLevel;
             CharacterTile  = characterTile;
-            AllTiles    = allTiles;
-            GridSize    = gridSize;
+            AllTiles       = allTiles;
+            GridSize       = gridSize;
         }
     }
 }

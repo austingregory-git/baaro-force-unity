@@ -5,6 +5,7 @@ using BaaroForce.Classes;
 using BaaroForce.Passives;
 using BaaroForce.Spells;
 using BaaroForce.Statuses;
+using BaaroForce.Map;
 
 namespace BaaroForce.Characters
 {   
@@ -17,6 +18,8 @@ namespace BaaroForce.Characters
         public List<Spell> characterSpells { get; set; }
         //public List<Equipment> characterEquipment { get; set; }
         public string characterModelPath { get; set; }
+        public MapTile characterCurrentTile { get; set; }
+        public NPCSpecialty Specialty { get; set; } = NPCSpecialty.MELEE;
 
         /// <summary>The NPC's current level; defaults to 1.</summary>
         public int Level { get; set; } = 1;
@@ -44,7 +47,8 @@ namespace BaaroForce.Characters
                         List<Realm> characterRealms, 
                         List<PassiveAbility> characterPassiveAbilities, 
                         List<Spell> characterSpells,
-                        string characterModelPath)
+                        string characterModelPath,
+                        NPCSpecialty specialty = NPCSpecialty.MELEE)
         {
             this.characterName = characterName;
             this.characterStats = characterStats;
@@ -52,6 +56,7 @@ namespace BaaroForce.Characters
             this.characterPassiveAbilities   = characterPassiveAbilities   ?? new List<PassiveAbility>();
             this.characterSpells             = characterSpells             ?? new List<Spell>();
             this.characterModelPath          = characterModelPath;
+            this.Specialty                   = specialty;
 
             // Append one randomly selected class spell from the NPC pool.
             // Get a random class spell from the NPC pool.
@@ -98,6 +103,13 @@ namespace BaaroForce.Characters
                     Debug.Log($"[NPC] '{characterName}': {fx.Name} has expired.");
                 }
             }
+        }
+
+        public enum NPCSpecialty
+        {
+            MELEE,
+            RANGED,
+            MAGIC,
         }
     }
 }

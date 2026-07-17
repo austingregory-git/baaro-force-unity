@@ -94,5 +94,33 @@ namespace BaaroForce.Spells
 
             return result;
         }
+
+        public static List<MapTile> GetCircleAroundUnitTiles(MapTile casterTile, int radius, MapTile[,] allTiles, int gridSize)
+        {
+            var result = new List<MapTile>();
+
+            int cx = casterTile.GridX;
+            int cz = casterTile.GridZ;
+
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                for (int dz = -radius; dz <= radius; dz++)
+                {
+                    int x = cx + dx;
+                    int z = cz + dz;
+
+                    if (x >= 0 && x < gridSize && z >= 0 && z < gridSize)
+                    {
+                        // Check if the tile is within the circle radius
+                        if (dx * dx + dz * dz <= radius * radius)
+                        {
+                            result.Add(allTiles[x, z]);
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
     }
 }

@@ -15,6 +15,8 @@ namespace BaaroForce.Characters
         public int attackBonus;
         /// <summary>Effective attack used in damage calculations (baseAttack + attackBonus).</summary>
         public int TotalAttack => baseAttack + attackBonus;
+
+        public int spellPowerBonus;  // bonus to spell power from equipment, buffs, or other effects
         public int maxMana;
         public int mana;
         public int movement;

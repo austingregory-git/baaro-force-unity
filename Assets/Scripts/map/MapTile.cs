@@ -41,7 +41,7 @@ namespace BaaroForce.Map
         private GameObject attackHighlightOverlay;
         private GameObject spellHighlightOverlay;
 
-        private static readonly Color OverlayColor         = new Color(0.3f, 0.6f, 1f, 0.45f);
+        private static readonly Color OverlayColor         = new Color(0.3f, 0.6f, 1f, 0.92f);
         private static readonly Color MoveHighlightColor    = new Color(0.3f, 0.6f, 1f, 0.92f);
         private static readonly Color AttackHighlightColor  = new Color(0.9f, 0.15f, 0.1f, 0.55f);
 
@@ -226,6 +226,7 @@ namespace BaaroForce.Map
         {
             if (IsOccupied) return;
             OccupyingCharacter = character;
+            character.characterCurrentTile = this;
 
             var prefab = Resources.Load<GameObject>(character.characterModelPath);
             if (prefab != null)
@@ -255,6 +256,9 @@ namespace BaaroForce.Map
         /// <summary>Removes the occupying character from this tile and destroys its model.</summary>
         public void RemoveCharacter()
         {
+            if (OccupyingCharacter != null)
+                OccupyingCharacter.characterCurrentTile = null;
+
             OccupyingCharacter = null;
             if (characterObject != null)
             {
@@ -282,6 +286,7 @@ namespace BaaroForce.Map
         {
             OccupyingCharacter = character;
             characterObject    = model;
+            character.characterCurrentTile = this;
         }
 
         /// <summary>
@@ -292,6 +297,7 @@ namespace BaaroForce.Map
         {
             if (IsOccupied) return;
             OccupyingNpc = npc;
+            npc.characterCurrentTile = this;
 
             var prefab = Resources.Load<GameObject>(npc.characterModelPath);
             if (prefab != null)
@@ -316,6 +322,9 @@ namespace BaaroForce.Map
         /// <summary>Removes the occupying NPC from this tile.</summary>
         public void RemoveNpc()
         {
+            if (OccupyingNpc != null)
+                OccupyingNpc.characterCurrentTile = null;
+
             OccupyingNpc = null;
             if (npcObject != null)
             {
@@ -343,6 +352,7 @@ namespace BaaroForce.Map
         {
             OccupyingNpc = npc;
             npcObject    = model;
+            npc.characterCurrentTile = this;
         }
 
         // ------------------------------------------------------------------ //

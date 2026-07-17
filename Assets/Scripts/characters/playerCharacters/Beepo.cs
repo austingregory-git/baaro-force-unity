@@ -14,7 +14,10 @@ namespace BaaroForce.Characters
                 characterName: "Beepo",
                 characterStats: BeepoBaseStats, 
                 characterRealms: new List<Realm> { Realm.FIRE }, 
-                characterPassiveAbilities: new List<PassiveAbility>(), 
+                characterPassiveAbilities: new List<PassiveAbility>()
+                {
+                    new BurningShield()
+                },
                 characterSpells: new List<Spell>(), 
                 characterModelPath: BeepoModelPath)
         {
