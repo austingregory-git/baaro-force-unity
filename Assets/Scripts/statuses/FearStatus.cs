@@ -8,7 +8,7 @@ namespace BaaroForce.Statuses
     /// </summary>
     public class FearStatus : StatusEffect
     {
-        private readonly int attackPenalty;
+        private readonly int _attackPenalty;
 
         /// <param name="durationTurns">How many of the target's turns the effect lasts.</param>
         /// <param name="attackPenalty">How much to subtract from the target's attackBonus.</param>
@@ -17,14 +17,14 @@ namespace BaaroForce.Statuses
                 name:        "Fear",
                 description: $"Attack reduced by {attackPenalty} for {durationTurns} turns.",
                 durationTurns: durationTurns,
-                effectType: StatusEffectType.DEBUFF)
+                effectType: StatusEffectType.Debuff)
         {
-            this.attackPenalty = attackPenalty;
+            this._attackPenalty = attackPenalty;
         }
 
         public override void OnApply(CharacterStats stats)
         {
-            stats.attackBonus -= attackPenalty;
+            stats.AttackBonus -= _attackPenalty;
         }
 
         public override void OnTurnStart(CharacterStats stats)
@@ -34,7 +34,7 @@ namespace BaaroForce.Statuses
 
         public override void OnRemove(CharacterStats stats)
         {
-            stats.attackBonus += attackPenalty;   // restore what OnApply removed
+            stats.AttackBonus += _attackPenalty;   // restore what OnApply removed
         }
     }
 }

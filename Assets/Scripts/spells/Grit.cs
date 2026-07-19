@@ -24,12 +24,12 @@ namespace BaaroForce.Spells
         public override bool Execute(SpellContext context)
         {
             int bonus = Mathf.FloorToInt(3f + 0.5f * context.CasterLevel);
-            context.Caster.characterStats.maxHealthPoints += bonus;
-            context.Caster.characterStats.healthPoints    += bonus;
+            context.Caster.CharacterStats.MaxHealthPoints += bonus;
+            context.Caster.CharacterStats.HealthPoints    += bonus;
 
-            Debug.Log($"[Grit] '{context.Caster.characterName}' gained {bonus} max HP.  " +
-                      $"HP: {context.Caster.characterStats.healthPoints}" +
-                      $"/{context.Caster.characterStats.maxHealthPoints}");
+            Debug.Log($"[Grit] '{context.Caster.CharacterName}' gained {bonus} max HP.  " +
+                      $"HP: {context.Caster.CharacterStats.HealthPoints}" +
+                      $"/{context.Caster.CharacterStats.MaxHealthPoints}");
             return true;
         }
     }

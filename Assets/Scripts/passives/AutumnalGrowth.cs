@@ -7,21 +7,21 @@ namespace BaaroForce.Passives
         public AutumnalGrowth()
             : base("Autumnal Growth",
                   "[Regen] 1 + 0.25 x [Level] health points per turn",
-                  PassiveAbilityType.START_OF_TURN)
+                  PassiveAbilityType.StartOfTurn)
         {
         }
 
         public override bool Execute(PassiveOnTurnContext context)
         {
             int bonus = Mathf.FloorToInt(1f + 0.25f * context.CharacterLevel);
-            context.Character.characterStats.healthPoints += bonus;
-            context.Character.characterStats.healthPoints = Mathf.Min(
-                context.Character.characterStats.healthPoints,
-                context.Character.characterStats.maxHealthPoints);
+            context.Character.CharacterStats.HealthPoints += bonus;
+            context.Character.CharacterStats.HealthPoints = Mathf.Min(
+                context.Character.CharacterStats.HealthPoints,
+                context.Character.CharacterStats.MaxHealthPoints);
 
-            Debug.Log($"[AutumnalGrowth] '{context.Character.characterName}' gained {bonus} HP.  " +
-                      $"HP: {context.Character.characterStats.healthPoints}" +
-                      $"/{context.Character.characterStats.maxHealthPoints}");
+            Debug.Log($"[AutumnalGrowth] '{context.Character.CharacterName}' gained {bonus} HP.  " +
+                      $"HP: {context.Character.CharacterStats.HealthPoints}" +
+                      $"/{context.Character.CharacterStats.MaxHealthPoints}");
             return true;
         }
     }

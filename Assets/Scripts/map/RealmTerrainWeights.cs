@@ -14,93 +14,93 @@ namespace BaaroForce.Map
             new Dictionary<Realm, Dictionary<TerrainTile.TerrainType, int>>
         {
             {
-                Realm.EARTH, new Dictionary<TerrainTile.TerrainType, int>
+                Realm.Earth, new Dictionary<TerrainTile.TerrainType, int>
                 {
-                    { TerrainTile.TerrainType.GRASS,    30 },
-                    { TerrainTile.TerrainType.FOREST,   25 },
-                    { TerrainTile.TerrainType.MOUNTAIN, 20 },
-                    { TerrainTile.TerrainType.PLAINS,   15 },
-                    { TerrainTile.TerrainType.WATER,     5 },
-                    { TerrainTile.TerrainType.SWAMP,     3 },
-                    { TerrainTile.TerrainType.DESERT,    2 },
-                    { TerrainTile.TerrainType.SNOW,      0 },
-                    { TerrainTile.TerrainType.VOLCANO,   0 },
-                    { TerrainTile.TerrainType.VOID,      0 },
+                    { TerrainTile.TerrainType.Grass,    30 },
+                    { TerrainTile.TerrainType.Forest,   25 },
+                    { TerrainTile.TerrainType.Mountain, 20 },
+                    { TerrainTile.TerrainType.Plains,   15 },
+                    { TerrainTile.TerrainType.Water,     5 },
+                    { TerrainTile.TerrainType.Swamp,     3 },
+                    { TerrainTile.TerrainType.Desert,    2 },
+                    { TerrainTile.TerrainType.Snow,      0 },
+                    { TerrainTile.TerrainType.Volcano,   0 },
+                    { TerrainTile.TerrainType.Void,      0 },
                 }
             },
             {
-                Realm.FIRE, new Dictionary<TerrainTile.TerrainType, int>
+                Realm.Fire, new Dictionary<TerrainTile.TerrainType, int>
                 {
-                    { TerrainTile.TerrainType.VOLCANO,  30 },
-                    { TerrainTile.TerrainType.DESERT,   25 },
-                    { TerrainTile.TerrainType.MOUNTAIN, 15 },
-                    { TerrainTile.TerrainType.PLAINS,   10 },
-                    { TerrainTile.TerrainType.GRASS,     8 },
-                    { TerrainTile.TerrainType.SWAMP,     5 },
-                    { TerrainTile.TerrainType.FOREST,    5 },
-                    { TerrainTile.TerrainType.WATER,     2 },
-                    { TerrainTile.TerrainType.SNOW,      0 },
-                    { TerrainTile.TerrainType.VOID,      0 },
+                    { TerrainTile.TerrainType.Volcano,  30 },
+                    { TerrainTile.TerrainType.Desert,   25 },
+                    { TerrainTile.TerrainType.Mountain, 15 },
+                    { TerrainTile.TerrainType.Plains,   10 },
+                    { TerrainTile.TerrainType.Grass,     8 },
+                    { TerrainTile.TerrainType.Swamp,     5 },
+                    { TerrainTile.TerrainType.Forest,    5 },
+                    { TerrainTile.TerrainType.Water,     2 },
+                    { TerrainTile.TerrainType.Snow,      0 },
+                    { TerrainTile.TerrainType.Void,      0 },
                 }
             },
             {
-                Realm.WATER, new Dictionary<TerrainTile.TerrainType, int>
+                Realm.Water, new Dictionary<TerrainTile.TerrainType, int>
                 {
-                    { TerrainTile.TerrainType.WATER,    35 },
-                    { TerrainTile.TerrainType.SWAMP,    20 },
-                    { TerrainTile.TerrainType.PLAINS,   15 },
-                    { TerrainTile.TerrainType.GRASS,    10 },
-                    { TerrainTile.TerrainType.FOREST,    8 },
-                    { TerrainTile.TerrainType.SNOW,      5 },
-                    { TerrainTile.TerrainType.MOUNTAIN,  4 },
-                    { TerrainTile.TerrainType.DESERT,    2 },
-                    { TerrainTile.TerrainType.VOLCANO,   1 },
-                    { TerrainTile.TerrainType.VOID,      0 },
+                    { TerrainTile.TerrainType.Water,    35 },
+                    { TerrainTile.TerrainType.Swamp,    20 },
+                    { TerrainTile.TerrainType.Plains,   15 },
+                    { TerrainTile.TerrainType.Grass,    10 },
+                    { TerrainTile.TerrainType.Forest,    8 },
+                    { TerrainTile.TerrainType.Snow,      5 },
+                    { TerrainTile.TerrainType.Mountain,  4 },
+                    { TerrainTile.TerrainType.Desert,    2 },
+                    { TerrainTile.TerrainType.Volcano,   1 },
+                    { TerrainTile.TerrainType.Void,      0 },
                 }
             },
             {
-                Realm.WIND, new Dictionary<TerrainTile.TerrainType, int>
+                Realm.Wind, new Dictionary<TerrainTile.TerrainType, int>
                 {
-                    { TerrainTile.TerrainType.PLAINS,   30 },
-                    { TerrainTile.TerrainType.GRASS,    20 },
-                    { TerrainTile.TerrainType.SNOW,     15 },
-                    { TerrainTile.TerrainType.MOUNTAIN, 15 },
-                    { TerrainTile.TerrainType.DESERT,   10 },
-                    { TerrainTile.TerrainType.FOREST,    5 },
-                    { TerrainTile.TerrainType.WATER,     3 },
-                    { TerrainTile.TerrainType.SWAMP,     2 },
-                    { TerrainTile.TerrainType.VOLCANO,   0 },
-                    { TerrainTile.TerrainType.VOID,      0 },
+                    { TerrainTile.TerrainType.Plains,   30 },
+                    { TerrainTile.TerrainType.Grass,    20 },
+                    { TerrainTile.TerrainType.Snow,     15 },
+                    { TerrainTile.TerrainType.Mountain, 15 },
+                    { TerrainTile.TerrainType.Desert,   10 },
+                    { TerrainTile.TerrainType.Forest,    5 },
+                    { TerrainTile.TerrainType.Water,     3 },
+                    { TerrainTile.TerrainType.Swamp,     2 },
+                    { TerrainTile.TerrainType.Volcano,   0 },
+                    { TerrainTile.TerrainType.Void,      0 },
                 }
             },
             {
-                Realm.DARK, new Dictionary<TerrainTile.TerrainType, int>
+                Realm.Dark, new Dictionary<TerrainTile.TerrainType, int>
                 {
-                    { TerrainTile.TerrainType.VOID,     35 },
-                    { TerrainTile.TerrainType.SWAMP,    25 },
-                    { TerrainTile.TerrainType.FOREST,   15 },
-                    { TerrainTile.TerrainType.MOUNTAIN, 10 },
-                    { TerrainTile.TerrainType.WATER,     5 },
-                    { TerrainTile.TerrainType.VOLCANO,   5 },
-                    { TerrainTile.TerrainType.PLAINS,    3 },
-                    { TerrainTile.TerrainType.GRASS,     2 },
-                    { TerrainTile.TerrainType.DESERT,    0 },
-                    { TerrainTile.TerrainType.SNOW,      0 },
+                    { TerrainTile.TerrainType.Void,     35 },
+                    { TerrainTile.TerrainType.Swamp,    25 },
+                    { TerrainTile.TerrainType.Forest,   15 },
+                    { TerrainTile.TerrainType.Mountain, 10 },
+                    { TerrainTile.TerrainType.Water,     5 },
+                    { TerrainTile.TerrainType.Volcano,   5 },
+                    { TerrainTile.TerrainType.Plains,    3 },
+                    { TerrainTile.TerrainType.Grass,     2 },
+                    { TerrainTile.TerrainType.Desert,    0 },
+                    { TerrainTile.TerrainType.Snow,      0 },
                 }
             },
             {
-                Realm.LIGHT, new Dictionary<TerrainTile.TerrainType, int>
+                Realm.Light, new Dictionary<TerrainTile.TerrainType, int>
                 {
-                    { TerrainTile.TerrainType.PLAINS,   30 },
-                    { TerrainTile.TerrainType.SNOW,     25 },
-                    { TerrainTile.TerrainType.GRASS,    20 },
-                    { TerrainTile.TerrainType.WATER,    10 },
-                    { TerrainTile.TerrainType.MOUNTAIN,  8 },
-                    { TerrainTile.TerrainType.FOREST,    5 },
-                    { TerrainTile.TerrainType.DESERT,    2 },
-                    { TerrainTile.TerrainType.SWAMP,     0 },
-                    { TerrainTile.TerrainType.VOLCANO,   0 },
-                    { TerrainTile.TerrainType.VOID,      0 },
+                    { TerrainTile.TerrainType.Plains,   30 },
+                    { TerrainTile.TerrainType.Snow,     25 },
+                    { TerrainTile.TerrainType.Grass,    20 },
+                    { TerrainTile.TerrainType.Water,    10 },
+                    { TerrainTile.TerrainType.Mountain,  8 },
+                    { TerrainTile.TerrainType.Forest,    5 },
+                    { TerrainTile.TerrainType.Desert,    2 },
+                    { TerrainTile.TerrainType.Swamp,     0 },
+                    { TerrainTile.TerrainType.Volcano,   0 },
+                    { TerrainTile.TerrainType.Void,      0 },
                 }
             },
         };

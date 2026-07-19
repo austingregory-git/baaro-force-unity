@@ -7,7 +7,7 @@ using UnityEngine;
 namespace BaaroForce.Characters
 {
     /// <summary>
-    /// Aggressive NPC personality.
+    /// Aggressive Npc personality.
     ///
     /// Decision priority each action point:
     ///   1. Cast the first usable spell that has a valid target in range.
@@ -27,8 +27,8 @@ namespace BaaroForce.Characters
 
         public override IEnumerator ExecuteTurn(NpcTurnContext context)
         {
-            NPC npc = context.Npc;
-            Debug.Log($"[AggressiveNpcAI] '{npc.characterName}' begins turn.  " +
+            Npc npc = context.Npc;
+            Debug.Log($"[AggressiveNpcAI] '{npc.CharacterName}' begins turn.  " +
                       $"MP:{context.RemainingMovement}  AP:{context.RemainingActions}");
 
             while (context.RemainingActions > 0)
@@ -76,7 +76,7 @@ namespace BaaroForce.Characters
                 }
             }
 
-            Debug.Log($"[AggressiveNpcAI] '{npc.characterName}' ends turn.");
+            Debug.Log($"[AggressiveNpcAI] '{npc.CharacterName}' ends turn.");
         }
 
         // ------------------------------------------------------------------ //
@@ -87,12 +87,12 @@ namespace BaaroForce.Characters
         /// Returns true and decrements AP if a spell was cast.</summary>
         private bool TrySpell(NpcTurnContext context)
         {
-            NPC npc = context.Npc;
-            if (npc.characterSpells == null || npc.characterSpells.Count == 0) return false;
+            Npc npc = context.Npc;
+            if (npc.CharacterSpells == null || npc.CharacterSpells.Count == 0) return false;
 
-            foreach (Spell spell in npc.characterSpells)
+            foreach (Spell spell in npc.CharacterSpells)
             {
-                if (spell.manaCost > npc.characterStats.mana) continue;
+                if (spell.ManaCost > npc.CharacterStats.Mana) continue;
 
                 MapTile target = FindSpellTarget(context, spell);
                 if (target == null) continue;
@@ -112,7 +112,7 @@ namespace BaaroForce.Characters
         private static MapTile FindSpellTarget(NpcTurnContext context, Spell spell)
         {
             // Self-targeting spells need no search.
-            if (spell.targetType == SpellTargetType.Self) return context.CurrentTile;
+            if (spell.TargetType == SpellTargetType.Self) return context.CurrentTile;
 
             int     ox       = context.CurrentTile.GridX;
             int     oz       = context.CurrentTile.GridZ;
@@ -124,10 +124,10 @@ namespace BaaroForce.Characters
                 for (int z = 0; z < context.GridSize; z++)
                 {
                     int dist = Mathf.Abs(x - ox) + Mathf.Abs(z - oz);
-                    if (dist == 0 || dist > spell.range) continue;
+                    if (dist == 0 || dist > spell.Range) continue;
 
                     MapTile tile = context.AllTiles[x, z];
-                    if (!IsValidSpellTarget(spell.targetType, tile)) continue;
+                    if (!IsValidSpellTarget(spell.TargetType, tile)) continue;
 
                     if (dist < bestDist) { bestDist = dist; best = tile; }
                 }
@@ -135,8 +135,8 @@ namespace BaaroForce.Characters
             return best;
         }
 
-        /// <summary>From the NPC's point of view, "Enemy" targets are player Characters
-        /// and "Ally" targets are other NPCs.</summary>
+        /// <summary>From the Npc's point of view, "Enemy" targets are player Characters
+        /// and "Ally" targets are other Npcs.</summary>
         private static bool IsValidSpellTarget(SpellTargetType targetType, MapTile tile)
         {
             switch (targetType)
@@ -204,7 +204,7 @@ namespace BaaroForce.Characters
         /// Builds the longest walkable path toward <paramref name="target"/> that fits
         /// within <see cref="NpcTurnContext.RemainingMovement"/> steps and stops
         /// one tile short of the (occupied) target tile.
-        /// Returns null when the NPC is already adjacent or cannot move at all.
+        /// Returns null when the Npc is already adjacent or cannot move at all.
         /// </summary>
         private static List<MapTile> BuildApproachPath(NpcTurnContext context, MapTile target)
         {
@@ -224,8 +224,8 @@ namespace BaaroForce.Characters
         // Helpers                                                             //
         // ------------------------------------------------------------------ //
 
-        /// <summary>Basic attack range for NPCs.  Defaults to melee (1) until a class
-        /// system is added to NPCs.</summary>
-        private static int GetAttackRange(NPC npc) => 1;
+        /// <summary>Basic attack range for Npcs.  Defaults to melee (1) until a class
+        /// system is added to Npcs.</summary>
+        private static int GetAttackRange(Npc npc) => 1;
     }
 }

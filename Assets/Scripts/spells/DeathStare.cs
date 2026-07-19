@@ -35,10 +35,10 @@ namespace BaaroForce.Spells
 
         public override bool Execute(SpellContext context)
         {
-            bool casterIsNpc = context.Caster is NPC;
+            bool casterIsNpc = context.Caster is Npc;
 
-            // From an NPC's perspective the enemy is a player Character; from a
-            // player Character's perspective the enemy is an NPC.
+            // From an Npc's perspective the enemy is a player Character; from a
+            // player Character's perspective the enemy is an Npc.
             Character target = casterIsNpc
                 ? context.TargetTile?.OccupyingCharacter
                 : context.TargetTile?.OccupyingNpc;
@@ -51,7 +51,7 @@ namespace BaaroForce.Spells
 
             int level = context.CasterLevel;
 
-            // Apply Fear — reduces target's attack for N turns.  NPC-cast Death
+            // Apply Fear — reduces target's attack for N turns.  Npc-cast Death
             // Stare hits harder (attackPenalty 2) than the player-cast version (1).
             int fearDuration = Mathf.FloorToInt(1f + 0.25f * level);
             var fear = new FearStatus(durationTurns: fearDuration, attackPenalty: casterIsNpc ? 2 : 1);
@@ -59,17 +59,17 @@ namespace BaaroForce.Spells
 
             // Deal dark damage.
             int damage = Mathf.FloorToInt(2f + 0.5f * level);
-            target.characterStats.healthPoints -= damage;
+            target.CharacterStats.HealthPoints -= damage;
 
-            Debug.Log($"[DeathStare] '{context.Caster.characterName}' casts Death Stare on " +
-                      $"'{target.characterName}'.  Damage: {damage}, " +
+            Debug.Log($"[DeathStare] '{context.Caster.CharacterName}' casts Death Stare on " +
+                      $"'{target.CharacterName}'.  Damage: {damage}, " +
                       $"Fear: {fearDuration} turn(s).  " +
-                      $"HP: {Mathf.Max(0, target.characterStats.healthPoints)}" +
-                      $"/{target.characterStats.maxHealthPoints}");
+                      $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}" +
+                      $"/{target.CharacterStats.MaxHealthPoints}");
 
-            if (target.characterStats.healthPoints <= 0)
+            if (target.CharacterStats.HealthPoints <= 0)
             {
-                Debug.Log($"[DeathStare] '{target.characterName}' has been defeated!");
+                Debug.Log($"[DeathStare] '{target.CharacterName}' has been defeated!");
                 context.TargetTile.RemoveUnit();
             }
 

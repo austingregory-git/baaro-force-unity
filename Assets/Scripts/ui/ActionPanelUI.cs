@@ -116,9 +116,9 @@ namespace BaaroForce.UI
             for (int i = _listParent.childCount - 1; i >= 0; i--)
                 Destroy(_listParent.GetChild(i).gameObject);
 
-            AddTitle(character.characterName);
+            AddTitle(character.CharacterName);
 
-            bool hasSpells = character.characterSpells?.Count > 0;
+            bool hasSpells = character.CharacterSpells?.Count > 0;
 
             AddActionRow("Movement", ColMove,   () => OnMoveClicked?.Invoke(),   enabled: true);
             AddActionRow("Attack",   ColAttack, () => OnAttackClicked?.Invoke(), enabled: true);

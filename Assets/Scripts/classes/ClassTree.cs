@@ -4,59 +4,59 @@ namespace BaaroForce.Classes
 {
     public class ClassTree
     {
-        public Dictionary<string, CharacterClass> classMap = new Dictionary<string, CharacterClass>();
-        public List<string> tierOneClasses = new List<string>();
-        public List<string> tierTwoClasses = new List<string>();
-        public List<string> tierThreeClasses = new List<string>();
-        public List<string> tierFourClasses = new List<string>();
-        private static readonly Dictionary<string, List<string>> promotionsMap = new Dictionary<string, List<string>>();
+        public Dictionary<string, CharacterClass> ClassMap = new Dictionary<string, CharacterClass>();
+        public List<string> TierOneClasses = new List<string>();
+        public List<string> TierTwoClasses = new List<string>();
+        public List<string> TierThreeClasses = new List<string>();
+        public List<string> TierFourClasses = new List<string>();
+        private static readonly Dictionary<string, List<string>> _promotionsMap = new Dictionary<string, List<string>>();
 
         static ClassTree()
         {
-            promotionsMap.Add("Mage", new List<string> { "DarkMage", "LightMage", "EarthMage", "FireMage", "WaterMage", "WindMage", "Scholar" });
-            promotionsMap.Add("Warrior", new List<string> { "Soldier", "Samurai", "Paladin", "Thug", "Duelist", "StreetFighter", "NatureWarrior" });
-            promotionsMap.Add("Cleric", new List<string> { "Deacon", "Monk", "Druid", "Paladin", "LightMage", "Scholar" });
-            promotionsMap.Add("DarkMage", new List<string> { "TwilightMage", "Undead", "Demon", "LunarMage", "VoidMage" });
+            _promotionsMap.Add("Mage", new List<string> { "DarkMage", "LightMage", "EarthMage", "FireMage", "WaterMage", "WindMage", "Scholar" });
+            _promotionsMap.Add("Warrior", new List<string> { "Soldier", "Samurai", "Paladin", "Thug", "Duelist", "StreetFighter", "NatureWarrior" });
+            _promotionsMap.Add("Cleric", new List<string> { "Deacon", "Monk", "Druid", "Paladin", "LightMage", "Scholar" });
+            _promotionsMap.Add("DarkMage", new List<string> { "TwilightMage", "Undead", "Demon", "LunarMage", "VoidMage" });
         }
 
         public ClassTree()
         {
-            initialize();
+            Initialize();
         }
 
-        public void initialize()
+        public void Initialize()
         {
-            addTierOneClasses();
-            addTierTwoClasses();
-            addTierThreeClasses();
-            addTierFourClasses();
+            AddTierOneClasses();
+            AddTierTwoClasses();
+            AddTierThreeClasses();
+            AddTierFourClasses();
         }
 
-        private void addTierFourClasses()
-        {
-        }
-
-        private void addTierThreeClasses()
+        private void AddTierFourClasses()
         {
         }
 
-        private void addTierTwoClasses()
+        private void AddTierThreeClasses()
         {
         }
 
-        public void add(CharacterClass c)
+        private void AddTierTwoClasses()
         {
-            classMap.Add(c.classID, c);
         }
 
-        public void addTierOneClasses()
+        public void Add(CharacterClass c)
         {
-            tierOneClasses.AddRange(new List<string> { "Mage", "Warrior", "Rogue", "Archer", "Cleric" });
+            ClassMap.Add(c.ClassID, c);
         }
 
-        public static List<string> getPromotions(string classID)
+        public void AddTierOneClasses()
         {
-            return promotionsMap[classID];
+            TierOneClasses.AddRange(new List<string> { "Mage", "Warrior", "Rogue", "Archer", "Cleric" });
+        }
+
+        public static List<string> GetPromotions(string classID)
+        {
+            return _promotionsMap[classID];
         }
     }
 }

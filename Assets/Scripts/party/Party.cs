@@ -5,13 +5,13 @@ namespace BaaroForce.Party
 {
     public class Party
     {
-        public List<Character> members;
-        public int maximumPartySize;
+        public List<Character> Members;
+        public int MaximumPartySize;
 
         public Party(List<Character> members, int maximumPartySize)
         {
-            this.members = members;
-            this.maximumPartySize = maximumPartySize;
+            this.Members = members;
+            this.MaximumPartySize = maximumPartySize;
         }
     }
 }

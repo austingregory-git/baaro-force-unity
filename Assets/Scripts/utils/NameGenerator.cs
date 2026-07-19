@@ -8,15 +8,15 @@ namespace BaaroForce.Utils
     public class NameGenerator : MonoBehaviour
     {
 
-        private readonly System.Random random = new System.Random();
+        private readonly System.Random _random = new System.Random();
         public enum RealmType
         {
-            FIRE,
-            WATER,
-            EARTH,
-            WIND,
-            DARK,
-            LIGHT,
+            Fire,
+            Water,
+            Earth,
+            Wind,
+            Dark,
+            Light,
         }
         // Start is called before the first frame update
         void Start()
@@ -33,14 +33,14 @@ namespace BaaroForce.Utils
         public RealmType GetRandomRealm()
         {
             Array values = Enum.GetValues(typeof(RealmType));
-            int randomIndex = random.Next(0, values.Length);
+            int randomIndex = _random.Next(0, values.Length);
             RealmType randomRealm = (RealmType)values.GetValue(randomIndex);
             return randomRealm;
         }
 
         public string GenerateRandomName(List<string> namePrefixes, List<string> nameSuffixes) 
         {
-            string name = namePrefixes[random.Next(0, namePrefixes.Count)] + nameSuffixes[random.Next(0, nameSuffixes.Count)];
+            string name = namePrefixes[_random.Next(0, namePrefixes.Count)] + nameSuffixes[_random.Next(0, nameSuffixes.Count)];
             return name;
         }
 
@@ -48,17 +48,17 @@ namespace BaaroForce.Utils
         {
             switch (realm)
             {
-                case RealmType.FIRE:
+                case RealmType.Fire:
                     return GetFireRealmName();
-                case RealmType.WATER:
+                case RealmType.Water:
                     return GetWaterRealmName();
-                case RealmType.EARTH:
+                case RealmType.Earth:
                     return GetEarthRealmName();
-                case RealmType.WIND:
+                case RealmType.Wind:
                     return GetWindRealmName();
-                case RealmType.DARK:
+                case RealmType.Dark:
                     return GetDarkRealmName();
-                case RealmType.LIGHT:
+                case RealmType.Light:
                     return GetLightRealmName();
                 default:
                     return "Kirby";

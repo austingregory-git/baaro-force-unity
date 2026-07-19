@@ -1,24 +1,27 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class ButtonBounceTrigger : MonoBehaviour, IPointerEnterHandler
+namespace BaaroForce.Animations
 {
-    private Animator animator;
-    private AudioSource audioSource;
-
-    void Awake()
+    public class ButtonBounceTrigger : MonoBehaviour, IPointerEnterHandler
     {
-        animator = GetComponent<Animator>();
-        audioSource = GetComponent<AudioSource>();
-    }
+        private Animator _animator;
+        private AudioSource _audioSource;
 
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        if (animator != null)
-            animator.SetTrigger("Hover");
-        if (audioSource != null && audioSource.clip != null)
+        void Awake()
         {
-            audioSource.Play();
+            _animator = GetComponent<Animator>();
+            _audioSource = GetComponent<AudioSource>();
+        }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            if (_animator != null)
+                _animator.SetTrigger("Hover");
+            if (_audioSource != null && _audioSource.clip != null)
+            {
+                _audioSource.Play();
+            }
         }
     }
 }

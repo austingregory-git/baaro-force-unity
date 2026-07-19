@@ -7,13 +7,13 @@ namespace BaaroForce.Classes
         public Mage()
             : base(
                 "Mage", 
-                Tier.TIER_ONE, ClassTree.getPromotions("Mage"), 
+                Tier.TierOne, ClassTree.GetPromotions("Mage"),
                 null, 
                 new ClassGrowthWeights(
                     healthPointsGrowthWeight: 0.3, 
                     baseAttackGrowthWeight: 0.1, 
                     manaGrowthWeight: 0.6),
-                classSpecialty: ClassSpecialty.MAGIC)
+                classSpecialty: ClassSpecialty.Magic)
         {   
         }
     }

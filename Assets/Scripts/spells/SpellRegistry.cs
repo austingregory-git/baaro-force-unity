@@ -33,7 +33,7 @@ namespace BaaroForce.Spells
         public static void Register(Spell spell)
         {
             if (spell != null)
-                _all[spell.name] = spell;
+                _all[spell.Name] = spell;
         }
 
         /// <summary>

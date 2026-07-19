@@ -17,13 +17,13 @@ namespace BaaroForce.Map
         public TerrainTile.TerrainType TerrainType      { get; private set; }
         public bool                IsInDeploymentZone    { get; private set; }
 
-        /// <summary>The single unit (player Character or NPC) occupying this tile, or null.</summary>
+        /// <summary>The single unit (player Character or Npc) occupying this tile, or null.</summary>
         public Character OccupyingUnit { get; private set; }
 
-        /// <summary>The occupying unit if it's a player Character (not an NPC), or null.</summary>
-        public Character OccupyingCharacter => OccupyingUnit is NPC ? null : OccupyingUnit;
-        /// <summary>The occupying unit if it's an NPC, or null.</summary>
-        public NPC       OccupyingNpc       => OccupyingUnit as NPC;
+        /// <summary>The occupying unit if it's a player Character (not an Npc), or null.</summary>
+        public Character OccupyingCharacter => OccupyingUnit is Npc ? null : OccupyingUnit;
+        /// <summary>The occupying unit if it's an Npc, or null.</summary>
+        public Npc       OccupyingNpc       => OccupyingUnit as Npc;
 
         public bool IsOccupied => OccupyingUnit != null;
 
@@ -32,18 +32,18 @@ namespace BaaroForce.Map
         /// <summary>Row index in the grid array.</summary>
         public int GridZ { get; private set; }
 
-        /// <summary>The instantiated model (player Character or NPC) on this tile (may be null).</summary>
-        public GameObject UnitObject => unitObject;
+        /// <summary>The instantiated model (player Character or Npc) on this tile (may be null).</summary>
+        public GameObject UnitObject => _unitObject;
 
         // ------------------------------------------------------------------ //
         // Private state                                                       //
         // ------------------------------------------------------------------ //
 
-        private GameObject unitObject;
-        private GameObject deploymentOverlay;
-        private GameObject moveHighlightOverlay;
-        private GameObject attackHighlightOverlay;
-        private GameObject spellHighlightOverlay;
+        private GameObject _unitObject;
+        private GameObject _deploymentOverlay;
+        private GameObject _moveHighlightOverlay;
+        private GameObject _attackHighlightOverlay;
+        private GameObject _spellHighlightOverlay;
 
         private static readonly Color OverlayColor         = new Color(0.3f, 0.6f, 1f, 0.92f);
         private static readonly Color MoveHighlightColor    = new Color(0.3f, 0.6f, 1f, 0.92f);
@@ -86,29 +86,29 @@ namespace BaaroForce.Map
 
             if (active)
             {
-                if (deploymentOverlay != null) return;
+                if (_deploymentOverlay != null) return;
 
-                deploymentOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                deploymentOverlay.name = "DeploymentOverlay";
-                Destroy(deploymentOverlay.GetComponent<Collider>());
+                _deploymentOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                _deploymentOverlay.name = "DeploymentOverlay";
+                Destroy(_deploymentOverlay.GetComponent<Collider>());
 
-                deploymentOverlay.transform.SetParent(transform, false);
+                _deploymentOverlay.transform.SetParent(transform, false);
                 // Quad faces +Z by default; rotate 90° on X so it lies flat on the top face.
                 // In tile-local space the top face is at y = 0.5; use 0.52 to avoid Z-fighting.
-                deploymentOverlay.transform.localPosition = new Vector3(0f, 0.52f, 0f);
-                deploymentOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                deploymentOverlay.transform.localScale    = Vector3.one;
+                _deploymentOverlay.transform.localPosition = new Vector3(0f, 0.52f, 0f);
+                _deploymentOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                _deploymentOverlay.transform.localScale    = Vector3.one;
 
                 var mat = new Material(Shader.Find("Standard"));
                 ApplyTransparency(mat, OverlayColor);
-                deploymentOverlay.GetComponent<MeshRenderer>().material = mat;
+                _deploymentOverlay.GetComponent<MeshRenderer>().material = mat;
             }
             else
             {
-                if (deploymentOverlay != null)
+                if (_deploymentOverlay != null)
                 {
-                    Destroy(deploymentOverlay);
-                    deploymentOverlay = null;
+                    Destroy(_deploymentOverlay);
+                    _deploymentOverlay = null;
                 }
             }
         }
@@ -125,28 +125,28 @@ namespace BaaroForce.Map
         {
             if (active)
             {
-                if (moveHighlightOverlay != null) return;
+                if (_moveHighlightOverlay != null) return;
 
-                moveHighlightOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                moveHighlightOverlay.name = "MoveHighlight";
-                Destroy(moveHighlightOverlay.GetComponent<Collider>());
+                _moveHighlightOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                _moveHighlightOverlay.name = "MoveHighlight";
+                Destroy(_moveHighlightOverlay.GetComponent<Collider>());
 
-                moveHighlightOverlay.transform.SetParent(transform, false);
+                _moveHighlightOverlay.transform.SetParent(transform, false);
                 // Sit slightly above the deployment overlay (0.52) to avoid Z-fighting.
-                moveHighlightOverlay.transform.localPosition = new Vector3(0f, 0.54f, 0f);
-                moveHighlightOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                moveHighlightOverlay.transform.localScale    = Vector3.one;
+                _moveHighlightOverlay.transform.localPosition = new Vector3(0f, 0.54f, 0f);
+                _moveHighlightOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                _moveHighlightOverlay.transform.localScale    = Vector3.one;
 
                 var mat = new Material(Shader.Find("Standard"));
                 ApplyTransparency(mat, MoveHighlightColor);
-                moveHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
+                _moveHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
             }
             else
             {
-                if (moveHighlightOverlay != null)
+                if (_moveHighlightOverlay != null)
                 {
-                    Destroy(moveHighlightOverlay);
-                    moveHighlightOverlay = null;
+                    Destroy(_moveHighlightOverlay);
+                    _moveHighlightOverlay = null;
                 }
             }
         }
@@ -159,27 +159,27 @@ namespace BaaroForce.Map
         {
             if (active)
             {
-                if (attackHighlightOverlay != null) return;
+                if (_attackHighlightOverlay != null) return;
 
-                attackHighlightOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                attackHighlightOverlay.name = "AttackHighlight";
-                Destroy(attackHighlightOverlay.GetComponent<Collider>());
+                _attackHighlightOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                _attackHighlightOverlay.name = "AttackHighlight";
+                Destroy(_attackHighlightOverlay.GetComponent<Collider>());
 
-                attackHighlightOverlay.transform.SetParent(transform, false);
-                attackHighlightOverlay.transform.localPosition = new Vector3(0f, 0.54f, 0f);
-                attackHighlightOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                attackHighlightOverlay.transform.localScale    = Vector3.one;
+                _attackHighlightOverlay.transform.SetParent(transform, false);
+                _attackHighlightOverlay.transform.localPosition = new Vector3(0f, 0.54f, 0f);
+                _attackHighlightOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                _attackHighlightOverlay.transform.localScale    = Vector3.one;
 
                 var mat = new Material(Shader.Find("Standard"));
                 ApplyTransparency(mat, AttackHighlightColor);
-                attackHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
+                _attackHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
             }
             else
             {
-                if (attackHighlightOverlay != null)
+                if (_attackHighlightOverlay != null)
                 {
-                    Destroy(attackHighlightOverlay);
-                    attackHighlightOverlay = null;
+                    Destroy(_attackHighlightOverlay);
+                    _attackHighlightOverlay = null;
                 }
             }
         }
@@ -193,27 +193,27 @@ namespace BaaroForce.Map
         {
             if (active)
             {
-                if (spellHighlightOverlay != null) return;
+                if (_spellHighlightOverlay != null) return;
 
-                spellHighlightOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                spellHighlightOverlay.name = "SpellHighlight";
-                Destroy(spellHighlightOverlay.GetComponent<Collider>());
+                _spellHighlightOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                _spellHighlightOverlay.name = "SpellHighlight";
+                Destroy(_spellHighlightOverlay.GetComponent<Collider>());
 
-                spellHighlightOverlay.transform.SetParent(transform, false);
-                spellHighlightOverlay.transform.localPosition = new Vector3(0f, 0.55f, 0f);
-                spellHighlightOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                spellHighlightOverlay.transform.localScale    = Vector3.one;
+                _spellHighlightOverlay.transform.SetParent(transform, false);
+                _spellHighlightOverlay.transform.localPosition = new Vector3(0f, 0.55f, 0f);
+                _spellHighlightOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                _spellHighlightOverlay.transform.localScale    = Vector3.one;
 
                 var mat = new Material(Shader.Find("Standard"));
                 ApplyTransparency(mat, color);
-                spellHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
+                _spellHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
             }
             else
             {
-                if (spellHighlightOverlay != null)
+                if (_spellHighlightOverlay != null)
                 {
-                    Destroy(spellHighlightOverlay);
-                    spellHighlightOverlay = null;
+                    Destroy(_spellHighlightOverlay);
+                    _spellHighlightOverlay = null;
                 }
             }
         }
@@ -230,44 +230,44 @@ namespace BaaroForce.Map
         {
             if (IsOccupied) return;
             OccupyingUnit = unit;
-            unit.characterCurrentTile = this;
+            unit.CharacterCurrentTile = this;
 
-            var prefab = Resources.Load<GameObject>(unit.characterModelPath);
+            var prefab = Resources.Load<GameObject>(unit.CharacterModelPath);
             if (prefab != null)
             {
-                unitObject = Instantiate(prefab);
+                _unitObject = Instantiate(prefab);
             }
             else
             {
-                Debug.LogWarning($"[MapTile] Model not found at '{unit.characterModelPath}'. Using fallback.");
-                unitObject = CreateFallback();
+                Debug.LogWarning($"[MapTile] Model not found at '{unit.CharacterModelPath}'. Using fallback.");
+                _unitObject = CreateFallback();
             }
 
-            unitObject.name = $"{(unit is NPC ? "NPC" : "Character")}_{unit.characterName}";
+            _unitObject.name = $"{(unit is Npc ? "Npc" : "Character")}_{unit.CharacterName}";
 
             // Parent to the MapGenerator (tile's parent) — it has uniform scale (1,1,1),
             // so world-space and local-space transforms are equivalent.
-            unitObject.transform.SetParent(transform.parent, false);
+            _unitObject.transform.SetParent(transform.parent, false);
 
             // Sit model on top of this tile in world space.
             float halfTileH = transform.lossyScale.y * 0.5f;
-            unitObject.transform.position = transform.position + Vector3.up * (halfTileH + 0.05f);
+            _unitObject.transform.position = transform.position + Vector3.up * (halfTileH + 0.05f);
 
             // Scale to 80 % of the tile's world footprint, preserving model proportions.
-            ScaleToFit(unitObject, transform.lossyScale.x * 0.8f);
+            ScaleToFit(_unitObject, transform.lossyScale.x * 0.8f);
         }
 
         /// <summary>Removes the occupying unit from this tile and destroys its model.</summary>
         public void RemoveUnit()
         {
             if (OccupyingUnit != null)
-                OccupyingUnit.characterCurrentTile = null;
+                OccupyingUnit.CharacterCurrentTile = null;
 
             OccupyingUnit = null;
-            if (unitObject != null)
+            if (_unitObject != null)
             {
-                Destroy(unitObject);
-                unitObject = null;
+                Destroy(_unitObject);
+                _unitObject = null;
             }
         }
 
@@ -279,7 +279,7 @@ namespace BaaroForce.Map
         public void ReleaseUnit()
         {
             OccupyingUnit = null;
-            unitObject    = null;   // we no longer own this reference
+            _unitObject    = null;   // we no longer own this reference
         }
 
         /// <summary>
@@ -289,8 +289,8 @@ namespace BaaroForce.Map
         public void AssignUnit(Character unit, GameObject model)
         {
             OccupyingUnit = unit;
-            unitObject    = model;
-            unit.characterCurrentTile = this;
+            _unitObject    = model;
+            unit.CharacterCurrentTile = this;
         }
 
         // ------------------------------------------------------------------ //
@@ -341,22 +341,22 @@ namespace BaaroForce.Map
         {
             switch (type)
             {
-                case TerrainTile.TerrainType.GRASS:    return new Color(0.27f, 0.65f, 0.16f);
-                case TerrainTile.TerrainType.FOREST:   return new Color(0.07f, 0.35f, 0.07f);
-                case TerrainTile.TerrainType.MOUNTAIN: return new Color(0.55f, 0.52f, 0.47f);
-                case TerrainTile.TerrainType.WATER:    return new Color(0.12f, 0.46f, 0.78f);
-                case TerrainTile.TerrainType.DESERT:   return new Color(0.93f, 0.84f, 0.45f);
-                case TerrainTile.TerrainType.SWAMP:    return new Color(0.28f, 0.33f, 0.13f);
-                case TerrainTile.TerrainType.VOLCANO:  return new Color(0.72f, 0.16f, 0.05f);
-                case TerrainTile.TerrainType.SNOW:     return new Color(0.92f, 0.96f, 1.00f);
-                case TerrainTile.TerrainType.PLAINS:   return new Color(0.70f, 0.84f, 0.40f);
-                case TerrainTile.TerrainType.VOID:     return new Color(0.10f, 0.03f, 0.18f);
-                case TerrainTile.TerrainType.ASH:      return new Color(0.50f, 0.50f, 0.50f);
-                case TerrainTile.TerrainType.LAVA:     return new Color(0.80f, 0.20f, 0.00f);
-                case TerrainTile.TerrainType.TUNDRA:   return new Color(0.85f, 0.90f, 0.95f);
-                case TerrainTile.TerrainType.CREEK:    return new Color(0.15f, 0.40f, 0.70f);
-                case TerrainTile.TerrainType.OCEAN:    return new Color(0.05f, 0.25f, 0.50f);
-                case TerrainTile.TerrainType.MEADOW:   return new Color(0.30f, 0.70f, 0.20f);
+                case TerrainTile.TerrainType.Grass:    return new Color(0.27f, 0.65f, 0.16f);
+                case TerrainTile.TerrainType.Forest:   return new Color(0.07f, 0.35f, 0.07f);
+                case TerrainTile.TerrainType.Mountain: return new Color(0.55f, 0.52f, 0.47f);
+                case TerrainTile.TerrainType.Water:    return new Color(0.12f, 0.46f, 0.78f);
+                case TerrainTile.TerrainType.Desert:   return new Color(0.93f, 0.84f, 0.45f);
+                case TerrainTile.TerrainType.Swamp:    return new Color(0.28f, 0.33f, 0.13f);
+                case TerrainTile.TerrainType.Volcano:  return new Color(0.72f, 0.16f, 0.05f);
+                case TerrainTile.TerrainType.Snow:     return new Color(0.92f, 0.96f, 1.00f);
+                case TerrainTile.TerrainType.Plains:   return new Color(0.70f, 0.84f, 0.40f);
+                case TerrainTile.TerrainType.Void:     return new Color(0.10f, 0.03f, 0.18f);
+                case TerrainTile.TerrainType.Ash:      return new Color(0.50f, 0.50f, 0.50f);
+                case TerrainTile.TerrainType.Lava:     return new Color(0.80f, 0.20f, 0.00f);
+                case TerrainTile.TerrainType.Tundra:   return new Color(0.85f, 0.90f, 0.95f);
+                case TerrainTile.TerrainType.Creek:    return new Color(0.15f, 0.40f, 0.70f);
+                case TerrainTile.TerrainType.Ocean:    return new Color(0.05f, 0.25f, 0.50f);
+                case TerrainTile.TerrainType.Meadow:   return new Color(0.30f, 0.70f, 0.20f);
                 default:                               return Color.white;
             }
         }

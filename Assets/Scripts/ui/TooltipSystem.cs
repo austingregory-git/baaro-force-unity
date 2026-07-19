@@ -97,8 +97,8 @@ namespace BaaroForce.UI
             sb.Append("\n");
             foreach (Keyword kw in keywords)
             {
-                string hex = ColorUtility.ToHtmlStringRGB(kw.color);
-                sb.Append($"\n<color=#{hex}><b>{kw.name}</b></color>  {kw.description}");
+                string hex = ColorUtility.ToHtmlStringRGB(kw.Color);
+                sb.Append($"\n<color=#{hex}><b>{kw.Name}</b></color>  {kw.Description}");
             }
             return sb.ToString();
         }
@@ -170,7 +170,7 @@ namespace BaaroForce.UI
             tmp.fontSize           = fontSize;
             tmp.fontStyle          = bold ? FontStyles.Bold : FontStyles.Normal;
             tmp.color              = color;
-            tmp.enableWordWrapping = true;
+            tmp.textWrappingMode = TextWrappingModes.Normal;
             tmp.font = Resources.Load<TMP_FontAsset>("Fonts/Baloo2-Bold SDF");
 
             var csf           = go.AddComponent<ContentSizeFitter>();

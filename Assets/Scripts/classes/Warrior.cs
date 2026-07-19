@@ -7,14 +7,14 @@ namespace BaaroForce.Classes
         public Warrior()
             : base(
                 "Warrior", 
-                Tier.TIER_ONE, 
-                ClassTree.getPromotions("Warrior"), 
+                Tier.TierOne, 
+                ClassTree.GetPromotions("Warrior"),
                 null, 
                 new ClassGrowthWeights(
                     healthPointsGrowthWeight: 0.5, 
                     baseAttackGrowthWeight: 0.4, 
                     manaGrowthWeight: 0.1),
-                classSpecialty: ClassSpecialty.MELEE)
+                classSpecialty: ClassSpecialty.Melee)
         {
         }
     }

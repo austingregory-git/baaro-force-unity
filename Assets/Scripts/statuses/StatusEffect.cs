@@ -7,7 +7,7 @@ namespace BaaroForce.Statuses
     ///
     /// Effects operate on <see cref="CharacterStats"/> directly rather than on a
     /// specific unit type, so the same subclass can be applied to both player
-    /// characters and NPCs without duplication.
+    /// characters and Npcs without duplication.
     ///
     /// Lifecycle:
     ///   OnApply      — called once when the effect is first applied.
@@ -59,9 +59,9 @@ namespace BaaroForce.Statuses
 
         public enum StatusEffectType
         {
-            BUFF,
-            DEBUFF,
-            CUSTOM
+            Buff,
+            Debuff,
+            Custom
         }
     }
 }

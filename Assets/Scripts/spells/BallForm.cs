@@ -38,9 +38,9 @@ namespace BaaroForce.Spells
 
             // Apply Shield — increases caster's shield for 3 + level turns.
             int shieldAmount = 3 + level;
-            context.Caster.characterStats.shieldPoints += shieldAmount;
+            context.Caster.CharacterStats.ShieldPoints += shieldAmount;
 
-            Debug.Log($"[BallForm] '{context.Caster.characterName}' gains {shieldAmount} shield points.");
+            Debug.Log($"[BallForm] '{context.Caster.CharacterName}' gains {shieldAmount} shield points.");
 
             return true;
         }

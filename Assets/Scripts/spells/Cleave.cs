@@ -39,8 +39,8 @@ namespace BaaroForce.Spells
             List<MapTile> targetTiles = SpellAreaUtils.GetHorizontalLineTiles(
                 casterTile: context.CasterTile, 
                 targetTile: context.TargetTile, 
-                range: range,
-                area: area, 
+                range: Range,
+                area: Area,
                 allTiles: context.AllTiles, 
                 gridSize: context.GridSize);
             foreach (MapTile tile in targetTiles)
@@ -48,14 +48,14 @@ namespace BaaroForce.Spells
                 if (tile.IsOccupied && tile.OccupyingNpc != null)
                 {
                     // Apply damage to the occupant
-                    NPC target = tile.OccupyingNpc;
-                    int damage = context.Caster.characterStats.TotalAttack;
-                    target.characterStats.healthPoints -= damage;
-                    Debug.Log($"[Cleave] '{context.Caster.characterName}' dealt {damage} damage to '{target.characterName}'. " +
-                              $"HP: {target.characterStats.healthPoints}/{target.characterStats.maxHealthPoints}");
-                    if (target.characterStats.healthPoints <= 0)
+                    Npc target = tile.OccupyingNpc;
+                    int damage = context.Caster.CharacterStats.TotalAttack;
+                    target.CharacterStats.HealthPoints -= damage;
+                    Debug.Log($"[Cleave] '{context.Caster.CharacterName}' dealt {damage} damage to '{target.CharacterName}'. " +
+                              $"HP: {target.CharacterStats.HealthPoints}/{target.CharacterStats.MaxHealthPoints}");
+                    if (target.CharacterStats.HealthPoints <= 0)
                     {
-                        Debug.Log($"[Cleave] '{target.characterName}' has been defeated!");
+                        Debug.Log($"[Cleave] '{target.CharacterName}' has been defeated!");
                         tile.RemoveUnit();
                     }
                               

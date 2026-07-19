@@ -14,7 +14,7 @@ namespace BaaroForce.Characters
                 characterClass: ClassRegistry.Get("Warrior"),
                 characterName: "Winston", 
                 characterStats: WinstonBaseStats, 
-                characterRealms: new List<Realm> { Realm.DARK },
+                characterRealms: new List<Realm> { Realm.Dark },
                 characterPassiveAbilities: new List<PassiveAbility>
                 {
                     new AutumnalGrowth()

@@ -9,7 +9,7 @@ namespace BaaroForce.Statuses
     /// </summary>
     public class RegenStatus : StatusEffect
     {
-        private readonly int healAmount;
+        private readonly int _healAmount;
 
         /// <param name="durationTurns">How many of the target's turns the effect lasts.</param>
         /// <param name="healAmount">How much health to regenerate each turn.</param>
@@ -18,9 +18,9 @@ namespace BaaroForce.Statuses
                 name:        "Regen",
                 description: $"Regenerates {healAmount} health for {durationTurns} turns.",
                 durationTurns: durationTurns,
-                effectType: StatusEffectType.BUFF)
+                effectType: StatusEffectType.Buff)
         {
-            this.healAmount = healAmount;
+            this._healAmount = healAmount;
         }
 
         public override void OnApply(CharacterStats stats)
@@ -30,8 +30,8 @@ namespace BaaroForce.Statuses
 
         public override void OnTurnStart(CharacterStats stats)
         {
-            stats.healthPoints += healAmount;
-            stats.healthPoints = Mathf.Min(stats.healthPoints, stats.maxHealthPoints);
+            stats.HealthPoints += _healAmount;
+            stats.HealthPoints = Mathf.Min(stats.HealthPoints, stats.MaxHealthPoints);
         }
 
         public override void OnRemove(CharacterStats stats)

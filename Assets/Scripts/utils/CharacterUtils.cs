@@ -9,8 +9,8 @@ namespace BaaroForce.Utils
     public class CharacterUtils : MonoBehaviour
     {
 
-        private readonly System.Random random = new System.Random();
-        private readonly NameGenerator nameGenerator = new NameGenerator();
+        private readonly System.Random _random = new System.Random();
+        private readonly NameGenerator _nameGenerator = new NameGenerator();
 
         // Start is called before the first frame update
         void Start()
@@ -18,14 +18,14 @@ namespace BaaroForce.Utils
             //testing... call this 100 times
             for(int i=0; i < 100; i++) {
 
-                int level = random.Next(0, 30);
+                int level = _random.Next(0, 30);
                 CharacterStats characterStats = GenerateCharacterStats(level);
 
                 Debug.Log("Level: " + level);
-                Debug.Log("HealthPoints: " + characterStats.healthPoints);
-                Debug.Log("BaseAttack: " + characterStats.baseAttack);
-                Debug.Log("Mana: " + characterStats.mana);
-                Debug.Log("Movement: " + characterStats.movement);
+                Debug.Log("HealthPoints: " + characterStats.HealthPoints);
+                Debug.Log("BaseAttack: " + characterStats.BaseAttack);
+                Debug.Log("Mana: " + characterStats.Mana);
+                Debug.Log("Movement: " + characterStats.Movement);
             }
         }
 
@@ -34,9 +34,9 @@ namespace BaaroForce.Utils
             int lowerBound = (level/2)+4;
             int upperBound = (level/2)+12;
 
-            int healthPoints = random.Next(lowerBound, upperBound);
-            int baseAttack = random.Next(lowerBound, upperBound);
-            int mana = random.Next(lowerBound, upperBound);
+            int healthPoints = _random.Next(lowerBound, upperBound);
+            int baseAttack = _random.Next(lowerBound, upperBound);
+            int mana = _random.Next(lowerBound, upperBound);
             int movement = 5;
             CharacterStats characterStats = new CharacterStats(healthPoints, baseAttack, mana, movement);
             return characterStats;
@@ -71,7 +71,7 @@ namespace BaaroForce.Utils
             var entries = new List<(Func<Character> factory, float weight)>(CharacterRegistry.GetAll().Count);
             foreach (Func<Character> factory in CharacterRegistry.GetAll())
             {
-                float weight = factory().characterRealms.Contains(realm) ? 0.5f : 0.1f;
+                float weight = factory().CharacterRealms.Contains(realm) ? 0.5f : 0.1f;
                 entries.Add((factory, weight));
             }
             return entries;
@@ -112,10 +112,10 @@ namespace BaaroForce.Utils
         //     List<Character> characters = new List<Character>();
 
         //     for(int i=0; i < numCharacters; i++) {
-        //         int level = random.Next(0, 30);
+        //         int level = _random.Next(0, 30);
         //         CharacterStats characterStats = GenerateCharacterStats(level);
         //         CharacterClass characterClass = new Mage();
-        //         string characterName = nameGenerator.GetNameByRealm(nameGenerator.GetRandomRealm());
+        //         string characterName = _nameGenerator.GetNameByRealm(_nameGenerator.GetRandomRealm());
         //         Character character = new Character(characterClass, characterName, characterStats);
         //         characters.Add(character);
         //     }

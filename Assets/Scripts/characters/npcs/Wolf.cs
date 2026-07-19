@@ -5,7 +5,7 @@ using BaaroForce.Spells;
 
 namespace BaaroForce.Characters
 {
-    public class Wolf : NPC
+    public class Wolf : Npc
     {
         public override int BaseStrengthIndex => 1;
 
@@ -16,7 +16,7 @@ namespace BaaroForce.Characters
                 //ClassRegistry.Get("Beast"), 
                 characterName: "Wolf", 
                 characterStats: new CharacterStats(maxHealthPoints: 5, baseAttack: 2, maxMana: 2, movement: 5),
-                characterRealms: new List<Realm> { Realm.EARTH },
+                characterRealms: new List<Realm> { Realm.Earth },
                 characterPassiveAbilities: new List<PassiveAbility>
                 {
 
@@ -26,7 +26,7 @@ namespace BaaroForce.Characters
                     
                 },
                 characterModelPath: WolfModelPath,
-                specialty: NPCSpecialty.MELEE)
+                specialty: NpcSpecialty.Melee)
         {
             AI = new AggressiveNpcAI();
         }

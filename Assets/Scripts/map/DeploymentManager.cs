@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using BaaroForce.Characters;
+using BaaroForce.GameController;
 
 namespace BaaroForce.Map
 {
@@ -15,17 +16,17 @@ namespace BaaroForce.Map
         private const int DeployWidth  = 4;
         private const int DeployHeight = 2;
 
-        private MapTile[,] tiles;
-        private int         gridSize;
-        private float       step;
-        private float       originX;
-        private float       originZ;
+        private MapTile[,] _tiles;
+        private int         _gridSize;
+        private float       _step;
+        private float       _originX;
+        private float       _originZ;
 
-        private readonly List<MapTile>   deploymentTiles   = new List<MapTile>();
-        private readonly List<Character> charactersToPlace = new List<Character>();
-        private int placedCount;
+        private readonly List<MapTile>   _deploymentTiles   = new List<MapTile>();
+        private readonly List<Character> _charactersToPlace = new List<Character>();
+        private int _placedCount;
 
-        private bool   deploymentComplete;
+        private bool   _deploymentComplete;
 
         /// <summary>
         /// Fired when the last party member has been placed (or immediately if the
@@ -40,25 +41,25 @@ namespace BaaroForce.Map
         public void Initialize(MapTile[,] grid, int size, float tileStep,
                                float originWorldX, float originWorldZ)
         {
-            tiles   = grid;
-            gridSize = size;
-            step    = tileStep;
-            originX = originWorldX;
-            originZ = originWorldZ;
+            _tiles   = grid;
+            _gridSize = size;
+            _step    = tileStep;
+            _originX = originWorldX;
+            _originZ = originWorldZ;
 
-            deploymentTiles.Clear();
-            charactersToPlace.Clear();
-            placedCount       = 0;
-            deploymentComplete = false;
+            _deploymentTiles.Clear();
+            _charactersToPlace.Clear();
+            _placedCount       = 0;
+            _deploymentComplete = false;
 
             // Collect party members that still need to be placed.
-            if (PartyManager.Instance?.Party?.members != null)
-                charactersToPlace.AddRange(PartyManager.Instance.Party.members);
+            if (PartyManager.Instance?.Party?.Members != null)
+                _charactersToPlace.AddRange(PartyManager.Instance.Party.Members);
 
             // No one to place — skip the deployment phase entirely.
-            if (charactersToPlace.Count == 0)
+            if (_charactersToPlace.Count == 0)
             {
-                deploymentComplete = true;
+                _deploymentComplete = true;
                 OnDeploymentComplete?.Invoke();
                 return;
             }
@@ -73,23 +74,23 @@ namespace BaaroForce.Map
         private void MarkDeploymentZone()
         {
             // Centre 4 columns, bottom 2 rows.
-            int startX = gridSize / 2 - DeployWidth / 2;
+            int startX = _gridSize / 2 - DeployWidth / 2;
             int startZ = 0;
 
             for (int x = startX; x < startX + DeployWidth; x++)
             {
                 for (int z = startZ; z < startZ + DeployHeight; z++)
                 {
-                    MapTile tile = tiles[x, z];
+                    MapTile tile = _tiles[x, z];
                     tile.SetDeploymentZone(true);
-                    deploymentTiles.Add(tile);
+                    _deploymentTiles.Add(tile);
                 }
             }
         }
 
         private void ClearDeploymentOverlays()
         {
-            foreach (MapTile tile in deploymentTiles)
+            foreach (MapTile tile in _deploymentTiles)
                 tile.SetDeploymentZone(false);
         }
 
@@ -98,20 +99,20 @@ namespace BaaroForce.Map
         // ------------------------------------------------------------------ //
 
         /// <summary>
-        /// Places each NPC in <paramref name="enemies"/> on a randomly chosen,
+        /// Places each Npc in <paramref name="enemies"/> on a randomly chosen,
         /// unoccupied tile in the far half of the grid (the side opposite the
         /// player deployment zone).
         /// </summary>
-        public void PlaceEnemyPack(List<NPC> enemies)
+        public void PlaceEnemyPack(List<Npc> enemies)
         {
             if (enemies == null || enemies.Count == 0) return;
 
-            // Collect all unoccupied tiles in the far half of the grid.
+            // Collect all unoccupied _tiles in the far half of the grid.
             var candidateTiles = new List<MapTile>();
-            for (int x = 0; x < gridSize; x++)
-                for (int z = gridSize / 2; z < gridSize; z++)
-                    if (!tiles[x, z].IsOccupied)
-                        candidateTiles.Add(tiles[x, z]);
+            for (int x = 0; x < _gridSize; x++)
+                for (int z = _gridSize / 2; z < _gridSize; z++)
+                    if (!_tiles[x, z].IsOccupied)
+                        candidateTiles.Add(_tiles[x, z]);
 
             // Fisher-Yates shuffle so selections are uniformly random.
             for (int i = candidateTiles.Count - 1; i > 0; i--)
@@ -132,7 +133,7 @@ namespace BaaroForce.Map
 
         private void Update()
         {
-            if (deploymentComplete) return;
+            if (_deploymentComplete) return;
             if (!Input.GetMouseButtonDown(0)) return;
 
             HandleClick();
@@ -150,25 +151,25 @@ namespace BaaroForce.Map
             Vector3 hitPoint = ray.GetPoint(enter);
 
             // Derive grid indices from the XZ hit position.
-            int gridX = Mathf.RoundToInt((hitPoint.x - originX) / step);
-            int gridZ = Mathf.RoundToInt((hitPoint.z - originZ) / step);
+            int gridX = Mathf.RoundToInt((hitPoint.x - _originX) / _step);
+            int gridZ = Mathf.RoundToInt((hitPoint.z - _originZ) / _step);
 
-            if (gridX < 0 || gridX >= gridSize || gridZ < 0 || gridZ >= gridSize)
+            if (gridX < 0 || gridX >= _gridSize || gridZ < 0 || gridZ >= _gridSize)
                 return;
 
-            MapTile tile = tiles[gridX, gridZ];
+            MapTile tile = _tiles[gridX, gridZ];
 
             if (!tile.IsInDeploymentZone || tile.IsOccupied)
                 return;
 
             // Place the next queued character.
-            Character character = charactersToPlace[placedCount];
+            Character character = _charactersToPlace[_placedCount];
             tile.PlaceUnit(character);
-            placedCount++;
+            _placedCount++;
 
-            if (placedCount >= charactersToPlace.Count)
+            if (_placedCount >= _charactersToPlace.Count)
             {
-                deploymentComplete = true;
+                _deploymentComplete = true;
                 ClearDeploymentOverlays();
                 OnDeploymentComplete?.Invoke();
             }

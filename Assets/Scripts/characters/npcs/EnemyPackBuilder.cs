@@ -4,10 +4,10 @@ using UnityEngine;
 namespace BaaroForce.Characters
 {
     /// <summary>
-    /// Builds an enemy pack by randomly selecting NPCs from <see cref="NPCRegistry"/>
-    /// until the cumulative <see cref="NPC.StrengthIndex"/> meets the requested target.
+    /// Builds an enemy pack by randomly selecting Npcs from <see cref="NpcRegistry"/>
+    /// until the cumulative <see cref="Npc.StrengthIndex"/> meets the requested target.
     ///
-    /// All NPCs are created at Level 1 (default).  No single NPC will push the total
+    /// All Npcs are created at Level 1 (default).  No single Npc will push the total
     /// over the target; if no remaining candidate fits the leftover budget the method
     /// stops early so the result may be slightly under the target rather than over it.
     ///
@@ -17,28 +17,28 @@ namespace BaaroForce.Characters
     public static class EnemyPackBuilder
     {
         /// <summary>
-        /// Returns a list of NPCs whose combined <see cref="NPC.StrengthIndex"/> equals
+        /// Returns a list of Npcs whose combined <see cref="Npc.StrengthIndex"/> equals
         /// <paramref name="targetStrength"/> as closely as possible without exceeding it.
         /// </summary>
         /// <param name="targetStrength">Desired total enemy strength for the encounter.</param>
-        public static List<NPC> Build(int targetStrength)
+        public static List<Npc> Build(int targetStrength)
         {
-            var pack      = new List<NPC>();
-            var factories = NPCRegistry.GetAll();
+            var pack      = new List<Npc>();
+            var factories = NpcRegistry.GetAll();
 
             if (factories.Count == 0 || targetStrength <= 0)
                 return pack;
 
             int accumulated = 0;
 
-            // Limit iterations to avoid an infinite loop if no NPC ever fits the remaining budget.
+            // Limit iterations to avoid an infinite loop if no Npc ever fits the remaining budget.
             int maxAttempts = targetStrength * 20;
 
             for (int attempt = 0; attempt < maxAttempts && accumulated < targetStrength; attempt++)
             {
-                NPC candidate = factories[Random.Range(0, factories.Count)]();
+                Npc candidate = factories[Random.Range(0, factories.Count)]();
 
-                // Skip degenerate cases where an NPC has zero or negative strength.
+                // Skip degenerate cases where an Npc has zero or negative strength.
                 if (candidate.StrengthIndex <= 0) continue;
 
                 // Only add the candidate if it fits within the remaining budget.

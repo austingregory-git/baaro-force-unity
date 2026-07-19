@@ -6,7 +6,7 @@ using BaaroForce.Map;
 
 namespace BaaroForce.Characters
 {
-    public class MozeemElder : NPC
+    public class MozeemElder : Npc
     {
         public override int BaseStrengthIndex => 1;
 
@@ -17,7 +17,7 @@ namespace BaaroForce.Characters
                 //ClassRegistry.Get("Beast"), 
                 characterName: "Mozeem Elder", 
                 characterStats: new CharacterStats(maxHealthPoints: 5, baseAttack: 1, maxMana: 8, movement: 2),
-                characterRealms: new List<Realm> { Realm.EARTH },
+                characterRealms: new List<Realm> { Realm.Earth },
                 characterPassiveAbilities: new List<PassiveAbility>
                 {
 
@@ -27,7 +27,7 @@ namespace BaaroForce.Characters
                     
                 },
                 characterModelPath: MozeemElderModelPath,
-                specialty: NPCSpecialty.MAGIC)
+                specialty: NpcSpecialty.Magic)
         {
             AI = new AggressiveNpcAI();
         }

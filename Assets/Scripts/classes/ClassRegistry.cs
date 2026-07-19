@@ -4,7 +4,7 @@ namespace BaaroForce.Classes
 {
     /// <summary>
     /// Provides a canonical singleton instance of each <see cref="CharacterClass"/>
-    /// keyed by <see cref="CharacterClass.classID"/>.
+    /// keyed by <see cref="CharacterClass.ClassID"/>.
     ///
     /// Use <see cref="Get"/> wherever a class object is needed from a string ID —
     /// most commonly in <see cref="BaaroForce.Spells.ClassSpell"/> constructors.
@@ -43,7 +43,7 @@ namespace BaaroForce.Classes
         public static void Register(CharacterClass characterClass)
         {
             if (characterClass != null)
-                _all[characterClass.classID] = characterClass;
+                _all[characterClass.ClassID] = characterClass;
         }
     }
 }

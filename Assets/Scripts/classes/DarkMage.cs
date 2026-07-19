@@ -7,11 +7,11 @@ namespace BaaroForce.Classes
         public DarkMage()
             : base(
                 "DarkMage", 
-                Tier.TIER_TWO, 
-                ClassTree.getPromotions("DarkMage"), 
+                Tier.TierTwo, 
+                ClassTree.GetPromotions("DarkMage"),
                 null, 
                 new ClassGrowthWeights(0.4, 0.2, 0.4),
-                classSpecialty: ClassSpecialty.MAGIC)
+                classSpecialty: ClassSpecialty.Magic)
         {
         }
     }

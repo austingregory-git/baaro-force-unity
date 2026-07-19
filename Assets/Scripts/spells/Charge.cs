@@ -68,24 +68,24 @@ namespace BaaroForce.Spells
 
         public override bool Execute(SpellContext context)
         {
-            NPC target = context.TargetTile?.OccupyingNpc;
+            Npc target = context.TargetTile?.OccupyingNpc;
             if (target == null)
             {
                 Debug.LogWarning("[Charge] No enemy on the target tile.");
                 return false;
             }
 
-            int damage = context.Caster.characterStats.TotalAttack;
-            target.characterStats.healthPoints -= damage;
+            int damage = context.Caster.CharacterStats.TotalAttack;
+            target.CharacterStats.HealthPoints -= damage;
 
-            Debug.Log($"[Charge] '{context.Caster.characterName}' charges '{target.characterName}' " +
+            Debug.Log($"[Charge] '{context.Caster.CharacterName}' charges '{target.CharacterName}' " +
                       $"for {damage} damage.  " +
-                      $"HP: {Mathf.Max(0, target.characterStats.healthPoints)}" +
-                      $"/{target.characterStats.maxHealthPoints}");
+                      $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}" +
+                      $"/{target.CharacterStats.MaxHealthPoints}");
 
-            if (target.characterStats.healthPoints <= 0)
+            if (target.CharacterStats.HealthPoints <= 0)
             {
-                Debug.Log($"[Charge] '{target.characterName}' has been defeated!");
+                Debug.Log($"[Charge] '{target.CharacterName}' has been defeated!");
                 context.TargetTile.RemoveUnit();
             }
 

@@ -1,7 +1,7 @@
 namespace BaaroForce.Characters
 {
     /// <summary>
-    /// Defines how an NPC makes decisions during its turn.
+    /// Defines how an Npc makes decisions during its turn.
     /// Each value maps to a concrete <see cref="NpcAI"/> subclass.
     /// </summary>
     public enum NpcPersonality

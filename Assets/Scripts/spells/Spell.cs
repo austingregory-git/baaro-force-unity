@@ -10,72 +10,67 @@ namespace BaaroForce.Spells
     /// for the UI and targeting system.  Override <see cref="Execute"/> in concrete
     /// subclasses to implement the spell's actual effects.
     /// </summary>
-    public class Spell
+    public abstract class Spell
     {
-        public readonly string         name;
-        public readonly string         description;
+        public readonly string         Name;
+        public readonly string         Description;
         /// <summary>Mana required to cast.</summary>
-        public readonly int            manaCost;
-        public readonly int            actionPointCost;
+        public readonly int            ManaCost;
+        public readonly int            ActionPointCost;
         /// <summary>Maximum Manhattan-distance at which a target tile can be selected.</summary>
-        public readonly int            range;
+        public readonly int            Range;
         /// <summary>AoE radius around the chosen target tile (0 = single tile). Spells may
         /// override Execute to use their own area logic instead.</summary>
-        public readonly int            area;
+        public readonly int            Area;
         /// <summary>Turns until this spell can be used again (0 = no cooldown).</summary>
-        public readonly int            cooldown;
+        public readonly int            Cooldown;
         /// <summary>Who the spell can be aimed at; drives highlight colour in the UI.</summary>
-        public readonly SpellTargetType targetType;
+        public readonly SpellTargetType TargetType;
         /// <summary>The shape of the area-of-effect pattern.
-        /// Only meaningful when <see cref="targetType"/> is <see cref="SpellTargetType.AoE"/>.
+        /// Only meaningful when <see cref="TargetType"/> is <see cref="SpellTargetType.AoE"/>.
         /// Used by <see cref="SpellAreaUtils"/> to resolve the affected tiles.</summary>
-        public readonly SpellAreaType areaType;
+        public readonly SpellAreaType AreaType;
 
-        public Spell(string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
+        protected Spell(string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
                      SpellTargetType targetType = SpellTargetType.Enemy,
                      SpellAreaType areaType = SpellAreaType.None)
         {
-            this.name        = name;
-            this.description = description;
-            this.manaCost    = manaCost;
-            this.actionPointCost = actionPointCost;
-            this.range       = range;
-            this.area        = area;
-            this.cooldown    = cooldown;
-            this.targetType  = targetType;
-            this.areaType    = areaType;
+            this.Name        = name;
+            this.Description = description;
+            this.ManaCost    = manaCost;
+            this.ActionPointCost = actionPointCost;
+            this.Range       = range;
+            this.Area        = area;
+            this.Cooldown    = cooldown;
+            this.TargetType  = targetType;
+            this.AreaType    = areaType;
         }
 
         /// <summary>Convenience constructor for name/description-only data stubs.</summary>
-        public Spell(string name, string description)
+        protected Spell(string name, string description)
         {
-            this.name        = name;
-            this.description = description;
-            this.manaCost    = 0;
-            this.actionPointCost = 1;
-            this.range       = 0;
-            this.area        = 0;
-            this.cooldown    = 999;
-            this.targetType  = SpellTargetType.Enemy;
-            this.areaType    = SpellAreaType.None;
+            this.Name        = name;
+            this.Description = description;
+            this.ManaCost    = 0;
+            this.ActionPointCost = 1;
+            this.Range       = 0;
+            this.Area        = 0;
+            this.Cooldown    = 999;
+            this.TargetType  = SpellTargetType.Enemy;
+            this.AreaType    = SpellAreaType.None;
         }
 
         /// <summary>
         /// Executes this spell's effects given the cast context.
-        /// Override in concrete subclasses; the default is a no-op stub.
         /// Returns true if the spell resolved successfully (AP and mana should be consumed).
         /// </summary>
-        public virtual bool Execute(SpellContext context)
-        {
-            Debug.LogWarning($"[Spell] '{name}' has no Execute implementation.");
-            return false;
-        }
+        public abstract bool Execute(SpellContext context);
 
         /// <summary>
         /// Returns the tile the caster should physically move to before the
         /// spell's effect resolves, or null when no repositioning is needed.
-        /// Override in spells that close distance as part of their effect
-        /// (e.g. <see cref="Charge"/>).
+        /// Override in spells that should reposition the caster before their effect
+        /// resolves (e.g. <see cref="Charge"/>).
         /// </summary>
         public virtual MapTile GetCasterLandingTile(SpellContext context) => null;
     }
@@ -84,5 +79,5 @@ namespace BaaroForce.Spells
 /// <summary>Elemental/physical category used for damage-type calculations.</summary>
 public enum SpellType
 {
-    FIRE, WATER, EARTH, WIND, DARK, LIGHT, PHYSICAL
+    Fire, Water, Earth, Wind, Dark, Light, Physical
 }

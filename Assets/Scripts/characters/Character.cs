@@ -8,20 +8,20 @@ using BaaroForce.Statuses;
 using BaaroForce.Map;
 
 namespace BaaroForce.Characters
-{   
-    public class Character
+{
+    public abstract class Character
     {
-        public CharacterClass characterClass { get; set; }
-        public string characterName { get; set; }
-        public CharacterStats characterStats { get; set; }
-        public List<Realm> characterRealms { get; set; }
-        public List<PassiveAbility> characterPassiveAbilities { get; set; }
-        public List<Spell> characterSpells { get; set; }
+        public CharacterClass CharacterClass { get; set; }
+        public string CharacterName { get; set; }
+        public CharacterStats CharacterStats { get; set; }
+        public List<Realm> CharacterRealms { get; set; }
+        public List<PassiveAbility> CharacterPassiveAbilities { get; set; }
+        public List<Spell> CharacterSpells { get; set; }
         //public List<Equipment> characterEquipment { get; set; }
-        public string characterModelPath { get; set; }
+        public string CharacterModelPath { get; set; }
 
         /// Should a character have their current tile stored here?  Or should the map manager handle that?
-        public MapTile characterCurrentTile { get; set; }
+        public MapTile CharacterCurrentTile { get; set; }
 
         /// <summary>Current level; used for spell and ability power scaling. Defaults to 1.</summary>
         public int Level { get; set; } = 1;
@@ -39,13 +39,13 @@ namespace BaaroForce.Characters
             {
                 if (ActiveEffects[i].Name == effect.Name)
                 {
-                    ActiveEffects[i].OnRemove(characterStats);
+                    ActiveEffects[i].OnRemove(CharacterStats);
                     ActiveEffects.RemoveAt(i);
                 }
             }
-            effect.OnApply(characterStats);
+            effect.OnApply(CharacterStats);
             ActiveEffects.Add(effect);
-            Debug.Log($"[{GetType().Name}] '{characterName}' afflicted with {effect.Name} ({effect.RemainingTurns} turn(s)).");
+            Debug.Log($"[{GetType().Name}] '{CharacterName}' afflicted with {effect.Name} ({effect.RemainingTurns} turn(s)).");
         }
 
         /// <summary>
@@ -57,48 +57,48 @@ namespace BaaroForce.Characters
             for (int i = ActiveEffects.Count - 1; i >= 0; i--)
             {
                 StatusEffect fx = ActiveEffects[i];
-                fx.OnTurnStart(characterStats);
+                fx.OnTurnStart(CharacterStats);
                 if (fx.Tick())
                 {
-                    fx.OnRemove(characterStats);
+                    fx.OnRemove(CharacterStats);
                     ActiveEffects.RemoveAt(i);
-                    Debug.Log($"[{GetType().Name}] '{characterName}': {fx.Name} has expired.");
+                    Debug.Log($"[{GetType().Name}] '{CharacterName}': {fx.Name} has expired.");
                 }
             }
         }
 
-        public Character(
-                        CharacterClass characterClass, 
-                        string characterName, 
-                        CharacterStats characterStats, 
-                        List<Realm> characterRealms, 
-                        List<PassiveAbility> characterPassiveAbilities, 
+        protected Character(
+                        CharacterClass characterClass,
+                        string characterName,
+                        CharacterStats characterStats,
+                        List<Realm> characterRealms,
+                        List<PassiveAbility> characterPassiveAbilities,
                         List<Spell> characterSpells,
                         string characterModelPath)
         {
-            this.characterClass = characterClass;
-            this.characterName = characterName;
-            this.characterStats = characterStats;
-            this.characterRealms             = characterRealms             ?? new List<Realm>();
-            this.characterPassiveAbilities   = characterPassiveAbilities   ?? new List<PassiveAbility>();
-            this.characterSpells             = characterSpells             ?? new List<Spell>();
-            this.characterModelPath          = characterModelPath;
+            this.CharacterClass = characterClass;
+            this.CharacterName = characterName;
+            this.CharacterStats = characterStats;
+            this.CharacterRealms             = characterRealms             ?? new List<Realm>();
+            this.CharacterPassiveAbilities   = characterPassiveAbilities   ?? new List<PassiveAbility>();
+            this.CharacterSpells             = characterSpells             ?? new List<Spell>();
+            this.CharacterModelPath          = characterModelPath;
 
             // Append one randomly selected class spell from this character's class.
-            ClassSpell classSpell = SpellRegistry.GetRandomClassSpell(characterClass?.classID);
+            ClassSpell classSpell = SpellRegistry.GetRandomClassSpell(characterClass?.ClassID);
             if (classSpell != null)
-                this.characterSpells.Add(classSpell);
+                this.CharacterSpells.Add(classSpell);
             //this.characterEquipment = characterEquipment ?? new List<Equipment>();
         }
     }
 
     public enum Realm
     {
-        FIRE,
-        WATER,
-        EARTH,
-        WIND,
-        DARK,
-        LIGHT
+        Fire,
+        Water,
+        Earth,
+        Wind,
+        Dark,
+        Light
     }
 }

@@ -124,20 +124,20 @@ namespace BaaroForce.UI
             for (int i = _listParent.childCount - 1; i >= 0; i--)
                 Destroy(_listParent.GetChild(i).gameObject);
 
-            if (character?.characterSpells == null || character.characterSpells.Count == 0)
+            if (character?.CharacterSpells == null || character.CharacterSpells.Count == 0)
             {
                 _panelRoot.SetActive(false);
                 return;
             }
 
             AddBackButton();
-            AddTitle($"{character.characterName}'s Spells");
+            AddTitle($"{character.CharacterName}'s Spells");
 
-            foreach (Spell spell in character.characterSpells)
-                AddSpellRow(spell, character.characterStats.mana);
+            foreach (Spell spell in character.CharacterSpells)
+                AddSpellRow(spell, character.CharacterStats.Mana);
 
             // Children: 1 back + 1 title + N spells  →  N+1 gaps between them.
-            int   n = character.characterSpells.Count;
+            int   n = character.CharacterSpells.Count;
             float h = PaddingV * 2
                       + RowHeight            // back button row
                       + TitleHeight          // title
@@ -217,10 +217,10 @@ namespace BaaroForce.UI
 
         private void AddSpellRow(Spell spell, int currentMana)
         {
-            bool canAfford = currentMana >= spell.manaCost;
+            bool canAfford = currentMana >= spell.ManaCost;
 
             // ── Row container ────────────────────────────────────────────────
-            var rowGo   = new GameObject($"Row_{spell.name}");
+            var rowGo   = new GameObject($"Row_{spell.Name}");
             rowGo.transform.SetParent(_listParent, false);
 
             var rowBg   = rowGo.AddComponent<Image>();
@@ -256,14 +256,14 @@ namespace BaaroForce.UI
 
             // ── Tooltip on hover ─────────────────────────────────────────────
             var tt = rowGo.AddComponent<TooltipTrigger>();
-            tt.Initialize(spell.name, BuildTooltipBody(spell));
+            tt.Initialize(spell.Name, BuildTooltipBody(spell));
 
             // ── Spell name label ─────────────────────────────────────────────
             var nameGo = new GameObject("SpellName");
             nameGo.transform.SetParent(rowGo.transform, false);
 
             var nameTmp         = nameGo.AddComponent<TextMeshProUGUI>();
-            nameTmp.text         = spell.name;
+            nameTmp.text         = spell.Name;
             nameTmp.fontSize     = 13f;
             nameTmp.fontStyle    = canAfford ? FontStyles.Normal : FontStyles.Italic;
             nameTmp.color        = canAfford
@@ -277,13 +277,13 @@ namespace BaaroForce.UI
             nameLe.flexibleWidth = 1f;
 
             // ── Mana manaCost label (only shown when manaCost > 0) ───────────────────
-            if (spell.manaCost > 0)
+            if (spell.ManaCost > 0)
             {
                 var manaCostGo = new GameObject("Cost");
                 manaCostGo.transform.SetParent(rowGo.transform, false);
 
                 var manaCostTmp      = manaCostGo.AddComponent<TextMeshProUGUI>();
-                manaCostTmp.text      = $"{spell.manaCost}MP";
+                manaCostTmp.text      = $"{spell.ManaCost}MP";
                 manaCostTmp.fontSize  = 11f;
                 manaCostTmp.color     = canAfford
                     ? new Color(0.10f, 0.30f, 0.80f)
@@ -301,18 +301,18 @@ namespace BaaroForce.UI
         private static string BuildTooltipBody(Spell spell)
         {
             var sb = new StringBuilder();
-            sb.Append(KeywordRegistry.FormatDescription(spell.description));
+            sb.Append(KeywordRegistry.FormatDescription(spell.Description));
 
-            if (spell.targetType == SpellTargetType.Self)
+            if (spell.TargetType == SpellTargetType.Self)
                 sb.Append("\n<i>Targets self — no aim required.</i>");
-            else if (spell.range > 0)
-                sb.Append($"\nRange: {spell.range} tiles");
+            else if (spell.Range > 0)
+                sb.Append($"\nRange: {spell.Range} tiles");
 
-            if (spell.manaCost > 0)
-                sb.Append($"\nMana cost: {spell.manaCost}");
+            if (spell.ManaCost > 0)
+                sb.Append($"\nMana cost: {spell.ManaCost}");
 
-            if (spell.cooldown > 0 && spell.cooldown < 999)
-                sb.Append($"\nCooldown: {spell.cooldown} turn(s)");
+            if (spell.Cooldown > 0 && spell.Cooldown < 999)
+                sb.Append($"\nCooldown: {spell.Cooldown} turn(s)");
 
             return sb.ToString();
         }

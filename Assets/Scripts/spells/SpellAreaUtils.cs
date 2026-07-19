@@ -8,7 +8,7 @@ namespace BaaroForce.Spells
     /// Static helpers that calculate which tiles are affected by each <see cref="SpellAreaType"/>.
     ///
     /// Every method receives the caster tile, the tile the player aimed at, the AoE half-width
-    /// (<c>area</c> from <see cref="Spell.area"/> — 0 = single tile, 1 = ±1 = 3 tiles, …), and
+    /// (<c>area</c> from <see cref="Spell.Area"/> — 0 = single tile, 1 = ±1 = 3 tiles, …), and
     /// the full grid so boundary checks can be performed.
     ///
     /// Use <see cref="GetAreaTiles"/> as the single dispatch point; add a case here whenever a
@@ -28,11 +28,11 @@ namespace BaaroForce.Spells
                                                   MapTile targetTile,
                                                   MapTile[,] allTiles, int gridSize)
         {
-            switch (spell.areaType)
+            switch (spell.AreaType)
             {
                 case SpellAreaType.HorizontalLine:
-                    return GetHorizontalLineTiles(casterTile, targetTile, spell.range,
-                                                  spell.area, allTiles, gridSize);
+                    return GetHorizontalLineTiles(casterTile, targetTile, spell.Range,
+                                                  spell.Area, allTiles, gridSize);
                 default:
                     // Unimplemented area types fall back to single-tile targeting.
                     return new List<MapTile> { targetTile };

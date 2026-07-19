@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEngine.Serialization;
 using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Map;
@@ -22,12 +23,12 @@ namespace BaaroForce.UI
     [RequireComponent(typeof(UIDocument))]
     public class CharacterHudController : MonoBehaviour
     {
-        [SerializeField] private TurnManager turnManager;
-        [SerializeField] private VisualTreeAsset panelTemplate; // CombatHudPanel.uxml
+        [SerializeField] private TurnManager _turnManager;
+        [SerializeField] private VisualTreeAsset _panelTemplate; // CombatHudPanel.uxml
 
-        private UIDocument document;
-        private VisualElement selectedPanel;   // left
-        private VisualElement targetPanel;      // right
+        private UIDocument _document;
+        private VisualElement _selectedPanel;   // left
+        private VisualElement _targetPanel;      // right
 
         // All possible zone / weapon-type USS classes, so we can strip them cleanly
         // before applying the new one each time a panel is repopulated.
@@ -39,33 +40,33 @@ namespace BaaroForce.UI
 
         private void Awake()
         {
-            document = GetComponent<UIDocument>();
+            _document = GetComponent<UIDocument>();
         }
 
         private void OnEnable()
         {
             BuildPanels();
 
-            if (turnManager == null) turnManager = FindAnyObjectByType<TurnManager>();
-            if (turnManager == null)
+            if (_turnManager == null) _turnManager = FindAnyObjectByType<TurnManager>();
+            if (_turnManager == null)
             {
                 Debug.LogWarning("[CharacterHudController] No TurnManager found in scene.");
                 return;
             }
 
-            turnManager.OnCharacterSelected   += ShowSelected;
-            turnManager.OnCharacterDeselected += HideSelected;
-            turnManager.OnTargetHighlighted   += ShowTarget;
-            turnManager.OnTargetCleared       += HideTarget;
+            _turnManager.OnCharacterSelected   += ShowSelected;
+            _turnManager.OnCharacterDeselected += HideSelected;
+            _turnManager.OnTargetHighlighted   += ShowTarget;
+            _turnManager.OnTargetCleared       += HideTarget;
         }
 
         private void OnDisable()
         {
-            if (turnManager == null) return;
-            turnManager.OnCharacterSelected   -= ShowSelected;
-            turnManager.OnCharacterDeselected -= HideSelected;
-            turnManager.OnTargetHighlighted   -= ShowTarget;
-            turnManager.OnTargetCleared       -= HideTarget;
+            if (_turnManager == null) return;
+            _turnManager.OnCharacterSelected   -= ShowSelected;
+            _turnManager.OnCharacterDeselected -= HideSelected;
+            _turnManager.OnTargetHighlighted   -= ShowTarget;
+            _turnManager.OnTargetCleared       -= HideTarget;
         }
 
         // ------------------------------------------------------------------ //
@@ -74,34 +75,34 @@ namespace BaaroForce.UI
 
         private void BuildPanels()
         {
-            VisualElement root = document.rootVisualElement;
+            VisualElement root = _document.rootVisualElement;
 
-            selectedPanel = panelTemplate.Instantiate();
-            selectedPanel.AddToClassList("hud-panel");
-            selectedPanel.AddToClassList("hud-panel--left");
-            selectedPanel.style.display = DisplayStyle.None;
-            root.Add(selectedPanel);
+            _selectedPanel = _panelTemplate.Instantiate();
+            _selectedPanel.AddToClassList("hud-panel");
+            _selectedPanel.AddToClassList("hud-panel--left");
+            _selectedPanel.style.display = DisplayStyle.None;
+            root.Add(_selectedPanel);
 
-            targetPanel = panelTemplate.Instantiate();
-            targetPanel.AddToClassList("hud-panel");
-            targetPanel.AddToClassList("hud-panel--right");
-            targetPanel.style.display = DisplayStyle.None;
-            root.Add(targetPanel);
+            _targetPanel = _panelTemplate.Instantiate();
+            _targetPanel.AddToClassList("hud-panel");
+            _targetPanel.AddToClassList("hud-panel--right");
+            _targetPanel.style.display = DisplayStyle.None;
+            root.Add(_targetPanel);
         }
 
         // ------------------------------------------------------------------ //
         // Left panel — current-turn character                                 //
         // ------------------------------------------------------------------ //
 
-        private void ShowSelected(Character character) => Populate(selectedPanel, character);
-        private void HideSelected() => selectedPanel.style.display = DisplayStyle.None;
+        private void ShowSelected(Character character) => Populate(_selectedPanel, character);
+        private void HideSelected() => _selectedPanel.style.display = DisplayStyle.None;
 
         // ------------------------------------------------------------------ //
         // Right panel — hovered / attacked target                             //
         // ------------------------------------------------------------------ //
 
-        private void ShowTarget(NPC npc) => Populate(targetPanel, npc);
-        private void HideTarget() => targetPanel.style.display = DisplayStyle.None;
+        private void ShowTarget(Npc npc) => Populate(_targetPanel, npc);
+        private void HideTarget() => _targetPanel.style.display = DisplayStyle.None;
 
         private void Populate(VisualElement panel, Character character)
         {
@@ -109,11 +110,11 @@ namespace BaaroForce.UI
 
             panel.style.display = DisplayStyle.Flex;
 
-            var stats = character.characterStats;
-            var cls   = character.characterClass;
+            var stats = character.CharacterStats;
+            var cls   = character.CharacterClass;
 
             // --- name / level -------------------------------------------------
-            panel.Q<Label>("unit-name").text = character.characterName;
+            panel.Q<Label>("unit-name").text = character.CharacterName;
             panel.Q<Label>("unit-level").text = $"Lv {character.Level}";
 
             // --- zone theme -----------------------------------------------------
@@ -124,29 +125,29 @@ namespace BaaroForce.UI
             ApplyExclusiveClass(panel, ZoneClasses, $"zone-{zoneId}");
 
             // --- HP ---------------------------------------------------------
-            int hp = Mathf.Max(0, stats.healthPoints);
-            int maxHp = Mathf.Max(1, stats.maxHealthPoints);
+            int hp = Mathf.Max(0, stats.HealthPoints);
+            int maxHp = Mathf.Max(1, stats.MaxHealthPoints);
             SetSegmentedBar(panel.Q<VisualElement>("hp-bar"), hp, maxHp, "seg-fill-hp");
             panel.Q<Label>("hp-num").text = $"{hp}/{maxHp}";
 
             // --- Mana ---------------------------------------------------------
-            int mana = Mathf.Max(0, stats.mana);
-            int maxMana = Mathf.Max(1, stats.maxMana); // adjust field name if different
+            int mana = Mathf.Max(0, stats.Mana);
+            int maxMana = Mathf.Max(1, stats.MaxMana); // adjust field name if different
             SetSegmentedBar(panel.Q<VisualElement>("mana-bar"), mana, maxMana, "seg-fill-mana");
             panel.Q<Label>("mana-num").text = $"{mana}/{maxMana}";
 
             // --- Movement (pips) ------------------------------------------------
-            int move = stats.movement;
+            int move = stats.Movement;
             SetPips(panel.Q<VisualElement>("move-pips"), move, move);
             panel.Q<Label>("move-num").text = $"{move}";
 
             // --- Attack (icon swaps by weapon type) ------------------------------
             panel.Q<Label>("atk-num").text = stats.TotalAttack.ToString();
-            string weaponClass = cls?.classSpecialty switch
+            string weaponClass = cls?.Specialty switch
             {
-                CharacterClass.ClassSpecialty.MELEE  => "weapon-melee",
-                CharacterClass.ClassSpecialty.RANGED => "weapon-ranged",
-                CharacterClass.ClassSpecialty.MAGIC  => "weapon-magic",
+                CharacterClass.ClassSpecialty.Melee  => "weapon-melee",
+                CharacterClass.ClassSpecialty.Ranged => "weapon-ranged",
+                CharacterClass.ClassSpecialty.Magic  => "weapon-magic",
                 _                                     => "weapon-melee",
             };
             ApplyExclusiveClass(panel.Q<VisualElement>("atk-badge"), WeaponClasses, weaponClass);

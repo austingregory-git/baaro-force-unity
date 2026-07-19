@@ -1,27 +1,29 @@
 using System;
 using System.Collections.Generic;
-using BaaroForce.Utils;
 using UnityEngine;
 using BaaroForce.Classes;
 using BaaroForce.Characters;
 
-public class LevelUtils : MonoBehaviour
+namespace BaaroForce.Utils
 {
-
-    private readonly System.Random random = new System.Random();
-
-    CharacterStats LevelUp(CharacterStats characterStats, ClassGrowthWeights weights, int newLevel)
+    public class LevelUtils : MonoBehaviour
     {
-        for (int i = 0; i < newLevel; i++)
+
+        private readonly System.Random _random = new System.Random();
+
+        CharacterStats LevelUp(CharacterStats characterStats, ClassGrowthWeights weights, int newLevel)
         {
-            double roll = random.NextDouble();
-            if (roll < weights.healthPointsGrowthWeight)
-                characterStats.healthPoints++;
-            else if (roll < weights.healthPointsGrowthWeight + weights.baseAttackGrowthWeight)
-                characterStats.baseAttack++;
-            else
-                characterStats.mana++;
+            for (int i = 0; i < newLevel; i++)
+            {
+                double roll = _random.NextDouble();
+                if (roll < weights.HealthPointsGrowthWeight)
+                    characterStats.HealthPoints++;
+                else if (roll < weights.HealthPointsGrowthWeight + weights.BaseAttackGrowthWeight)
+                    characterStats.BaseAttack++;
+                else
+                    characterStats.Mana++;
+            }
+            return characterStats;
         }
-        return characterStats;
     }
 }

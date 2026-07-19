@@ -3,15 +3,15 @@ namespace BaaroForce.Classes
 {
     public class ClassGrowthWeights
     {
-        public double healthPointsGrowthWeight;
-        public double baseAttackGrowthWeight;
-        public double manaGrowthWeight;
+        public double HealthPointsGrowthWeight;
+        public double BaseAttackGrowthWeight;
+        public double ManaGrowthWeight;
 
         public ClassGrowthWeights(double healthPointsGrowthWeight, double baseAttackGrowthWeight, double manaGrowthWeight)
         {
-            this.healthPointsGrowthWeight = healthPointsGrowthWeight;
-            this.baseAttackGrowthWeight = baseAttackGrowthWeight;
-            this.manaGrowthWeight = manaGrowthWeight;
+            this.HealthPointsGrowthWeight = healthPointsGrowthWeight;
+            this.BaseAttackGrowthWeight = baseAttackGrowthWeight;
+            this.ManaGrowthWeight = manaGrowthWeight;
         }
     }
 }

@@ -13,7 +13,7 @@ namespace BaaroForce.Characters
                 characterClass: ClassRegistry.Get("Warrior"),
                 characterName: "Beepo",
                 characterStats: BeepoBaseStats, 
-                characterRealms: new List<Realm> { Realm.FIRE }, 
+                characterRealms: new List<Realm> { Realm.Fire }, 
                 characterPassiveAbilities: new List<PassiveAbility>()
                 {
                     new BurningShield()

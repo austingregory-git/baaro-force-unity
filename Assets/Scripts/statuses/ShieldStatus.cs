@@ -8,7 +8,7 @@ namespace BaaroForce.Statuses
     /// </summary>
     public class ShieldStatus : StatusEffect
     {
-        private readonly int shieldAmount;
+        private readonly int _shieldAmount;
 
         /// <param name="durationTurns">How many of the target's turns the effect lasts.</param>
         /// <param name="shieldAmount">How much shield to grant each turn.</param>
@@ -17,14 +17,14 @@ namespace BaaroForce.Statuses
                 name:        "Shield",
                 description: $"Grants {shieldAmount} shield for {durationTurns} turns.",
                 durationTurns: durationTurns,
-                effectType: StatusEffectType.BUFF)
+                effectType: StatusEffectType.Buff)
         {
-            this.shieldAmount = shieldAmount;
+            this._shieldAmount = shieldAmount;
         }
 
         public override void OnApply(CharacterStats stats)
         {
-            stats.shieldPoints += shieldAmount;
+            stats.ShieldPoints += _shieldAmount;
         }
 
         public override void OnTurnStart(CharacterStats stats)

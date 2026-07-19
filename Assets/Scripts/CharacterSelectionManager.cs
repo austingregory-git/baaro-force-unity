@@ -9,7 +9,10 @@ using BaaroForce.Utils;
 using BaaroForce.UI;
 using BaaroForce.Classes;
 using BaaroForce.Spells;
+using BaaroForce.GameController;
 
+namespace BaaroForce
+{
 public class CharacterSelectionManager : MonoBehaviour
 {
     // ── Card display dimensions ────────────────────────────────────────────
@@ -141,13 +144,13 @@ public class CharacterSelectionManager : MonoBehaviour
             new Vector2(CardOffset, 0f)
         };
 
-        Realm realm = PartyManager.Instance.CurrentRealm ?? Realm.EARTH;
+        Realm realm = PartyManager.Instance.CurrentRealm ?? Realm.Earth;
         List<Character> characters = CharacterUtils.GetRandomCharacters(3, realm);
 
         var previewer = new CharacterPreviewRenderer(GetRealmBackgroundColor(realm));
         for (int i = 0; i < 3; i++)
         {
-            RenderTexture rt = previewer.Capture(characters[i].characterModelPath);
+            RenderTexture rt = previewer.Capture(characters[i].CharacterModelPath);
             if (rt != null) _previewTextures.Add(rt);
             CreateCard(parent, positions[i], i, characters[i], rt);
         }
@@ -233,12 +236,12 @@ public class CharacterSelectionManager : MonoBehaviour
         if (!realm.HasValue) return Color.white;
         switch (realm.Value)
         {
-            case Realm.DARK:  return new Color(0.55f, 0.55f, 0.58f); // gray
-            case Realm.LIGHT: return new Color(1.00f, 0.98f, 0.85f); // pale yellow
-            case Realm.EARTH: return new Color(0.82f, 0.95f, 0.77f); // light green
-            case Realm.WIND:  return new Color(0.96f, 0.96f, 0.94f); // eggshell white
-            case Realm.FIRE:  return new Color(1.00f, 0.86f, 0.68f); // light orange
-            case Realm.WATER: return new Color(0.73f, 0.90f, 1.00f); // light blue
+            case Realm.Dark:  return new Color(0.55f, 0.55f, 0.58f); // gray
+            case Realm.Light: return new Color(1.00f, 0.98f, 0.85f); // pale yellow
+            case Realm.Earth: return new Color(0.82f, 0.95f, 0.77f); // light green
+            case Realm.Wind:  return new Color(0.96f, 0.96f, 0.94f); // eggshell white
+            case Realm.Fire:  return new Color(1.00f, 0.86f, 0.68f); // light orange
+            case Realm.Water: return new Color(0.73f, 0.90f, 1.00f); // light blue
             default:                                return Color.white;
         }
     }
@@ -287,15 +290,15 @@ public class CharacterSelectionManager : MonoBehaviour
 
         Sprite attackIcon = Resources.Load<Sprite>(MeleeAttackSpritePath); // default to melee attack icon
 
-        if(character.characterClass.classSpecialty == CharacterClass.ClassSpecialty.MELEE)
+        if(character.CharacterClass.Specialty == CharacterClass.ClassSpecialty.Melee)
         {
             attackIcon = Resources.Load<Sprite>(MeleeAttackSpritePath);
         }
-        else if(character.characterClass.classSpecialty == CharacterClass.ClassSpecialty.RANGED)
+        else if(character.CharacterClass.Specialty == CharacterClass.ClassSpecialty.Ranged)
         {
             attackIcon = Resources.Load<Sprite>(RangedAttackSpritePath);
         }
-        else if(character.characterClass.classSpecialty == CharacterClass.ClassSpecialty.MAGIC)
+        else if(character.CharacterClass.Specialty == CharacterClass.ClassSpecialty.Magic)
         {
             attackIcon = Resources.Load<Sprite>(MagicAttackSpritePath);
 
@@ -317,7 +320,7 @@ public class CharacterSelectionManager : MonoBehaviour
         float health_pad_x = -16f;
         float health_pad_y = 64f;
         CreateCornerStat(cardParent, healthIcon,
-            character.characterStats.healthPoints.ToString(),
+            character.CharacterStats.HealthPoints.ToString(),
             new Vector2(0f, 1f), new Vector2(0f, 1f),
             new Vector2(health_pad_x, -health_pad_y),
             new Vector2(health_pad_x, -(health_pad_y + CornerIconSize)),
@@ -331,7 +334,7 @@ public class CharacterSelectionManager : MonoBehaviour
         float mana_pad_x = 16f;
         float mana_pad_y = 64f;
         CreateCornerStat(cardParent, manaIcon,
-            character.characterStats.mana.ToString(),
+            character.CharacterStats.Mana.ToString(),
             new Vector2(1f, 1f), new Vector2(1f, 1f),
             new Vector2(mana_pad_x, -mana_pad_y),
             new Vector2(mana_pad_x, -(mana_pad_y + CornerIconSize)),
@@ -345,7 +348,7 @@ public class CharacterSelectionManager : MonoBehaviour
         float movement_pad_x = -16f;
         float movement_pad_y = 132f;
         CreateCornerStat(cardParent, movementIcon,
-            character.characterStats.movement.ToString(),
+            character.CharacterStats.Movement.ToString(),
             new Vector2(0f, 0f), new Vector2(0f, 0f),
             new Vector2(movement_pad_x, movement_pad_y),
             new Vector2(movement_pad_x, movement_pad_y + CornerIconSize),
@@ -359,7 +362,7 @@ public class CharacterSelectionManager : MonoBehaviour
         float attack_pad_x = 16f;
         float attack_pad_y = 132f;
         CreateCornerStat(cardParent, attackIcon,
-            character.characterStats.baseAttack.ToString(),
+            character.CharacterStats.BaseAttack.ToString(),
             new Vector2(1f, 0f), new Vector2(1f, 0f),
             new Vector2(attack_pad_x, attack_pad_y),
             new Vector2(attack_pad_x, attack_pad_y + CornerIconSize),
@@ -370,7 +373,7 @@ public class CharacterSelectionManager : MonoBehaviour
         // top edge flush with the card top.  Y = –(pad × 0.5) gives a small
         // breathing gap without encroaching on the corner icons.
         float character_name_pad = 168f;
-        CreateLabel(cardParent, character.characterName,
+        CreateLabel(cardParent, character.CharacterName,
             new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(0f, character_name_pad),
             new Vector2(nameW, labelH), TextAlignmentOptions.Top);
 
@@ -382,15 +385,15 @@ public class CharacterSelectionManager : MonoBehaviour
         float abilitySpacing = 3f;
         float nextAbilityY   = character_name_pad - labelH - abilitySpacing;
 
-        foreach (PassiveAbility passive in character.characterPassiveAbilities)
+        foreach (PassiveAbility passive in character.CharacterPassiveAbilities)
         {
             CreateAbilityLabel(cardParent, passive.Name, passive.Description,
                 new Vector2(0f, nextAbilityY), new Vector2(abilityLabelW, abilityLabelH));
             nextAbilityY -= abilityLabelH + abilitySpacing;
         }
-        foreach (Spell spell in character.characterSpells)
+        foreach (Spell spell in character.CharacterSpells)
         {
-            CreateAbilityLabel(cardParent, spell.name, spell.description,
+            CreateAbilityLabel(cardParent, spell.Name, spell.Description,
                 new Vector2(0f, nextAbilityY), new Vector2(abilityLabelW, abilityLabelH));
             nextAbilityY -= abilityLabelH + abilitySpacing;
         }
@@ -524,20 +527,20 @@ public class CharacterSelectionManager : MonoBehaviour
 
     private sealed class CharacterPreviewRenderer
     {
-        private readonly GameObject rig;
-        private readonly Camera     cam;
+        private readonly GameObject _rig;
+        private readonly Camera     _cam;
 
         // Placed far from the main scene — CharacterSelectionScene has no 3D world objects.
         private static readonly Vector3 StagePos = new Vector3(5000f, 0f, 0f);
 
         public CharacterPreviewRenderer(Color bgColor)
         {
-            rig = new GameObject("[CharPreviewRig]");
-            rig.transform.position = StagePos;
+            _rig = new GameObject("[CharPreviewRig]");
+            _rig.transform.position = StagePos;
 
             // Point light that wraps the model in soft fill light.
             var lightGo = new GameObject("Light");
-            lightGo.transform.SetParent(rig.transform, false);
+            lightGo.transform.SetParent(_rig.transform, false);
             lightGo.transform.localPosition = new Vector3(-2f, 4f, -3f);
             var l = lightGo.AddComponent<Light>();
             l.type      = LightType.Point;
@@ -547,20 +550,20 @@ public class CharacterSelectionManager : MonoBehaviour
 
             // Camera: slightly elevated, slight three-quarter angle.
             var camGo = new GameObject("Camera");
-            camGo.transform.SetParent(rig.transform, false);
+            camGo.transform.SetParent(_rig.transform, false);
             camGo.transform.localPosition = new Vector3(0f, 0.8f, -2.5f);
-            camGo.transform.LookAt(rig.transform.position + new Vector3(0f, 0.4f, 0f));
-            cam = camGo.AddComponent<Camera>();
-            cam.fieldOfView   = 30f;
-            cam.nearClipPlane = 0.1f;
-            cam.farClipPlane  = 20f;
+            camGo.transform.LookAt(_rig.transform.position + new Vector3(0f, 0.4f, 0f));
+            _cam = camGo.AddComponent<Camera>();
+            _cam.fieldOfView   = 30f;
+            _cam.nearClipPlane = 0.1f;
+            _cam.farClipPlane  = 20f;
             // Use the realm colour as the background so the model sits on the same
             // colour as the scene behind the card.  Transparent-clear approaches are
             // unreliable across Unity render paths (alpha may not be written correctly),
             // so matching the background colour is the guaranteed solution.
-            cam.backgroundColor = bgColor;
-            cam.clearFlags      = CameraClearFlags.SolidColor;
-            cam.enabled         = false; // render on demand only
+            _cam.backgroundColor = bgColor;
+            _cam.clearFlags      = CameraClearFlags.SolidColor;
+            _cam.enabled         = false; // render on demand only
         }
 
         /// <summary>
@@ -577,7 +580,7 @@ public class CharacterSelectionManager : MonoBehaviour
                 return null;
             }
 
-            var model = Object.Instantiate(prefab, rig.transform);
+            var model = Object.Instantiate(prefab, _rig.transform);
             model.transform.localPosition = Vector3.zero;
             model.transform.localScale    = Vector3.one;
             NormalizeScale(model, 1.5f);
@@ -585,9 +588,9 @@ public class CharacterSelectionManager : MonoBehaviour
             // 256×384 matches PortraitWidth×PortraitHeight exactly (2:3 ratio) so the
             // captured model preview fills the portrait without any stretching.
             var rt = new RenderTexture(256, 384, 16);
-            cam.targetTexture = rt;
-            cam.Render();
-            cam.targetTexture = null;
+            _cam.targetTexture = rt;
+            _cam.Render();
+            _cam.targetTexture = null;
 
             Object.Destroy(model);
             return rt;
@@ -608,6 +611,7 @@ public class CharacterSelectionManager : MonoBehaviour
         }
 
         /// <summary>Destroys the entire preview rig (camera + light).</summary>
-        public void Cleanup() => Object.Destroy(rig);
+        public void Cleanup() => Object.Destroy(_rig);
     }
+}
 }

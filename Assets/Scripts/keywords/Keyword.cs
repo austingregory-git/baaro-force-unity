@@ -4,21 +4,21 @@ namespace BaaroForce.Keywords
 {
     public class Keyword
     {
-        public string name;
-        public string description;
-        public Color color { get; set; }
+        public string Name;
+        public string Description;
+        public Color Color { get; set; }
 
         public Keyword(string name, string description, Color color)
         {
-            this.name = name;
-            this.description = description;
-            this.color = color;
+            this.Name = name;
+            this.Description = description;
+            this.Color = color;
         }
 
         public Keyword(string name, Color color)
         {
-            this.name = name;
-            this.color = color;
+            this.Name = name;
+            this.Color = color;
         }
     }
 }

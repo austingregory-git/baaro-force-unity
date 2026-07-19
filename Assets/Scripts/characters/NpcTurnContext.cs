@@ -18,7 +18,7 @@ namespace BaaroForce.Characters
         // State                                                               //
         // ------------------------------------------------------------------ //
 
-        public readonly NPC       Npc;
+        public readonly Npc       Npc;
         /// <summary>Updated by <see cref="AnimateNpcMove"/> after each movement step.</summary>
         public          MapTile   CurrentTile;
         public readonly MapTile[,] AllTiles;
@@ -43,7 +43,7 @@ namespace BaaroForce.Characters
         // ------------------------------------------------------------------ //
 
         /// <summary>
-        /// Animates the NPC walking along <c>path</c> (which must start at CurrentTile).
+        /// Animates the Npc walking along <c>path</c> (which must start at CurrentTile).
         /// Also updates <see cref="CurrentTile"/> to the final tile in the path.
         /// Yield this in the AI coroutine to wait for the animation to finish.
         /// </summary>
@@ -61,7 +61,7 @@ namespace BaaroForce.Characters
         // Constructor                                                         //
         // ------------------------------------------------------------------ //
 
-        public NpcTurnContext(NPC npc, MapTile currentTile, MapTile[,] allTiles, int gridSize,
+        public NpcTurnContext(Npc npc, MapTile currentTile, MapTile[,] allTiles, int gridSize,
                               int remainingMovement, int remainingActions)
         {
             Npc               = npc;

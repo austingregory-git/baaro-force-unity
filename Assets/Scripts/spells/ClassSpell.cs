@@ -2,22 +2,22 @@ using BaaroForce.Classes;
 
 namespace BaaroForce.Spells
 {
-    public class ClassSpell : Spell
+    public abstract class ClassSpell : Spell
     {
-        public CharacterClass characterClass { get; set; }
+        public CharacterClass CharacterClass { get; set; }
 
-        public ClassSpell(CharacterClass characterClass, string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
+        protected ClassSpell(CharacterClass characterClass, string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
                           SpellTargetType targetType = SpellTargetType.Enemy,
                           SpellAreaType areaType = SpellAreaType.None)
             : base(name, description, manaCost, actionPointCost, range, area, cooldown, targetType, areaType)
         {
-            this.characterClass = characterClass;
+            this.CharacterClass = characterClass;
         }
 
-        public ClassSpell(CharacterClass characterClass, string name, string description)
+        protected ClassSpell(CharacterClass characterClass, string name, string description)
             : base(name, description)
         {
-            this.characterClass = characterClass;
+            this.CharacterClass = characterClass;
         }
     }
 }

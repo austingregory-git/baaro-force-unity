@@ -31,7 +31,7 @@ namespace BaaroForce.Keywords
         public static void Register(Keyword keyword)
         {
             if (keyword != null)
-                _all[keyword.name] = keyword;
+                _all[keyword.Name] = keyword;
         }
 
         // ------------------------------------------------------------------ //
@@ -62,7 +62,7 @@ namespace BaaroForce.Keywords
                 string kwName = m.Groups[1].Value;
                 Keyword kw = Get(kwName);
                 if (kw == null) return kwName;
-                return $"<color=#{ColorUtility.ToHtmlStringRGB(kw.color)}><b>{kwName}</b></color>";
+                return $"<color=#{ColorUtility.ToHtmlStringRGB(kw.Color)}><b>{kwName}</b></color>";
             });
         }
 

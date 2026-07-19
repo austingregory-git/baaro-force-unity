@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using BaaroForce.Characters;
+using BaaroForce.GameController;
 
 namespace BaaroForce.Map
 {
@@ -16,31 +18,37 @@ namespace BaaroForce.Map
     public class MapGenerator : MonoBehaviour
     {
         [Header("Map Settings")]
-        public MapSize mapSize   = MapSize.SMALL;
-        public Realm   realmType = Realm.EARTH;
+        [FormerlySerializedAs("mapSize")]
+        public MapSize MapSize   = MapSize.Small;
+        [FormerlySerializedAs("realmType")]
+        public Realm   RealmType = Realm.Earth;
 
         [Header("Enemy Pack")]
-        [Tooltip("Cumulative NPC strength index to spawn on this map.")]
-        public int enemyPackStrength = 2;
+        [Tooltip("Cumulative Npc strength index to spawn on this map.")]
+        [FormerlySerializedAs("enemyPackStrength")]
+        public int EnemyPackStrength = 2;
 
         [Header("Tile Appearance")]
         [Tooltip("World-unit side length of each cube tile.")]
-        public float tileSize   = 1f;
+        [FormerlySerializedAs("tileSize")]
+        public float TileSize   = 1f;
         [Tooltip("World-unit height (Y) of each cube tile.")]
-        public float tileHeight = 0.25f;
-        [Tooltip("Gap between tiles in world units.")]
-        public float tileGap    = 0.05f;
+        [FormerlySerializedAs("tileHeight")]
+        public float TileHeight = 0.25f;
+        [Tooltip("Gap between _tiles in world units.")]
+        [FormerlySerializedAs("tileGap")]
+        public float TileGap    = 0.05f;
 
-        private MapTile[,] tiles;
-        private DeploymentManager deploymentManager;
-        private TurnManager       turnManager;
+        private MapTile[,] _tiles;
+        private DeploymentManager _deploymentManager;
+        private TurnManager       _turnManager;
 
         private void Start()
         {
             // Use the session realm from PartyManager when running from the normal game flow.
             // Falls back to the Inspector value when testing MapScene in isolation.
             if (PartyManager.Instance.CurrentRealm.HasValue)
-                realmType = PartyManager.Instance.CurrentRealm.Value;
+                RealmType = PartyManager.Instance.CurrentRealm.Value;
 
             GenerateMap();
         }
@@ -50,13 +58,13 @@ namespace BaaroForce.Map
         {
             ClearExistingTiles();
 
-            int size = (int)mapSize;
-            tiles = new MapTile[size, size];
+            int size = (int)MapSize;
+            _tiles = new MapTile[size, size];
 
             List<TerrainTile.TerrainType> pool = BuildWeightedPool(
-                RealmTerrainWeights.GetWeights(realmType));
+                RealmTerrainWeights.GetWeights(RealmType));
 
-            float step    = tileSize + tileGap;
+            float step    = TileSize + TileGap;
             float originX = -(size * step) / 2f + step / 2f;
             float originZ = -(size * step) / 2f + step / 2f;
 
@@ -65,7 +73,7 @@ namespace BaaroForce.Map
                 for (int z = 0; z < size; z++)
                 {
                     TerrainTile.TerrainType terrain = pool[Random.Range(0, pool.Count)];
-                    tiles[x, z] = SpawnTile(x, z, terrain, originX + x * step, originZ + z * step);
+                    _tiles[x, z] = SpawnTile(x, z, terrain, originX + x * step, originZ + z * step);
                 }
             }
 
@@ -73,19 +81,19 @@ namespace BaaroForce.Map
             SetupSceneLight();
 
             // Set up the turn manager first so it can subscribe to deployment complete.
-            if (turnManager == null)
-                turnManager = gameObject.AddComponent<TurnManager>();
-            turnManager.Initialize(tiles, size, step, originX, originZ);
+            if (_turnManager == null)
+                _turnManager = gameObject.AddComponent<TurnManager>();
+            _turnManager.Initialize(_tiles, size, step, originX, originZ);
 
             // Set up the deployment phase.
-            if (deploymentManager == null)
-                deploymentManager = gameObject.AddComponent<DeploymentManager>();
-            deploymentManager.OnDeploymentComplete += turnManager.StartPlayerTurn;
-            deploymentManager.Initialize(tiles, size, step, originX, originZ);
+            if (_deploymentManager == null)
+                _deploymentManager = gameObject.AddComponent<DeploymentManager>();
+            _deploymentManager.OnDeploymentComplete += _turnManager.StartPlayerTurn;
+            _deploymentManager.Initialize(_tiles, size, step, originX, originZ);
 
             // Build and place the enemy pack on the far side of the map.
-            List<NPC> enemyPack = EnemyPackBuilder.Build(enemyPackStrength);
-            deploymentManager.PlaceEnemyPack(enemyPack);
+            List<Npc> enemyPack = EnemyPackBuilder.Build(EnemyPackStrength);
+            _deploymentManager.PlaceEnemyPack(enemyPack);
         }
 
         // ------------------------------------------------------------------ //
@@ -100,7 +108,7 @@ namespace BaaroForce.Map
             obj.transform.SetParent(transform, false);
             // Grid lies on the XZ plane; Y=0 centres the cube so its top face is at Y = tileHeight/2.
             obj.transform.localPosition = new Vector3(worldX, 0f, worldZ);
-            obj.transform.localScale    = new Vector3(tileSize, tileHeight, tileSize);
+            obj.transform.localScale    = new Vector3(TileSize, TileHeight, TileSize);
             Destroy(obj.GetComponent<Collider>());
 
             MapTile tile = obj.AddComponent<MapTile>();
@@ -124,9 +132,9 @@ namespace BaaroForce.Map
             for (int i = transform.childCount - 1; i >= 0; i--)
                 DestroyImmediate(transform.GetChild(i).gameObject);
 
-            tiles             = null;
-            deploymentManager = null;
-            turnManager       = null;
+            _tiles             = null;
+            _deploymentManager = null;
+            _turnManager       = null;
 
             DeploymentManager existingDM = GetComponent<DeploymentManager>();
             if (existingDM != null) DestroyImmediate(existingDM);
@@ -197,7 +205,7 @@ namespace BaaroForce.Map
             // Step 7 — Rotate the light to choose the angle it shines from.
             // Rotation is expressed as Euler angles (pitch, yaw, roll) in degrees.
             // • X = 50  tilts it ~50° downward (straight down would be 90°)
-            //           so tiles AND their side faces both get some light.
+            //           so _tiles AND their side faces both get some light.
             // • Y = -30 rotates it slightly to the left, creating angled shadows
             //           that give the isometric grid a sense of depth.
             // • Z = 0   no roll needed.

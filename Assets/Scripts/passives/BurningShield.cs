@@ -7,24 +7,24 @@ namespace BaaroForce.Passives
         public BurningShield()
             : base("Burning Shield",
                   "Melee attackers take 1 + 0.25 x [Level] [Fire] damage.",
-                  PassiveAbilityType.ON_RECEIVING_ATTACK)
+                  PassiveAbilityType.OnReceivingAttack)
         {
         }
 
         public override bool Execute(PassiveOnReceivingAttackContext context)
         {
             int value = Mathf.FloorToInt(1f + 0.25f * context.ReceivingCharacter.Level);
-            context.Attacker.characterStats.healthPoints -= value;
+            context.Attacker.CharacterStats.HealthPoints -= value;
 
-            if (context.Attacker.characterStats.healthPoints <= 0)
+            if (context.Attacker.CharacterStats.HealthPoints <= 0)
             {
-                Debug.Log($"[BurningShield] '{context.Attacker.characterName}' has been defeated!");
+                Debug.Log($"[BurningShield] '{context.Attacker.CharacterName}' has been defeated!");
                 context.AttackerTile.RemoveUnit();
             }
 
-            Debug.Log($"[BurningShield] '{context.Attacker.characterName}' took {value} fire damage.  " +
-                      $"HP: {context.Attacker.characterStats.healthPoints}" +
-                      $"/{context.Attacker.characterStats.maxHealthPoints}");
+            Debug.Log($"[BurningShield] '{context.Attacker.CharacterName}' took {value} fire damage.  " +
+                      $"HP: {context.Attacker.CharacterStats.HealthPoints}" +
+                      $"/{context.Attacker.CharacterStats.MaxHealthPoints}");
             return true;
         }
     }
