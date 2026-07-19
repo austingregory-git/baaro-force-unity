@@ -1,6 +1,4 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
-    <ui:VisualElement name="crest" class="crest" />
-
     <ui:VisualElement name="chassis" class="chassis">
         <ui:VisualElement name="rivet-tl" class="rivet rivet-tl" />
         <ui:VisualElement name="rivet-tr" class="rivet rivet-tr" />
@@ -42,4 +40,6 @@
 
         </ui:VisualElement>
     </ui:VisualElement>
+
+    <ui:VisualElement name="crest" class="crest" />
 </ui:UXML>

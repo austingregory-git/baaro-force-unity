@@ -17,11 +17,11 @@
 .hud-panel {
     position: absolute;
     width: 280px;
-    top: 5%;
+    top: 1.5%;
 }
 
-.hud-panel--left  { left: 6%; }
-.hud-panel--right { right: 6%; }
+.hud-panel--left  { right: 52%; }
+.hud-panel--right { left: 52%; }
 
 /* ---------------- Zone theme tokens (mirror the web kit's palette) --- */
 
@@ -31,6 +31,13 @@
 .zone-wind  { --glow-color: rgb(95, 191, 160); --glow-soft: rgba(95, 191, 160, 0.35); }
 .zone-light { --glow-color: rgb(232, 194, 94); --glow-soft: rgba(232, 194, 94, 0.35); }
 .zone-dark  { --glow-color: rgb(107, 78, 158); --glow-soft: rgba(107, 78, 158, 0.35); }
+
+.zone-fire  .crest { background-image: resource("crest_fire_128x128"); }
+.zone-water .crest { background-image: resource("crest_water_128x128"); }
+.zone-earth .crest { background-image: resource("crest_earth_128x128"); }
+.zone-wind  .crest { background-image: resource("crest_wind_128x128"); }
+.zone-light .crest { background-image: resource("crest_light_128x128"); }
+.zone-dark  .crest { background-image: resource("crest_dark_128x128"); }
 
 /* ---------------- Elemental crest (top-right corner seal) ------------ */
 
@@ -44,6 +51,8 @@
     background-color: rgb(21, 10, 30);
     border-width: 3px;
     border-color: var(--glow-color);
+    -unity-background-scale-mode: scale-to-fit;
+    padding: 13px;
     align-items: center;
     justify-content: center;
 }
@@ -129,16 +138,16 @@
     border-radius: 8px;
     background-color: rgb(58, 42, 40);
     margin-right: 10px;
-    /* Set backgroundImage per stat/weapon-type in C#, or via the
-       weapon-melee / weapon-ranged / weapon-magic classes below. */
+    -unity-background-scale-mode: scale-to-fit;
+    padding: 5px;
 }
-.stat-badge-hp   { background-color: rgb(90, 33, 40); }
-.stat-badge-mana { background-color: var(--glow-soft); }
-.stat-badge-move { background-color: rgb(74, 63, 52); }
+.stat-badge-hp   { background-color: rgb(90, 33, 40); background-image: resource("health_128x128"); }
+.stat-badge-mana { background-color: var(--glow-soft); background-image: resource("mana_128x128"); }
+.stat-badge-move { background-color: rgb(74, 63, 52); background-image: resource("movement_128x128"); }
 
-.weapon-melee  { background-color: rgb(90, 70, 46); }
-.weapon-ranged { background-color: rgb(70, 82, 60); }
-.weapon-magic  { background-color: rgb(50, 46, 84); }
+.weapon-melee  { background-color: rgb(90, 70, 46); background-image: resource("melee_attack_128x128"); }
+.weapon-ranged { background-color: rgb(70, 82, 60); background-image: resource("ranged_attack_128x128"); }
+.weapon-magic  { background-color: rgb(50, 46, 84); background-image: resource("magic_attack_128x128"); }
 
 /* ---------------- Segmented bar (HP / Mana) ----------------------------- */
 
@@ -193,3 +202,49 @@
     -unity-text-align: middle-right;
 }
 .stat-num-big { font-size: 20px; }
+
+/* ---------------- Action panel (Move/Attack/Spells/Items/Wait) --------- */
+
+.action-panel {
+    width: 200px;
+    left: 2%;
+    top: 50%;
+    translate: 0 -50%;
+}
+
+.action-chassis {
+    padding: 16px 14px 14px 14px;
+}
+
+.action-title {
+    width: 100%;
+    margin-bottom: 12px;
+    -unity-text-align: middle-center;
+}
+
+.action-list {
+    flex-direction: column;
+}
+
+.action-btn {
+    -unity-font-style: bold;
+    font-size: 13px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-width: 0;
+    border-radius: 8px;
+    padding: 9px 10px;
+    margin: 0 0 6px 0;
+    -unity-text-align: middle-center;
+}
+.action-btn:hover  { background-color: rgba(255, 255, 255, 0.16); }
+.action-btn:active { background-color: rgba(255, 255, 255, 0.24); }
+.action-btn:disabled {
+    color: rgba(243, 230, 200, 0.35);
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.action-btn-move   { color: rgb(120, 175, 235); }
+.action-btn-attack { color: rgb(227, 110, 95); }
+.action-btn-spells { color: rgb(180, 130, 230); }
+.action-btn-items  { color: rgb(140, 200, 130); }
+.action-btn-wait   { color: rgb(201, 163, 90); }

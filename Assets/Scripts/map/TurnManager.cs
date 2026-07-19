@@ -122,6 +122,7 @@ namespace BaaroForce.Map
             _actionPanel.OnAttackClicked = ToggleAttackMode;
             _actionPanel.OnSpellsClicked = ShowSpellPanel;
             _actionPanel.OnItemsClicked  = () => Debug.Log("[TurnManager] Items — not yet implemented.");
+            _actionPanel.OnWaitClicked   = () => EndCharacterTurn(_selectedCharacter);
 
             _spellPanel = gameObject.AddComponent<SpellPanelUI>();
             _spellPanel.OnSpellSelected = ActivateSpell;
@@ -1247,7 +1248,8 @@ namespace BaaroForce.Map
         // Helpers                                                             //
         // ------------------------------------------------------------------ //
 
-        private int RemainingMove(Character character)
+        /// <summary>Movement points <paramref name="character"/> has left this turn (0 if untracked, e.g. an enemy Npc).</summary>
+        public int RemainingMove(Character character)
         {
             int mp;
             return _remainingMovement.TryGetValue(character, out mp) ? mp : 0;

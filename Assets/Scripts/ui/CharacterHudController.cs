@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.Serialization;
@@ -25,6 +26,7 @@ namespace BaaroForce.UI
     {
         [SerializeField] private TurnManager _turnManager;
         [SerializeField] private VisualTreeAsset _panelTemplate; // CombatHudPanel.uxml
+        [SerializeField] private StyleSheet _styleSheet;         // CombatHud.uss
 
         private UIDocument _document;
         private VisualElement _selectedPanel;   // left
@@ -43,30 +45,54 @@ namespace BaaroForce.UI
             _document = GetComponent<UIDocument>();
         }
 
+        private Coroutine _hookRoutine;
+
         private void OnEnable()
         {
             BuildPanels();
+            _hookRoutine = StartCoroutine(HookTurnManager());
+        }
 
+        private void OnDisable()
+        {
+            if (_hookRoutine != null)
+            {
+                StopCoroutine(_hookRoutine);
+                _hookRoutine = null;
+            }
+
+            if (_turnManager == null) return;
+            _turnManager.OnCharacterSelected   -= ShowSelected;
+            _turnManager.OnCharacterDeselected -= HideSelected;
+            _turnManager.OnTargetHighlighted   -= ShowTarget;
+            _turnManager.OnTargetCleared       -= HideTarget;
+        }
+
+        // MapGenerator creates TurnManager at runtime (via AddComponent in its own
+        // Start), which runs after this component's OnEnable — so a one-shot lookup
+        // here would race it and silently never subscribe. Poll a few frames instead.
+        private System.Collections.IEnumerator HookTurnManager()
+        {
             if (_turnManager == null) _turnManager = FindAnyObjectByType<TurnManager>();
+
+            int framesWaited = 0;
+            while (_turnManager == null && framesWaited < 300)
+            {
+                yield return null;
+                framesWaited++;
+                _turnManager = FindAnyObjectByType<TurnManager>();
+            }
+
             if (_turnManager == null)
             {
                 Debug.LogWarning("[CharacterHudController] No TurnManager found in scene.");
-                return;
+                yield break;
             }
 
             _turnManager.OnCharacterSelected   += ShowSelected;
             _turnManager.OnCharacterDeselected += HideSelected;
             _turnManager.OnTargetHighlighted   += ShowTarget;
             _turnManager.OnTargetCleared       += HideTarget;
-        }
-
-        private void OnDisable()
-        {
-            if (_turnManager == null) return;
-            _turnManager.OnCharacterSelected   -= ShowSelected;
-            _turnManager.OnCharacterDeselected -= HideSelected;
-            _turnManager.OnTargetHighlighted   -= ShowTarget;
-            _turnManager.OnTargetCleared       -= HideTarget;
         }
 
         // ------------------------------------------------------------------ //
@@ -76,6 +102,7 @@ namespace BaaroForce.UI
         private void BuildPanels()
         {
             VisualElement root = _document.rootVisualElement;
+            if (_styleSheet != null) root.styleSheets.Add(_styleSheet);
 
             _selectedPanel = _panelTemplate.Instantiate();
             _selectedPanel.AddToClassList("hud-panel");
@@ -94,17 +121,17 @@ namespace BaaroForce.UI
         // Left panel — current-turn character                                 //
         // ------------------------------------------------------------------ //
 
-        private void ShowSelected(Character character) => Populate(_selectedPanel, character);
+        private void ShowSelected(Character character) => Populate(_selectedPanel, character, useRemainingMovement: true);
         private void HideSelected() => _selectedPanel.style.display = DisplayStyle.None;
 
         // ------------------------------------------------------------------ //
         // Right panel — hovered / attacked target                             //
         // ------------------------------------------------------------------ //
 
-        private void ShowTarget(Npc npc) => Populate(_targetPanel, npc);
+        private void ShowTarget(Npc npc) => Populate(_targetPanel, npc, useRemainingMovement: false);
         private void HideTarget() => _targetPanel.style.display = DisplayStyle.None;
 
-        private void Populate(VisualElement panel, Character character)
+        private void Populate(VisualElement panel, Character character, bool useRemainingMovement)
         {
             if (character == null) { panel.style.display = DisplayStyle.None; return; }
 
@@ -118,10 +145,7 @@ namespace BaaroForce.UI
             panel.Q<Label>("unit-level").text = $"Lv {character.Level}";
 
             // --- zone theme -----------------------------------------------------
-            // TODO: point this at whatever field actually stores elemental zone on
-            // CharacterClass (e.g. cls.element). Left as a safe fallback so this
-            // compiles even before that field is wired up.
-            string zoneId = ResolveZoneId(cls);
+            string zoneId = ResolveZoneId(character);
             ApplyExclusiveClass(panel, ZoneClasses, $"zone-{zoneId}");
 
             // --- HP ---------------------------------------------------------
@@ -137,8 +161,11 @@ namespace BaaroForce.UI
             panel.Q<Label>("mana-num").text = $"{mana}/{maxMana}";
 
             // --- Movement (pips) ------------------------------------------------
-            int move = stats.Movement;
-            SetPips(panel.Q<VisualElement>("move-pips"), move, move);
+            int maxMove = stats.Movement;
+            int move = useRemainingMovement && _turnManager != null
+                ? _turnManager.RemainingMove(character)
+                : maxMove;
+            SetPips(panel.Q<VisualElement>("move-pips"), move, maxMove);
             panel.Q<Label>("move-num").text = $"{move}";
 
             // --- Attack (icon swaps by weapon type) ------------------------------
@@ -153,10 +180,11 @@ namespace BaaroForce.UI
             ApplyExclusiveClass(panel.Q<VisualElement>("atk-badge"), WeaponClasses, weaponClass);
         }
 
-        private static string ResolveZoneId(CharacterClass cls)
+        private static string ResolveZoneId(Character character)
         {
-            // Swap this out for the real field once it exists, e.g.:
-            //   return cls.element.ToString().ToLowerInvariant();
+            List<Realm> realms = character.CharacterRealms;
+            if (realms != null && realms.Count > 0)
+                return realms[0].ToString().ToLowerInvariant();
             return "earth";
         }
 

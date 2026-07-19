@@ -39,6 +39,11 @@ namespace BaaroForce.Map
         [FormerlySerializedAs("tileGap")]
         public float TileGap    = 0.05f;
 
+        [Header("Camera")]
+        [Tooltip("Pushes the map lower in the viewport (as a fraction of the map's world size) " +
+                 "so the Combat HUD panels at the top of the screen don't cover it.")]
+        public float CameraVerticalOffsetFactor = 0.18f;
+
         private MapTile[,] _tiles;
         private DeploymentManager _deploymentManager;
         private TurnManager       _turnManager;
@@ -238,6 +243,11 @@ namespace BaaroForce.Map
 
             cam.transform.position = new Vector3(dist, dist, dist);
             cam.transform.LookAt(Vector3.zero, Vector3.up);
+
+            // Pan the view (not rotate) so the map sits lower on screen, clear of the
+            // top-anchored Combat HUD panels. Translating along the camera's own local
+            // "up" after LookAt shifts the orthographic view window without re-aiming it.
+            cam.transform.position += cam.transform.up * (gridWorldSize * CameraVerticalOffsetFactor);
 
             cam.orthographic     = true;
             cam.orthographicSize = gridWorldSize * 0.75f;
