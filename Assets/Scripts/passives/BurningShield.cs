@@ -14,7 +14,7 @@ namespace BaaroForce.Passives
         public override bool Execute(PassiveOnReceivingAttackContext context)
         {
             int value = Mathf.FloorToInt(1f + 0.25f * context.ReceivingCharacter.Level);
-            context.Attacker.CharacterStats.HealthPoints -= value;
+            context.Attacker.CharacterStats.TakeDamage(value);
 
             if (context.Attacker.CharacterStats.HealthPoints <= 0)
             {

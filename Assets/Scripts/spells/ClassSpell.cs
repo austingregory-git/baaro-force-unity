@@ -8,8 +8,9 @@ namespace BaaroForce.Spells
 
         protected ClassSpell(CharacterClass characterClass, string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
                           SpellTargetType targetType = SpellTargetType.Enemy,
-                          SpellAreaType areaType = SpellAreaType.None)
-            : base(name, description, manaCost, actionPointCost, range, area, cooldown, targetType, areaType)
+                          SpellAreaType areaType = SpellAreaType.None,
+                          bool oncePerFight = false)
+            : base(name, description, manaCost, actionPointCost, range, area, cooldown, targetType, areaType, oncePerFight)
         {
             this.CharacterClass = characterClass;
         }

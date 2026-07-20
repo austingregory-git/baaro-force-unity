@@ -50,7 +50,7 @@ namespace BaaroForce.Spells
                     // Apply damage to the occupant
                     Npc target = tile.OccupyingNpc;
                     int damage = context.Caster.CharacterStats.TotalAttack;
-                    target.CharacterStats.HealthPoints -= damage;
+                    target.CharacterStats.TakeDamage(damage);
                     Debug.Log($"[Cleave] '{context.Caster.CharacterName}' dealt {damage} damage to '{target.CharacterName}'. " +
                               $"HP: {target.CharacterStats.HealthPoints}/{target.CharacterStats.MaxHealthPoints}");
                     if (target.CharacterStats.HealthPoints <= 0)

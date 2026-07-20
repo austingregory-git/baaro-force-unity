@@ -15,8 +15,10 @@ namespace BaaroForce.Classes
         {
             _promotionsMap.Add("Mage", new List<string> { "DarkMage", "LightMage", "EarthMage", "FireMage", "WaterMage", "WindMage", "Scholar" });
             _promotionsMap.Add("Warrior", new List<string> { "Soldier", "Samurai", "Paladin", "Thug", "Duelist", "StreetFighter", "NatureWarrior" });
-            _promotionsMap.Add("Cleric", new List<string> { "Deacon", "Monk", "Druid", "Paladin", "LightMage", "Scholar" });
             _promotionsMap.Add("DarkMage", new List<string> { "TwilightMage", "Undead", "Demon", "LunarMage", "VoidMage" });
+            _promotionsMap.Add("Rogue", new List<string> { "Assassin", "Scout", "Ninja", "Thrower", "Duelist", "Thug" });
+            _promotionsMap.Add("Archer", new List<string> { "Hunter", "Gunner", "Ranger", "Thrower", "ElementalArcher", "ExplosivesArtist"});
+            _promotionsMap.Add("Mystic", new List<string> { "Shaman", "Druid", "Cleric", "Monk", "EarthMage", "NatureWarrior", "Enchanter" });
         }
 
         public ClassTree()
@@ -56,7 +58,9 @@ namespace BaaroForce.Classes
 
         public static List<string> GetPromotions(string classID)
         {
-            return _promotionsMap[classID];
+            return _promotionsMap.TryGetValue(classID, out List<string> promotions)
+                ? promotions
+                : new List<string>();
         }
     }
 }

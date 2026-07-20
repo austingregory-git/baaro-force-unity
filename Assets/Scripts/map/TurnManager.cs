@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using BaaroForce.Animations;
 using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Spells;
@@ -61,6 +62,22 @@ namespace BaaroForce.Map
 
         /// <summary>Characters who have already used all their resources this turn.</summary>
         private readonly HashSet<Character> _finishedCharacters = new HashSet<Character>();
+
+        /// <summary>
+        /// Round counter, incremented once per <see cref="StartPlayerTurn"/> (a "round" is one
+        /// full player-turn + enemy-turn cycle). Spell cooldowns are tracked against this rather
+        /// than per-character turns, since all party members share one PlayerTurn phase.
+        /// </summary>
+        private int _roundNumber;
+
+        /// <summary>
+        /// Per-character map of Spell → the round number it becomes available again.
+        /// int.MaxValue means "used, once-per-fight" — never available again this battle.
+        /// Absent entries are always available. Persists across rounds (unlike MP/AP) —
+        /// only StartPlayerTurn's _roundNumber increment can clear a cooldown.
+        /// </summary>
+        private readonly Dictionary<Character, Dictionary<Spell, int>> _spellAvailableAtRound =
+            new Dictionary<Character, Dictionary<Spell, int>>();
 
         // ------------------------------------------------------------------ //
         // Input mode and highlights                                           //
@@ -127,6 +144,7 @@ namespace BaaroForce.Map
             _spellPanel = gameObject.AddComponent<SpellPanelUI>();
             _spellPanel.OnSpellSelected = ActivateSpell;
             _spellPanel.OnBackClicked   = ShowActionPanel;
+            _spellPanel.GetCooldownRemaining = GetCooldownRemaining;
         }
 
         // ------------------------------------------------------------------ //
@@ -140,6 +158,7 @@ namespace BaaroForce.Map
         public void StartPlayerTurn()
         {
             CurrentPhase = TurnPhase.PlayerTurn;
+            _roundNumber++;
             _remainingMovement.Clear();
             _remainingActions.Clear();
             _finishedCharacters.Clear();
@@ -669,10 +688,13 @@ namespace BaaroForce.Map
             _remainingActions[_selectedCharacter] =
                 Mathf.Max(0, RemainingActions(_selectedCharacter) - 1);
 
-            // Only deduct mana on a successful cast.
+            // Only deduct mana and start the cooldown on a successful cast.
             if (resolved)
+            {
                 _selectedCharacter.CharacterStats.Mana =
                     Mathf.Max(0, _selectedCharacter.CharacterStats.Mana - spell.ManaCost);
+                StartSpellCooldown(_selectedCharacter, spell);
+            }
 
             CheckAndHandleTurnEnd(_selectedCharacter);
             if (_selectedCharacter != null)
@@ -708,8 +730,11 @@ namespace BaaroForce.Map
                 Mathf.Max(0, RemainingActions(caster) - 1);
 
             if (resolved)
+            {
                 caster.CharacterStats.Mana =
                     Mathf.Max(0, caster.CharacterStats.Mana - spell.ManaCost);
+                StartSpellCooldown(caster, spell);
+            }
 
             CheckAndHandleTurnEnd(caster);
             if (_selectedCharacter != null)
@@ -765,6 +790,13 @@ namespace BaaroForce.Map
                 return;
             }
 
+            if (!IsSpellAvailable(_selectedCharacter, spell))
+            {
+                Debug.Log($"[TurnManager] '{spell.Name}' is still on cooldown " +
+                          $"({GetCooldownRemaining(_selectedCharacter, spell)} round(s) left).");
+                return;
+            }
+
             if (spell.TargetType == SpellTargetType.Self)
             {
                 // Self spells need no target tile — execute immediately.
@@ -783,12 +815,19 @@ namespace BaaroForce.Map
                     Mathf.Max(0, RemainingActions(_selectedCharacter) - 1);
 
                 if (selfResolved)
+                {
                     _selectedCharacter.CharacterStats.Mana =
                         Mathf.Max(0, _selectedCharacter.CharacterStats.Mana - spell.ManaCost);
+                    StartSpellCooldown(_selectedCharacter, spell);
+                }
 
                 CheckAndHandleTurnEnd(_selectedCharacter);
                 if (_selectedCharacter != null)
+                {
                     ShowActionPanel();
+                    // Push updated shield/HP/mana/AP to the left-side HUD panel.
+                    OnCharacterSelected?.Invoke(_selectedCharacter);
+                }
                 return;
             }
 
@@ -1021,10 +1060,10 @@ namespace BaaroForce.Map
             CheckAndHandleReceivingBasicAttackDamage(attacker, target);
 
             int damage = Mathf.Max(0, attacker.CharacterStats.TotalAttack);
-            target.CharacterStats.HealthPoints -= damage;
+            int dealt  = target.CharacterStats.TakeDamage(damage);
 
             Debug.Log($"[TurnManager] '{attacker.CharacterName}' attacks '{target.CharacterName}' "
-                    + $"for {damage} damage.  "
+                    + $"for {damage} damage ({dealt} after shield).  "
                     + $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}"
                     + $"/{target.CharacterStats.MaxHealthPoints}");
 
@@ -1072,6 +1111,7 @@ namespace BaaroForce.Map
                                      Spell spell, MapTile targetTile)
         {
             if (spell.ManaCost > 0 && caster.CharacterStats.Mana < spell.ManaCost) return false;
+            if (!IsSpellAvailable(caster, spell)) return false;
 
             var context = new SpellContext(
                 caster:      caster,
@@ -1084,8 +1124,11 @@ namespace BaaroForce.Map
             bool resolved = spell.Execute(context);
 
             if (resolved)
+            {
                 caster.CharacterStats.Mana =
                     Mathf.Max(0, caster.CharacterStats.Mana - spell.ManaCost);
+                StartSpellCooldown(caster, spell);
+            }
 
             return resolved;
         }
@@ -1194,10 +1237,12 @@ namespace BaaroForce.Map
             }
 
             MapTile currentTile = fromTile;
+            var spriteView = model.GetComponent<SpriteCharacterView>();
 
             for (int i = 1; i < path.Count; i++)
             {
                 MapTile next     = path[i];
+                spriteView?.FaceGridDirection(next.GridX - currentTile.GridX, next.GridZ - currentTile.GridZ);
                 Vector3 startPos = model.transform.position;
                 float   halfH    = next.transform.lossyScale.y * 0.5f;
                 Vector3 endPos   = next.transform.position + Vector3.up * (halfH + 0.05f);
@@ -1259,6 +1304,41 @@ namespace BaaroForce.Map
         {
             int ap;
             return _remainingActions.TryGetValue(character, out ap) ? ap : 0;
+        }
+
+        // ------------------------------------------------------------------ //
+        // Spell cooldowns                                                     //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Full rounds still blocking <paramref name="spell"/> for <paramref name="character"/>
+        /// (0 = usable now). Returns int.MaxValue for a once-per-fight spell that's been used.
+        /// </summary>
+        public int GetCooldownRemaining(Character character, Spell spell)
+        {
+            if (!_spellAvailableAtRound.TryGetValue(character, out var map)) return 0;
+            if (!map.TryGetValue(spell, out int availableAtRound)) return 0;
+            if (availableAtRound == int.MaxValue) return int.MaxValue;
+            return Mathf.Max(0, availableAtRound - _roundNumber);
+        }
+
+        private bool IsSpellAvailable(Character character, Spell spell) =>
+            GetCooldownRemaining(character, spell) <= 0;
+
+        /// <summary>Call after a spell successfully resolves to start its cooldown (if any).</summary>
+        private void StartSpellCooldown(Character character, Spell spell)
+        {
+            if (!spell.OncePerFight && spell.Cooldown <= 0) return;
+
+            if (!_spellAvailableAtRound.TryGetValue(character, out var map))
+            {
+                map = new Dictionary<Spell, int>();
+                _spellAvailableAtRound[character] = map;
+            }
+
+            // +1 because a cooldown of N must still block the *next* N rounds, not N-1 —
+            // the round it was cast in doesn't count toward the cooldown itself.
+            map[spell] = spell.OncePerFight ? int.MaxValue : _roundNumber + spell.Cooldown + 1;
         }
 
         /// <summary>Ensures an EventSystem and TooltipSystem exist in the scene.</summary>

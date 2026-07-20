@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace BaaroForce.Characters
 {
     public class CharacterStats
@@ -36,6 +38,28 @@ namespace BaaroForce.Characters
             this.Movement        = movement;
             this.MaxActionPoints = maxActionPoints;
             this.ShieldPoints     = 0;
+        }
+
+        /// <summary>
+        /// Applies incoming damage, spending ShieldPoints first unless <paramref name="ignoreShield"/>
+        /// is set (e.g. true/piercing damage). The single entry point for damage across the game —
+        /// every spell/passive/basic-attack should route damage through this rather than touching
+        /// HealthPoints directly, so shields stay consistent everywhere.
+        /// </summary>
+        /// <returns>The amount that actually landed on HealthPoints, after any shield absorption.</returns>
+        public int TakeDamage(int amount, bool ignoreShield = false)
+        {
+            if (amount <= 0) return 0;
+
+            if (!ignoreShield && ShieldPoints > 0)
+            {
+                int absorbed = Mathf.Min(ShieldPoints, amount);
+                ShieldPoints -= absorbed;
+                amount -= absorbed;
+            }
+
+            HealthPoints -= amount;
+            return amount;
         }
     }
 }

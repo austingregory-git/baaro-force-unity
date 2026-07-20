@@ -24,6 +24,8 @@ namespace BaaroForce.Spells
         public readonly int            Area;
         /// <summary>Turns until this spell can be used again (0 = no cooldown).</summary>
         public readonly int            Cooldown;
+        /// <summary>If true, this spell can only ever be cast once per battle — <see cref="Cooldown"/> is ignored.</summary>
+        public readonly bool           OncePerFight;
         /// <summary>Who the spell can be aimed at; drives highlight colour in the UI.</summary>
         public readonly SpellTargetType TargetType;
         /// <summary>The shape of the area-of-effect pattern.
@@ -33,7 +35,8 @@ namespace BaaroForce.Spells
 
         protected Spell(string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
                      SpellTargetType targetType = SpellTargetType.Enemy,
-                     SpellAreaType areaType = SpellAreaType.None)
+                     SpellAreaType areaType = SpellAreaType.None,
+                     bool oncePerFight = false)
         {
             this.Name        = name;
             this.Description = description;
@@ -42,6 +45,7 @@ namespace BaaroForce.Spells
             this.Range       = range;
             this.Area        = area;
             this.Cooldown    = cooldown;
+            this.OncePerFight = oncePerFight;
             this.TargetType  = targetType;
             this.AreaType    = areaType;
         }
@@ -56,6 +60,7 @@ namespace BaaroForce.Spells
             this.Range       = 0;
             this.Area        = 0;
             this.Cooldown    = 999;
+            this.OncePerFight = false;
             this.TargetType  = SpellTargetType.Enemy;
             this.AreaType    = SpellAreaType.None;
         }

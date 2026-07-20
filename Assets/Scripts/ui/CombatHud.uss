@@ -141,9 +141,10 @@
     -unity-background-scale-mode: scale-to-fit;
     padding: 5px;
 }
-.stat-badge-hp   { background-color: rgb(90, 33, 40); background-image: resource("health_128x128"); }
-.stat-badge-mana { background-color: var(--glow-soft); background-image: resource("mana_128x128"); }
-.stat-badge-move { background-color: rgb(74, 63, 52); background-image: resource("movement_128x128"); }
+.stat-badge-hp     { background-color: rgb(90, 33, 40); background-image: resource("health_128x128"); }
+.stat-badge-mana   { background-color: var(--glow-soft); background-image: resource("mana_128x128"); }
+.stat-badge-move   { background-color: rgb(74, 63, 52); background-image: resource("movement_128x128"); }
+.stat-badge-shield { background-color: rgb(45, 65, 85); background-image: resource("shield_128x128"); }
 
 .weapon-melee  { background-color: rgb(90, 70, 46); background-image: resource("melee_attack_128x128"); }
 .weapon-ranged { background-color: rgb(70, 82, 60); background-image: resource("ranged_attack_128x128"); }
@@ -203,6 +204,28 @@
 }
 .stat-num-big { font-size: 20px; }
 
+/* ---------------- Status effect chips ------------------------------------ */
+
+.status-effects {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.status-chip {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    border-width: 1px;
+    padding: 2px 8px;
+    margin: 0 5px 5px 0;
+}
+.status-chip-buff   { border-color: rgb(120, 200, 140); }
+.status-chip-debuff { border-color: rgb(220, 100, 100); }
+.status-chip-custom { border-color: rgb(180, 160, 90); }
+
 /* ---------------- Action panel (Move/Attack/Spells/Items/Wait) --------- */
 
 .action-panel {
@@ -248,3 +271,37 @@
 .action-btn-spells { color: rgb(180, 130, 230); }
 .action-btn-items  { color: rgb(140, 200, 130); }
 .action-btn-wait   { color: rgb(201, 163, 90); }
+
+/* ---------------- Spell panel rows -------------------------------------- */
+
+.spell-row {
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 0 0 6px 0;
+}
+.spell-row:hover          { background-color: rgba(255, 255, 255, 0.16); }
+.spell-row--disabled      { background-color: rgba(255, 255, 255, 0.04); }
+
+.spell-name {
+    flex-grow: 1;
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+}
+.spell-name--disabled { color: rgba(243, 230, 200, 0.35); }
+
+.spell-badge {
+    font-size: 10px;
+    -unity-font-style: bold;
+    border-radius: 8px;
+    padding: 2px 7px;
+    margin-left: 5px;
+    -unity-text-align: middle-center;
+}
+.spell-badge-cost     { background-color: rgba(46, 127, 174, 0.35);  color: rgb(150, 200, 230); }
+.spell-badge-cooldown { background-color: rgba(220, 100, 100, 0.35); color: rgb(240, 170, 170); }
+.spell-badge-used     { background-color: rgba(255, 255, 255, 0.08); color: rgba(243, 230, 200, 0.5); }
+.spell-badge-once     { background-color: rgba(201, 163, 90, 0.30);  color: rgb(230, 200, 140); }

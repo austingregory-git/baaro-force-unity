@@ -18,7 +18,10 @@ namespace BaaroForce.Characters
                 {
                     new BurningShield()
                 },
-                characterSpells: new List<Spell>(), 
+                characterSpells: new List<Spell>()
+                {
+                    new BallForm()
+                }, 
                 characterModelPath: BeepoModelPath)
         {
         }

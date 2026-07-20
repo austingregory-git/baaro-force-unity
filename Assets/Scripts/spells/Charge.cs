@@ -76,7 +76,7 @@ namespace BaaroForce.Spells
             }
 
             int damage = context.Caster.CharacterStats.TotalAttack;
-            target.CharacterStats.HealthPoints -= damage;
+            target.CharacterStats.TakeDamage(damage);
 
             Debug.Log($"[Charge] '{context.Caster.CharacterName}' charges '{target.CharacterName}' " +
                       $"for {damage} damage.  " +

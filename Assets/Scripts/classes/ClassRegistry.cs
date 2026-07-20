@@ -18,6 +18,9 @@ namespace BaaroForce.Classes
             {
                 { "Warrior",  new Warrior()  },
                 { "Mage",     new Mage()     },
+                { "Rogue",    new Rogue()    },
+                { "Mystic",    new Mystic()    },
+                { "Archer",    new Archer()    },
                 { "DarkMage", new DarkMage() },
             };
 

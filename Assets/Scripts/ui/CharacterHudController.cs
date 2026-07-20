@@ -5,6 +5,7 @@ using UnityEngine.Serialization;
 using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Map;
+using BaaroForce.Statuses;
 
 namespace BaaroForce.UI
 {
@@ -178,6 +179,39 @@ namespace BaaroForce.UI
                 _                                     => "weapon-melee",
             };
             ApplyExclusiveClass(panel.Q<VisualElement>("atk-badge"), WeaponClasses, weaponClass);
+
+            // --- Shield (only shown while the character actually has any) -------
+            int shield = Mathf.Max(0, stats.ShieldPoints);
+            panel.Q<VisualElement>("shield-row").style.display =
+                shield > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            panel.Q<Label>("shield-num").text = shield.ToString();
+
+            // --- Active status effects (buffs/debuffs) --------------------------
+            PopulateStatusEffects(panel.Q<VisualElement>("status-effects"), character);
+        }
+
+        private static void PopulateStatusEffects(VisualElement container, Character character)
+        {
+            container.Clear();
+
+            foreach (StatusEffect effect in character.ActiveEffects)
+            {
+                var chip = new Label(effect.RemainingTurns >= 0
+                    ? $"{effect.Name} ({effect.RemainingTurns})"
+                    : effect.Name);
+                chip.AddToClassList("status-chip");
+                chip.AddToClassList(effect.EffectType switch
+                {
+                    StatusEffect.StatusEffectType.Buff   => "status-chip-buff",
+                    StatusEffect.StatusEffectType.Debuff => "status-chip-debuff",
+                    _                                     => "status-chip-custom",
+                });
+                chip.tooltip = effect.Description;
+                container.Add(chip);
+            }
+
+            container.style.display =
+                character.ActiveEffects.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private static string ResolveZoneId(Character character)

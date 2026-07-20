@@ -1,8 +1,7 @@
 using System;
 using System.Text;
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
+using UnityEngine.UIElements;
 using BaaroForce.Characters;
 using BaaroForce.Keywords;
 using BaaroForce.Spells;
@@ -11,109 +10,92 @@ namespace BaaroForce.UI
 {
     /// <summary>
     /// Left-side spell action panel shown whenever a party character is selected
-    /// on the map during the player turn.
+    /// on the map during the player turn. Same chassis/rivet style as the Combat HUD
+    /// and ActionPanelUI (see CombatHud.uss) — built in code, no prefabs required.
     ///
-    /// Each spell appears as a clickable row.  Hovering any row shows a tooltip
-    /// with the full description, range, and mana cost via <see cref="TooltipSystem"/>.
-    /// Rows for spells the character cannot currently afford are dimmed and
-    /// non-interactable.
-    ///
-    /// Built entirely in code — no prefabs or scene setup required.
+    /// Each spell appears as a clickable row showing its mana cost, or a cooldown/
+    /// once-per-fight badge in place of the cost when it isn't currently castable.
+    /// Hovering a row shows the full description (plus live cooldown state) via
+    /// <see cref="TooltipSystem"/>.
     /// </summary>
     public class SpellPanelUI : MonoBehaviour
     {
-        /// <summary>
-        /// Fired when the player clicks a spell row.
-        /// Wire this to <c>TurnManager.ActivateSpell</c>.
-        /// </summary>
+        /// <summary>Fired when the player clicks a castable spell row.</summary>
         public Action<Spell> OnSpellSelected;
 
         /// <summary>Fired when the player clicks the Back button.</summary>
         public Action OnBackClicked;
 
+        /// <summary>
+        /// Supplies the number of rounds left before a spell is castable again
+        /// (0 = usable now, int.MaxValue = used, once-per-fight). Wired by TurnManager.
+        /// </summary>
+        public Func<Character, Spell, int> GetCooldownRemaining;
+
+        private VisualElement _panel;
+        private VisualElement _list;
+        private Label _title;
+
         /// <summary>True while the panel is actively displayed.</summary>
-        public bool IsVisible => _panelRoot != null && _panelRoot.activeSelf;
-
-        private GameObject _canvasGo;
-        private GameObject _panelRoot;
-        private Transform  _listParent;
-
-        // ── Layout constants (in 1280×720 reference pixels) ─────────────────
-        private const float PanelWidth  = 200f;
-        private const float PaddingH    = 10f;
-        private const float PaddingV    = 10f;
-        private const float TitleHeight = 28f;
-        private const float RowHeight   = 40f;
-        private const float RowSpacing  = 5f;
-        private const float CostWidth   = 44f;
-        private const string FontPath   = "Fonts/Baloo2-Bold SDF";
+        public bool IsVisible => _panel != null && _panel.style.display == DisplayStyle.Flex;
 
         // ── Lifecycle ────────────────────────────────────────────────────────
 
-        private void Awake()  => BuildCanvas();
-        private void OnDestroy()
+        private void Awake()     => BuildPanel();
+        private void OnDestroy() => _panel?.RemoveFromHierarchy();
+
+        // ── Construction ─────────────────────────────────────────────────────
+
+        private void BuildPanel()
         {
-            if (_canvasGo != null) Destroy(_canvasGo);
+            UIDocument doc = FindAnyObjectByType<UIDocument>();
+            if (doc == null)
+            {
+                Debug.LogWarning("[SpellPanelUI] No UIDocument found in scene.");
+                return;
+            }
+
+            _panel = new VisualElement();
+            _panel.AddToClassList("hud-panel");
+            _panel.AddToClassList("action-panel");
+            _panel.style.display = DisplayStyle.None;
+
+            var chassis = new VisualElement();
+            chassis.AddToClassList("chassis");
+            chassis.AddToClassList("action-chassis");
+            _panel.Add(chassis);
+
+            chassis.Add(MakeRivet("rivet-tl"));
+            chassis.Add(MakeRivet("rivet-tr"));
+            chassis.Add(MakeRivet("rivet-bl"));
+            chassis.Add(MakeRivet("rivet-br"));
+
+            var backRow = new VisualElement();
+            backRow.AddToClassList("spell-row");
+            var backLabel = new Label("← Back");
+            backLabel.AddToClassList("spell-name");
+            backRow.Add(backLabel);
+            backRow.RegisterCallback<ClickEvent>(_ => OnBackClicked?.Invoke());
+            chassis.Add(backRow);
+
+            _title = new Label();
+            _title.AddToClassList("unit-name");
+            _title.AddToClassList("action-title");
+            chassis.Add(_title);
+
+            _list = new VisualElement();
+            _list.AddToClassList("action-list");
+            chassis.Add(_list);
+
+            doc.rootVisualElement.Add(_panel);
         }
 
-        // ── Canvas / panel construction ──────────────────────────────────────
-
-        private void BuildCanvas()
+        private static VisualElement MakeRivet(string variantClass)
         {
-            _canvasGo = new GameObject("[SpellPanelCanvas]");
-
-            var canvas          = _canvasGo.AddComponent<Canvas>();
-            canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 10;
-
-            var scaler                  = _canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode           = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution   = new Vector2(1280f, 720f);
-            scaler.matchWidthOrHeight    = 0.5f;
-
-            _canvasGo.AddComponent<GraphicRaycaster>();
-
-            // ── Panel background ─────────────────────────────────────────────
-            _panelRoot = new GameObject("SpellPanel");
-            _panelRoot.transform.SetParent(_canvasGo.transform, false);
-
-            var bg      = _panelRoot.AddComponent<Image>();
-            var sprite  = Resources.Load<Sprite>("character_action_panel_512x512");
-            if (sprite != null)
-                bg.sprite = sprite;
-            else
-                bg.color = new Color(0.55f, 0.82f, 0.94f, 0.95f);
-
-            var panelRect              = _panelRoot.GetComponent<RectTransform>();
-            panelRect.anchorMin         = new Vector2(0f, 0.5f);
-            panelRect.anchorMax         = new Vector2(0f, 0.5f);
-            panelRect.pivot             = new Vector2(0f, 0.5f);
-            panelRect.anchoredPosition  = new Vector2(10f, 0f);
-            panelRect.sizeDelta         = new Vector2(PanelWidth, 100f);  // height set in Show()
-
-            // ── Spell list container (VerticalLayoutGroup) ───────────────────
-            var listGo = new GameObject("SpellList");
-            listGo.transform.SetParent(_panelRoot.transform, false);
-
-            var vlg                    = listGo.AddComponent<VerticalLayoutGroup>();
-            vlg.padding                = new RectOffset(
-                                             Mathf.RoundToInt(PaddingH),
-                                             Mathf.RoundToInt(PaddingH),
-                                             Mathf.RoundToInt(PaddingV),
-                                             Mathf.RoundToInt(PaddingV));
-            vlg.spacing                = RowSpacing;
-            vlg.childForceExpandWidth  = true;
-            vlg.childForceExpandHeight = false;
-            vlg.childAlignment         = TextAnchor.UpperLeft;
-
-            var listRect   = listGo.GetComponent<RectTransform>();
-            listRect.anchorMin = Vector2.zero;
-            listRect.anchorMax = Vector2.one;
-            listRect.offsetMin = Vector2.zero;
-            listRect.offsetMax = Vector2.zero;
-
-            _listParent = listGo.transform;
-            _panelRoot.SetActive(false);
+            var rivet = new VisualElement();
+            rivet.AddToClassList("rivet");
+            rivet.AddToClassList(variantClass);
+            return rivet;
         }
 
         // ── Public API ───────────────────────────────────────────────────────
@@ -121,184 +103,81 @@ namespace BaaroForce.UI
         /// <summary>Populates the panel with the character's spells and shows it.</summary>
         public void Show(Character character)
         {
-            for (int i = _listParent.childCount - 1; i >= 0; i--)
-                Destroy(_listParent.GetChild(i).gameObject);
+            if (_panel == null) return;
+            _list.Clear();
 
             if (character?.CharacterSpells == null || character.CharacterSpells.Count == 0)
             {
-                _panelRoot.SetActive(false);
+                _panel.style.display = DisplayStyle.None;
                 return;
             }
 
-            AddBackButton();
-            AddTitle($"{character.CharacterName}'s Spells");
+            _title.text = $"{character.CharacterName}'s Spells";
 
             foreach (Spell spell in character.CharacterSpells)
-                AddSpellRow(spell, character.CharacterStats.Mana);
+                _list.Add(BuildSpellRow(spell, character));
 
-            // Children: 1 back + 1 title + N spells  →  N+1 gaps between them.
-            int   n = character.CharacterSpells.Count;
-            float h = PaddingV * 2
-                      + RowHeight            // back button row
-                      + TitleHeight          // title
-                      + n * RowHeight        // spell rows
-                      + (n + 1) * RowSpacing;
-
-            _panelRoot.GetComponent<RectTransform>().sizeDelta = new Vector2(PanelWidth, h);
-            _panelRoot.SetActive(true);
+            _panel.style.display = DisplayStyle.Flex;
         }
 
         /// <summary>Hides the panel.</summary>
         public void Hide()
         {
-            if (_panelRoot != null)
-                _panelRoot.SetActive(false);
+            if (_panel != null) _panel.style.display = DisplayStyle.None;
         }
 
-        // ── Row builders ─────────────────────────────────────────────────────
+        // ── Row builder ──────────────────────────────────────────────────────
 
-        private void AddTitle(string text)
+        private VisualElement BuildSpellRow(Spell spell, Character character)
         {
-            var go = new GameObject("Title");
-            go.transform.SetParent(_listParent, false);
+            int cooldownRemaining = GetCooldownRemaining?.Invoke(character, spell) ?? 0;
+            bool onCooldown = cooldownRemaining > 0;
+            bool canAfford  = character.CharacterStats.Mana >= spell.ManaCost;
+            bool usable     = canAfford && !onCooldown;
 
-            var tmp      = go.AddComponent<TextMeshProUGUI>();
-            tmp.text      = text;
-            tmp.fontSize  = 13f;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color     = new Color(0.05f, 0.15f, 0.35f);
-            tmp.font      = Resources.Load<TMP_FontAsset>(FontPath);
+            var row = new VisualElement();
+            row.AddToClassList("spell-row");
+            if (!usable) row.AddToClassList("spell-row--disabled");
 
-            var le           = go.AddComponent<LayoutElement>();
-            le.preferredHeight = TitleHeight;
-            le.flexibleWidth   = 1f;
-        }
+            var nameLabel = new Label(spell.Name);
+            nameLabel.AddToClassList("spell-name");
+            if (!usable) nameLabel.AddToClassList("spell-name--disabled");
+            row.Add(nameLabel);
 
-        private void AddBackButton()
-        {
-            var backGo  = new GameObject("Back");
-            backGo.transform.SetParent(_listParent, false);
+            if (spell.OncePerFight)
+                row.Add(MakeBadge("1x", "spell-badge-once"));
 
-            var backBg  = backGo.AddComponent<Image>();
-            backBg.color = new Color(0.82f, 0.85f, 0.92f, 0.40f);
+            if (cooldownRemaining == int.MaxValue)
+                row.Add(MakeBadge("Used", "spell-badge-used"));
+            else if (onCooldown)
+                row.Add(MakeBadge($"CD {cooldownRemaining}", "spell-badge-cooldown"));
+            else if (spell.ManaCost > 0)
+                row.Add(MakeBadge($"{spell.ManaCost}MP", "spell-badge-cost"));
 
-            var le           = backGo.AddComponent<LayoutElement>();
-            le.preferredHeight = RowHeight;
-            le.flexibleWidth   = 1f;
-
-            var btn         = backGo.AddComponent<Button>();
-            btn.targetGraphic = backBg;
-            btn.onClick.AddListener(() => OnBackClicked?.Invoke());
-
-            var colors              = btn.colors;
-            colors.normalColor       = Color.white;
-            colors.highlightedColor  = new Color(0.85f, 0.92f, 1.00f);
-            colors.pressedColor      = new Color(0.65f, 0.80f, 1.00f);
-            btn.colors              = colors;
-
-            var labelGo  = new GameObject("Label");
-            labelGo.transform.SetParent(backGo.transform, false);
-
-            var tmp      = labelGo.AddComponent<TextMeshProUGUI>();
-            tmp.text      = "\u2190 Back";
-            tmp.fontSize  = 12f;
-            tmp.fontStyle = FontStyles.Normal;
-            tmp.color     = new Color(0.20f, 0.30f, 0.50f);
-            tmp.alignment = TextAlignmentOptions.MidlineLeft;
-            tmp.font      = Resources.Load<TMP_FontAsset>(FontPath);
-
-            var lr             = labelGo.GetComponent<RectTransform>();
-            lr.anchorMin        = Vector2.zero;
-            lr.anchorMax        = Vector2.one;
-            lr.sizeDelta        = new Vector2(-12f, 0f);
-            lr.anchoredPosition = new Vector2(8f, 0f);
-        }
-
-        private void AddSpellRow(Spell spell, int currentMana)
-        {
-            bool canAfford = currentMana >= spell.ManaCost;
-
-            // ── Row container ────────────────────────────────────────────────
-            var rowGo   = new GameObject($"Row_{spell.Name}");
-            rowGo.transform.SetParent(_listParent, false);
-
-            var rowBg   = rowGo.AddComponent<Image>();
-            rowBg.color = canAfford
-                ? new Color(1f, 1f, 1f, 0.45f)
-                : new Color(0.6f, 0.6f, 0.6f, 0.25f);
-
-            var le           = rowGo.AddComponent<LayoutElement>();
-            le.preferredHeight = RowHeight;
-            le.flexibleWidth   = 1f;
-
-            var hlg                    = rowGo.AddComponent<HorizontalLayoutGroup>();
-            hlg.padding                = new RectOffset(6, 6, 4, 4);
-            hlg.spacing                = 4f;
-            hlg.childForceExpandWidth  = false;
-            hlg.childForceExpandHeight = true;
-            hlg.childAlignment         = TextAnchor.MiddleLeft;
-
-            // ── Button (click to cast) ────────────────────────────────────────
-            var btn          = rowGo.AddComponent<Button>();
-            btn.targetGraphic = rowBg;
-            btn.interactable  = canAfford;
-
-            Spell captured = spell;
-            btn.onClick.AddListener(() => OnSpellSelected?.Invoke(captured));
-
-            var colors              = btn.colors;
-            colors.normalColor       = Color.white;
-            colors.highlightedColor  = new Color(0.85f, 0.92f, 1.00f);
-            colors.pressedColor      = new Color(0.65f, 0.80f, 1.00f);
-            colors.disabledColor     = new Color(0.55f, 0.55f, 0.55f, 0.55f);
-            btn.colors              = colors;
-
-            // ── Tooltip on hover ─────────────────────────────────────────────
-            var tt = rowGo.AddComponent<TooltipTrigger>();
-            tt.Initialize(spell.Name, BuildTooltipBody(spell));
-
-            // ── Spell name label ─────────────────────────────────────────────
-            var nameGo = new GameObject("SpellName");
-            nameGo.transform.SetParent(rowGo.transform, false);
-
-            var nameTmp         = nameGo.AddComponent<TextMeshProUGUI>();
-            nameTmp.text         = spell.Name;
-            nameTmp.fontSize     = 13f;
-            nameTmp.fontStyle    = canAfford ? FontStyles.Normal : FontStyles.Italic;
-            nameTmp.color        = canAfford
-                ? new Color(0.05f, 0.15f, 0.35f)
-                : new Color(0.38f, 0.38f, 0.42f);
-            nameTmp.alignment    = TextAlignmentOptions.MidlineLeft;
-            nameTmp.overflowMode = TextOverflowModes.Ellipsis;
-            nameTmp.font         = Resources.Load<TMP_FontAsset>(FontPath);
-
-            var nameLe         = nameGo.AddComponent<LayoutElement>();
-            nameLe.flexibleWidth = 1f;
-
-            // ── Mana manaCost label (only shown when manaCost > 0) ───────────────────
-            if (spell.ManaCost > 0)
+            if (usable)
             {
-                var manaCostGo = new GameObject("Cost");
-                manaCostGo.transform.SetParent(rowGo.transform, false);
-
-                var manaCostTmp      = manaCostGo.AddComponent<TextMeshProUGUI>();
-                manaCostTmp.text      = $"{spell.ManaCost}MP";
-                manaCostTmp.fontSize  = 11f;
-                manaCostTmp.color     = canAfford
-                    ? new Color(0.10f, 0.30f, 0.80f)
-                    : new Color(0.40f, 0.40f, 0.55f);
-                manaCostTmp.alignment = TextAlignmentOptions.MidlineRight;
-                manaCostTmp.font      = Resources.Load<TMP_FontAsset>(FontPath);
-
-                var manaCostLe           = manaCostGo.AddComponent<LayoutElement>();
-                manaCostLe.preferredWidth = CostWidth;
+                Spell captured = spell;
+                row.RegisterCallback<ClickEvent>(_ => OnSpellSelected?.Invoke(captured));
             }
+
+            string tooltipBody = BuildTooltipBody(spell, cooldownRemaining);
+            row.RegisterCallback<PointerEnterEvent>(_ => TooltipSystem.Instance?.Show(spell.Name, tooltipBody));
+            row.RegisterCallback<PointerLeaveEvent>(_ => TooltipSystem.Instance?.Hide());
+
+            return row;
+        }
+
+        private static Label MakeBadge(string text, string variantClass)
+        {
+            var badge = new Label(text);
+            badge.AddToClassList("spell-badge");
+            badge.AddToClassList(variantClass);
+            return badge;
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
 
-        private static string BuildTooltipBody(Spell spell)
+        private static string BuildTooltipBody(Spell spell, int cooldownRemaining)
         {
             var sb = new StringBuilder();
             sb.Append(KeywordRegistry.FormatDescription(spell.Description));
@@ -311,8 +190,15 @@ namespace BaaroForce.UI
             if (spell.ManaCost > 0)
                 sb.Append($"\nMana cost: {spell.ManaCost}");
 
-            if (spell.Cooldown > 0 && spell.Cooldown < 999)
+            if (spell.OncePerFight)
+                sb.Append("\n<i>Once per fight.</i>");
+            else if (spell.Cooldown > 0 && spell.Cooldown < 999)
                 sb.Append($"\nCooldown: {spell.Cooldown} turn(s)");
+
+            if (cooldownRemaining == int.MaxValue)
+                sb.Append("\n<color=#e07a7a>Already used this fight.</color>");
+            else if (cooldownRemaining > 0)
+                sb.Append($"\n<color=#e07a7a>On cooldown: {cooldownRemaining} round(s) left.</color>");
 
             return sb.ToString();
         }

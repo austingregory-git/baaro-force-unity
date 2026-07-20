@@ -3,8 +3,9 @@ namespace BaaroForce.Spells
     public abstract class CharacterSpell : Spell
     {
         protected CharacterSpell(string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
-                              SpellTargetType targetType = SpellTargetType.Enemy)
-            : base(name, description, manaCost, actionPointCost, range, area, cooldown, targetType)
+                              SpellTargetType targetType = SpellTargetType.Enemy,
+                              bool oncePerFight = false)
+            : base(name, description, manaCost, actionPointCost, range, area, cooldown, targetType, oncePerFight: oncePerFight)
         {
         }
 

@@ -1,5 +1,6 @@
 using UnityEngine;
 using BaaroForce.Characters;
+using BaaroForce.Animations;
 
 namespace BaaroForce.Map
 {
@@ -222,8 +223,21 @@ namespace BaaroForce.Map
         // Occupancy                                                           //
         // ------------------------------------------------------------------ //
 
+        // All units currently share Winston's sprite art (see BaaroForce.Animations.SpriteKit) —
+        // the only isometric set that exists so far. Once other characters get their own art,
+        // this should move onto Character as a per-instance SpriteKit instead of being shared.
+        private static readonly SpriteKit DefaultSpriteKit = new SpriteKit(
+            backLeftSpritePath: "winston_back_left_128x128",
+            backRightSpritePath: "winston_back_right_128x128",
+            frontLeftSpritePath: "winston_front_left_128x128",
+            frontRightSpritePath: "winston_front_right_128x128",
+            idleSpritePaths: null,
+            walkSpritePaths: null,
+            attackSpritePaths: null,
+            deathSpritePaths: null);
+
         /// <summary>
-        /// Loads the unit's 3D model and places it on top of this tile.
+        /// Places the unit's isometric sprite on top of this tile.
         /// Parented to the grid root (tile's parent) to avoid non-uniform scale distortion.
         /// </summary>
         public void PlaceUnit(Character unit)
@@ -232,29 +246,25 @@ namespace BaaroForce.Map
             OccupyingUnit = unit;
             unit.CharacterCurrentTile = this;
 
-            var prefab = Resources.Load<GameObject>(unit.CharacterModelPath);
-            if (prefab != null)
-            {
-                _unitObject = Instantiate(prefab);
-            }
-            else
-            {
-                Debug.LogWarning($"[MapTile] Model not found at '{unit.CharacterModelPath}'. Using fallback.");
-                _unitObject = CreateFallback();
-            }
-
-            _unitObject.name = $"{(unit is Npc ? "Npc" : "Character")}_{unit.CharacterName}";
+            _unitObject = new GameObject($"{(unit is Npc ? "Npc" : "Character")}_{unit.CharacterName}");
+            var spriteRenderer = _unitObject.AddComponent<SpriteRenderer>();
+            var view = _unitObject.AddComponent<SpriteCharacterView>();
+            view.Initialize(DefaultSpriteKit);
 
             // Parent to the MapGenerator (tile's parent) — it has uniform scale (1,1,1),
             // so world-space and local-space transforms are equivalent.
             _unitObject.transform.SetParent(transform.parent, false);
 
-            // Sit model on top of this tile in world space.
+            // Sit the sprite on top of this tile in world space.
             float halfTileH = transform.lossyScale.y * 0.5f;
             _unitObject.transform.position = transform.position + Vector3.up * (halfTileH + 0.05f);
 
-            // Scale to 80 % of the tile's world footprint, preserving model proportions.
-            ScaleToFit(_unitObject, transform.lossyScale.x * 0.8f);
+            // Scale to 80% of the tile's world footprint. Uses the sprite's own local (pre-rotation)
+            // bounds rather than its rotated world-space AABB, since the sprite is tilted to face the
+            // isometric camera — the world AABB of a tilted flat quad overstates its on-screen size.
+            float spriteLocalSize = Mathf.Max(spriteRenderer.sprite.bounds.size.x, spriteRenderer.sprite.bounds.size.y);
+            float targetWorldSize = transform.lossyScale.x * 0.8f;
+            _unitObject.transform.localScale = Vector3.one * (spriteLocalSize > 0f ? targetWorldSize / spriteLocalSize : 1f);
         }
 
         /// <summary>Removes the occupying unit from this tile and destroys its model.</summary>
@@ -296,33 +306,6 @@ namespace BaaroForce.Map
         // ------------------------------------------------------------------ //
         // Private helpers                                                     //
         // ------------------------------------------------------------------ //
-
-        private static void ScaleToFit(GameObject obj, float targetWorldSize)
-        {
-            obj.transform.localScale = Vector3.one;   // reset before measuring
-            Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0)
-            {
-                obj.transform.localScale = Vector3.one * targetWorldSize;
-                return;
-            }
-
-            Bounds bounds = renderers[0].bounds;
-            foreach (Renderer r in renderers)
-                bounds.Encapsulate(r.bounds);
-
-            float maxDim = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-            obj.transform.localScale = Vector3.one * (maxDim > 0f ? targetWorldSize / maxDim : 1f);
-        }
-
-        private static GameObject CreateFallback()
-        {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            Destroy(go.GetComponent<Collider>());
-            var mat = new Material(Shader.Find("Standard")) { color = Color.magenta };
-            go.GetComponent<MeshRenderer>().material = mat;
-            return go;
-        }
 
         private static void ApplyTransparency(Material mat, Color color)
         {

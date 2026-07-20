@@ -59,7 +59,7 @@ namespace BaaroForce.Spells
 
             // Deal dark damage.
             int damage = Mathf.FloorToInt(2f + 0.5f * level);
-            target.CharacterStats.HealthPoints -= damage;
+            target.CharacterStats.TakeDamage(damage);
 
             Debug.Log($"[DeathStare] '{context.Caster.CharacterName}' casts Death Stare on " +
                       $"'{target.CharacterName}'.  Damage: {damage}, " +
