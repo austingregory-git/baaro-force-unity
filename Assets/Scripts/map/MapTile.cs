@@ -249,7 +249,7 @@ namespace BaaroForce.Map
             _unitObject = new GameObject($"{(unit is Npc ? "Npc" : "Character")}_{unit.CharacterName}");
             var spriteRenderer = _unitObject.AddComponent<SpriteRenderer>();
             var view = _unitObject.AddComponent<SpriteCharacterView>();
-            view.Initialize(DefaultSpriteKit);
+            view.Initialize(DefaultSpriteKit, unit is Npc);
 
             // Parent to the MapGenerator (tile's parent) — it has uniform scale (1,1,1),
             // so world-space and local-space transforms are equivalent.

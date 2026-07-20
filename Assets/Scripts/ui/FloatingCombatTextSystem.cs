@@ -82,6 +82,14 @@ namespace BaaroForce.UI
             Spawn(target, $"+{amount}", CombatTextColors.HealColor);
         }
 
+        /// <summary>Pops a gold-gain number above <paramref name="target"/> in gold/yellow.
+        /// No-ops for zero/negative amounts.</summary>
+        public void ShowGold(Character target, int amount)
+        {
+            if (amount <= 0) return;
+            Spawn(target, $"+{amount}g", CombatTextColors.GoldColor);
+        }
+
         // ── Internals ────────────────────────────────────────────────────────
 
         private void Spawn(Character target, string text, Color color)

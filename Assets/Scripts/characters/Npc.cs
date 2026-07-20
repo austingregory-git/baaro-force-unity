@@ -23,6 +23,11 @@ namespace BaaroForce.Characters
         /// during the enemy turn.</summary>
         public NpcAI AI { get; set; }
 
+        /// <summary>True if this Npc can see through Invisible (see Character.IsInvisible) and
+        /// may still target an otherwise-hidden character. False for most Npcs — override in
+        /// a subclass to create a "sees through stealth" enemy type.</summary>
+        public virtual bool IgnoresInvisibility => false;
+
         public Npc(
                         string characterName,
                         CharacterStats characterStats,

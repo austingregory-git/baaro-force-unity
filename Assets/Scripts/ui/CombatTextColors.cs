@@ -27,6 +27,9 @@ namespace BaaroForce.UI
         /// <see cref="BuffColor"/> so the two read as related but distinct signals.</summary>
         public static readonly Color HealColor = new Color(0.65f, 0.92f, 0.65f); // light green
 
+        /// <summary>Colour for gold-gain numbers (Mug, loot, etc.).</summary>
+        public static readonly Color GoldColor = new Color(0.95f, 0.80f, 0.25f); // gold/yellow
+
         /// <summary>Colour for a damage number of the given elemental/physical type.</summary>
         public static Color ForDamageType(SpellType type)
         {

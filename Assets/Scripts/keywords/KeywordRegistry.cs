@@ -17,10 +17,13 @@ namespace BaaroForce.Keywords
         private static readonly Dictionary<string, Keyword> _all =
             new Dictionary<string, Keyword>
             {
-                { "Fear",  new Fear()  },
-                { "Regen", new Regen() },
-                { "Level", new Level() },
-                { "Dark",  new Dark()  },
+                { "Fear",    new Fear()    },
+                { "Regen",   new Regen()   },
+                { "Level",   new Level()   },
+                { "Dark",    new Dark()    },
+                { "Shield",  new Shield()  },
+                { "Dodge",   new Dodge()   },
+                { "Silence", new Silence() },
             };
 
         // ------------------------------------------------------------------ //

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using BaaroForce.Animations;
 using BaaroForce.Classes;
 using BaaroForce.Passives;
 using BaaroForce.Spells;
@@ -29,8 +30,21 @@ namespace BaaroForce.Characters
         /// <summary>Current level; used for spell and ability power scaling. Defaults to 1.</summary>
         public int Level { get; set; } = 1;
 
+        /// <summary>Grid direction (dx,dz) this unit is currently facing, updated whenever it
+        /// moves (see TurnManager.MoveUnitAlongPath). Used by positional effects like Backstab.
+        /// Defaults to (0,1), matching the initial FrontRight sprite orientation set by
+        /// SpriteCharacterView.Initialize.</summary>
+        public Vector2Int FacingDirection { get; set; } = new Vector2Int(0, 1);
+
         /// <summary>Status effects currently active on this character.</summary>
         public List<StatusEffect> ActiveEffects { get; } = new List<StatusEffect>();
+
+        /// <summary>True while a Silence effect prevents this character from casting spells.</summary>
+        public bool IsSilenced => ActiveEffects.Exists(e => e.Name == "Silence");
+
+        /// <summary>True while an Invisible effect prevents most Npcs from targeting this
+        /// character with attacks or spells (see Npc.IgnoresInvisibility for exceptions).</summary>
+        public bool IsInvisible => ActiveEffects.Exists(e => e.Name == "Invisible");
 
         /// <summary>
         /// Applies a status effect to this character, calling its OnApply hook immediately.
@@ -50,6 +64,69 @@ namespace BaaroForce.Characters
             ActiveEffects.Add(effect);
             FloatingCombatTextSystem.Instance?.ShowStatus(this, effect.Name, effect.EffectType);
             Debug.Log($"[{GetType().Name}] '{CharacterName}' afflicted with {effect.Name} ({effect.RemainingTurns} turn(s)).");
+            SyncInvisibilityVisual();
+        }
+
+        /// <summary>
+        /// Removes this character's active Invisible status early, if any. Should be called
+        /// whenever the character attacks, casts a spell, or is damaged from any other
+        /// source — the three ways Invisible can end before its duration runs out.
+        /// </summary>
+        public void BreakInvisibility()
+        {
+            for (int i = ActiveEffects.Count - 1; i >= 0; i--)
+            {
+                if (ActiveEffects[i].Name == "Invisible")
+                {
+                    ActiveEffects[i].OnRemove(CharacterStats);
+                    ActiveEffects.RemoveAt(i);
+                    break;
+                }
+            }
+            SyncInvisibilityVisual();
+        }
+
+        /// <summary>Applies the translucent shadow-tint to this character's on-map sprite
+        /// while Invisible is active, and clears it otherwise. No-ops if the character
+        /// currently has no live model on the map (e.g. still in deployment).</summary>
+        private void SyncInvisibilityVisual()
+        {
+            SpriteCharacterView view = CharacterCurrentTile?.UnitObject?.GetComponent<SpriteCharacterView>();
+            view?.SetInvisible(IsInvisible);
+        }
+
+        /// <summary>
+        /// Applies physical damage, first checking for an active Dodge status — if present,
+        /// the attack is avoided entirely (Dodge is consumed and no damage lands). Basic
+        /// attacks and physical-typed spells should route damage through this instead of
+        /// calling CharacterStats.TakeDamage directly, so Dodge is respected everywhere.
+        /// </summary>
+        public int TakePhysicalDamage(int amount)
+        {
+            if (TryConsumeDodge())
+            {
+                FloatingCombatTextSystem.Instance?.ShowStatus(this, "Dodge", StatusEffect.StatusEffectType.Buff);
+                Debug.Log($"[{GetType().Name}] '{CharacterName}' dodged an attack.");
+                return 0;
+            }
+            int dealt = CharacterStats.TakeDamage(amount);
+            BreakInvisibility();
+            return dealt;
+        }
+
+        /// <summary>Removes this character's active Dodge status (if any) and returns true if one was consumed.</summary>
+        public bool TryConsumeDodge()
+        {
+            for (int i = ActiveEffects.Count - 1; i >= 0; i--)
+            {
+                if (ActiveEffects[i].Name == "Dodge")
+                {
+                    ActiveEffects[i].OnRemove(CharacterStats);
+                    ActiveEffects.RemoveAt(i);
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>
@@ -69,6 +146,7 @@ namespace BaaroForce.Characters
                     Debug.Log($"[{GetType().Name}] '{CharacterName}': {fx.Name} has expired.");
                 }
             }
+            SyncInvisibilityVisual();
         }
 
         protected Character(

@@ -12,6 +12,7 @@ namespace BaaroForce.Passives
             new Dictionary<string, PassiveAbility>
             {
                 { "Autumnal Growth", new AutumnalGrowth() },
+                { "In The Trees",    new InTheTrees()     },
             };
 
         // ── Class-based spell pool ─────────────────────────────────────────

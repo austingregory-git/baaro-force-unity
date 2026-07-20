@@ -11,11 +11,16 @@ namespace BaaroForce.Spells
         private static readonly Dictionary<string, Spell> _all =
             new Dictionary<string, Spell>
             {
-                { "Charge", new Charge() },
-                { "Grit",   new Grit()   },
-                { "Cleave", new Cleave() },
-                { "Slam",   new Slam()   },
-                { "Rally",  new Rally()  },
+                { "Charge",         new Charge()       },
+                { "Grit",           new Grit()         },
+                { "Cleave",         new Cleave()       },
+                { "Slam",           new Slam()         },
+                { "Rally",          new Rally()        },
+                { "Evasion",        new Evasion()      },
+                { "Mug",            new Mug()          },
+                { "Shiv",           new Shiv()         },
+                { "Backstab",       new Backstab()     },
+                { "Throwing Knife", new ThrowingKnife()},
             };
 
         // ── Class-based spell pool ─────────────────────────────────────────
@@ -27,6 +32,9 @@ namespace BaaroForce.Spells
                 { "Warrior", new List<Func<ClassSpell>> {
                     () => new Charge(), () => new Grit(), () => new Cleave(),
                     () => new Slam(), () => new Rally() } },
+                { "Rogue", new List<Func<ClassSpell>> {
+                    () => new Evasion(), () => new Mug(), () => new Shiv(),
+                    () => new Backstab(), () => new ThrowingKnife() } },
             };
 
         // ------------------------------------------------------------------ //

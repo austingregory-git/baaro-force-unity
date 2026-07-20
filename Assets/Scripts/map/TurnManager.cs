@@ -186,6 +186,12 @@ namespace BaaroForce.Map
             // This could include checking if all characters have finished their turns,
             // applying relic effects, or other start-of-turn mechanics.
             Debug.Log("[TurnManager] Checking and handling start of player turn.");
+
+            // _roundNumber was just incremented in StartPlayerTurn, so 1 means this is the
+            // very first player turn of the battle — fire once-per-battle passives here.
+            if (_roundNumber == 1)
+                CheckAndHandleStartOfCombatPassives(members);
+
             CheckAndHandlePlayerTurnStartPassives(members);
 
             CheckAndHandleTurnStartRelics(relics);
@@ -195,6 +201,22 @@ namespace BaaroForce.Map
         {
             return;
             //throw new NotImplementedException();
+        }
+
+        private void CheckAndHandleStartOfCombatPassives(List<Character> members)
+        {
+            if (members == null) return;
+            foreach (Character c in members)
+            {
+                foreach (var passive in c.CharacterPassiveAbilities)
+                {
+                    if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.StartOfCombat)
+                    {
+                        Debug.Log($"[TurnManager] Executing start-of-combat passive '{passive.Name}' for character '{c.CharacterName}'.");
+                        passive.Execute(new PassiveOnTurnContext(character: c, characterLevel: c.Level, characterTile: c.CharacterCurrentTile, allTiles: _tiles, gridSize: _gridSize));
+                    }
+                }
+            }
         }
 
         private void CheckAndHandlePlayerTurnStartPassives(List<Character> members)
@@ -634,12 +656,13 @@ namespace BaaroForce.Map
             if (distance == 0 || distance > _selectedSpell.Range)
                 return;
 
+            // Dispatches on the spell's own AreaType (HorizontalLine, Cone, ...) so the preview
+            // always matches the shape Execute will actually resolve against.
             List<MapTile> areaTiles =
-                SpellAreaUtils.GetHorizontalLineTiles(
+                SpellAreaUtils.GetAreaTiles(
+                    _selectedSpell,
                     _selectedTile,
                     _hoveredTile,
-                    _selectedSpell.Range,
-                    _selectedSpell.Area,
                     _tiles,
                     _gridSize);
 
@@ -715,9 +738,10 @@ namespace BaaroForce.Map
 
             bool resolved = spell.Execute(context);
 
-            // Always spend one action point — the attempt was made.
+            // Spend the spell's own action-point cost — the attempt was made.
+            // Free spells (ActionPointCost == 0, e.g. Evasion, Throwing Knife) spend nothing.
             _remainingActions[_selectedCharacter] =
-                Mathf.Max(0, RemainingActions(_selectedCharacter) - 1);
+                Mathf.Max(0, RemainingActions(_selectedCharacter) - spell.ActionPointCost);
 
             // Only deduct mana and start the cooldown on a successful cast.
             if (resolved)
@@ -725,6 +749,7 @@ namespace BaaroForce.Map
                 _selectedCharacter.CharacterStats.Mana =
                     Mathf.Max(0, _selectedCharacter.CharacterStats.Mana - spell.ManaCost);
                 StartSpellCooldown(_selectedCharacter, spell);
+                _selectedCharacter.BreakInvisibility();
             }
 
             CheckAndHandleTurnEnd(_selectedCharacter);
@@ -758,13 +783,14 @@ namespace BaaroForce.Map
             bool resolved = spell.Execute(context);
 
             _remainingActions[caster] =
-                Mathf.Max(0, RemainingActions(caster) - 1);
+                Mathf.Max(0, RemainingActions(caster) - spell.ActionPointCost);
 
             if (resolved)
             {
                 caster.CharacterStats.Mana =
                     Mathf.Max(0, caster.CharacterStats.Mana - spell.ManaCost);
                 StartSpellCooldown(caster, spell);
+                caster.BreakInvisibility();
             }
 
             CheckAndHandleTurnEnd(caster);
@@ -840,8 +866,15 @@ namespace BaaroForce.Map
                 return;
             }
 
+            if (_selectedCharacter.IsSilenced)
+            {
+                Debug.Log($"[TurnManager] '{_selectedCharacter.CharacterName}' is silenced and cannot cast spells.");
+                _warningToast?.Show($"'{_selectedCharacter.CharacterName}' is silenced and cannot cast spells.");
+                return;
+            }
+
             int ap = RemainingActions(_selectedCharacter);
-            if (ap <= 0)
+            if (ap < spell.ActionPointCost)
             {
                 Debug.Log($"[TurnManager] '{_selectedCharacter.CharacterName}' has no actions remaining.");
                 _warningToast?.Show($"'{_selectedCharacter.CharacterName}' has no action points left.");
@@ -1095,10 +1128,12 @@ namespace BaaroForce.Map
         /// </summary>
         private void ResolveBasicAttack(Character attacker, Character target, MapTile targetTile)
         {
+            attacker.BreakInvisibility();
+
             CheckAndHandleReceivingBasicAttackDamage(attacker, target);
 
             int damage = Mathf.Max(0, attacker.CharacterStats.TotalAttack);
-            int dealt  = target.CharacterStats.TakeDamage(damage);
+            int dealt  = target.TakePhysicalDamage(damage);
             FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
 
             Debug.Log($"[TurnManager] '{attacker.CharacterName}' attacks '{target.CharacterName}' "
@@ -1138,6 +1173,14 @@ namespace BaaroForce.Map
             Character target = targetTile.OccupyingCharacter;
             if (target == null) return;
 
+            // Defense-in-depth: AggressiveNpcAI already excludes Invisible targets when
+            // choosing who to attack, but enforce it here too in case another AI type doesn't.
+            if (target.IsInvisible && !attacker.IgnoresInvisibility)
+            {
+                Debug.LogWarning($"[TurnManager] '{attacker.CharacterName}' cannot target invisible '{target.CharacterName}'.");
+                return;
+            }
+
             ResolveBasicAttack(attacker, target, targetTile);
         }
 
@@ -1149,8 +1192,16 @@ namespace BaaroForce.Map
         private bool NpcExecuteSpell(Npc caster, MapTile casterTile,
                                      Spell spell, MapTile targetTile)
         {
+            if (caster.IsSilenced) return false;
             if (spell.ManaCost > 0 && caster.CharacterStats.Mana < spell.ManaCost) return false;
             if (!IsSpellAvailable(caster, spell)) return false;
+
+            // Defense-in-depth: AggressiveNpcAI already excludes Invisible Enemy targets when
+            // choosing a spell target, but enforce it here too in case another AI type doesn't.
+            Character targetCharacter = targetTile?.OccupyingCharacter;
+            if (spell.TargetType == SpellTargetType.Enemy && targetCharacter != null &&
+                targetCharacter.IsInvisible && !caster.IgnoresInvisibility)
+                return false;
 
             var context = new SpellContext(
                 caster:      caster,
@@ -1167,6 +1218,7 @@ namespace BaaroForce.Map
                 caster.CharacterStats.Mana =
                     Mathf.Max(0, caster.CharacterStats.Mana - spell.ManaCost);
                 StartSpellCooldown(caster, spell);
+                caster.BreakInvisibility();
             }
 
             return resolved;
@@ -1282,6 +1334,7 @@ namespace BaaroForce.Map
             {
                 MapTile next     = path[i];
                 spriteView?.FaceGridDirection(next.GridX - currentTile.GridX, next.GridZ - currentTile.GridZ);
+                unit.FacingDirection = new Vector2Int(next.GridX - currentTile.GridX, next.GridZ - currentTile.GridZ);
                 Vector3 startPos = model.transform.position;
                 float   halfH    = next.transform.lossyScale.y * 0.5f;
                 Vector3 endPos   = next.transform.position + Vector3.up * (halfH + 0.05f);

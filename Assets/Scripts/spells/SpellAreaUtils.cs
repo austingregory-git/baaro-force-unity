@@ -36,6 +36,8 @@ namespace BaaroForce.Spells
                 case SpellAreaType.CircleAround:
                     // Always centred on the caster — no tile is aimed.
                     return GetCircleAroundTiles(casterTile, spell.Area, allTiles, gridSize, spell.IncludeOriginTile);
+                case SpellAreaType.Cone:
+                    return GetConeTiles(casterTile, targetTile, spell.Area, allTiles, gridSize);
                 default:
                     // Unimplemented area types fall back to single-tile targeting.
                     return new List<MapTile> { targetTile };
@@ -126,6 +128,58 @@ namespace BaaroForce.Spells
                     int x = cx + dx;
                     int z = cz + dz;
 
+                    if (x >= 0 && x < gridSize && z >= 0 && z < gridSize)
+                        result.Add(allTiles[x, z]);
+                }
+            }
+
+            return result;
+        }
+
+        // ------------------------------------------------------------------ //
+        // Cone                                                                //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Returns a widening triangular cone of tiles fanning out from
+        /// <paramref name="casterTile"/> toward <paramref name="targetTile"/>.
+        /// At forward distance <c>d</c> (1..area) the cone is <c>2d-1</c> tiles wide,
+        /// centred on the straight line to the target — so an area of N covers
+        /// 1 + 3 + 5 + ... + (2N-1) = N² tiles total (area 2 → 4 tiles, area 3 → 9 tiles).
+        /// "Forward" is restricted to the four cardinal directions, same as
+        /// <see cref="GetHorizontalLineTiles"/> — this grid has no diagonal movement.
+        /// </summary>
+        public static List<MapTile> GetConeTiles(
+            MapTile casterTile,
+            MapTile targetTile,
+            int area,
+            MapTile[,] allTiles, int gridSize)
+        {
+            var result = new List<MapTile>();
+            if (casterTile == null || targetTile == null) return result;
+
+            int dx = targetTile.GridX - casterTile.GridX;
+            int dz = targetTile.GridZ - casterTile.GridZ;
+
+            // Normalise to a unit cardinal direction; default to +Z if aimed at the caster's own tile.
+            int ndx = Math.Sign(dx);
+            int ndz = Math.Sign(dz);
+            if (ndx == 0 && ndz == 0) ndz = 1;
+
+            // Rotate 90° to get the perpendicular (spread) direction.
+            int perpX = -ndz;
+            int perpZ =  ndx;
+
+            int cx = casterTile.GridX;
+            int cz = casterTile.GridZ;
+
+            for (int d = 1; d <= area; d++)
+            {
+                int halfWidth = d - 1;
+                for (int k = -halfWidth; k <= halfWidth; k++)
+                {
+                    int x = cx + d * ndx + k * perpX;
+                    int z = cz + d * ndz + k * perpZ;
                     if (x >= 0 && x < gridSize && z >= 0 && z < gridSize)
                         result.Add(allTiles[x, z]);
                 }

@@ -19,8 +19,10 @@ namespace BaaroForce.Animations
 
         private void Awake() => _renderer = GetComponent<SpriteRenderer>();
 
-        /// <summary>Loads the kit's four directional sprites and orients this GameObject to face the (static) main camera.</summary>
-        public void Initialize(SpriteKit kit)
+        /// <summary>Loads the kit's four directional sprites and orients this GameObject to face the (static) main camera.
+        /// Enemies spawn facing the opposite iso direction from allies (BackLeft vs. FrontRight) so the two
+        /// sides visually face each other across the battlefield instead of both facing the same way.</summary>
+        public void Initialize(SpriteKit kit, bool isEnemy = false)
         {
             if (_renderer == null) _renderer = GetComponent<SpriteRenderer>();
 
@@ -34,8 +36,16 @@ namespace BaaroForce.Animations
             if (Camera.main != null)
                 transform.rotation = Camera.main.transform.rotation;
 
-            SetFacing(SpriteFacing.FrontRight);
+            SetFacing(isEnemy ? SpriteFacing.BackLeft : SpriteFacing.FrontRight);
         }
+
+        // A translucent, cool-toned tint so an Invisible unit still reads clearly on-screen
+        // to the player (see BaaroForce.Statuses.InvisibleStatus) without being fully hidden.
+        private static readonly Color InvisibleTint = new Color(0.55f, 0.6f, 0.85f, 0.42f);
+
+        /// <summary>Toggles the translucent, shadow-tinted look used while a unit is Invisible.</summary>
+        public void SetInvisible(bool invisible) =>
+            _renderer.color = invisible ? InvisibleTint : Color.white;
 
         public void SetFacing(SpriteFacing facing)
         {

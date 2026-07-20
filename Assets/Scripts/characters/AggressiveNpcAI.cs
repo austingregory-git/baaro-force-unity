@@ -127,7 +127,7 @@ namespace BaaroForce.Characters
                     if (dist == 0 || dist > spell.Range) continue;
 
                     MapTile tile = context.AllTiles[x, z];
-                    if (!IsValidSpellTarget(spell.TargetType, tile)) continue;
+                    if (!IsValidSpellTarget(context, spell.TargetType, tile)) continue;
 
                     if (dist < bestDist) { bestDist = dist; best = tile; }
                 }
@@ -136,17 +136,25 @@ namespace BaaroForce.Characters
         }
 
         /// <summary>From the Npc's point of view, "Enemy" targets are player Characters
-        /// and "Ally" targets are other Npcs.</summary>
-        private static bool IsValidSpellTarget(SpellTargetType targetType, MapTile tile)
+        /// and "Ally" targets are other Npcs. An Invisible player Character is not a valid
+        /// Enemy target unless this Npc ignores invisibility (see Npc.IgnoresInvisibility).</summary>
+        private static bool IsValidSpellTarget(NpcTurnContext context, SpellTargetType targetType, MapTile tile)
         {
             switch (targetType)
             {
-                case SpellTargetType.Enemy: return tile.OccupyingCharacter != null;
-                case SpellTargetType.Ally:  return tile.OccupyingNpc       != null;
+                case SpellTargetType.Enemy: return CanTarget(context, tile.OccupyingCharacter);
+                case SpellTargetType.Ally:  return tile.OccupyingNpc != null;
                 case SpellTargetType.Both:  return tile.IsOccupied;
                 default:                   return false;
             }
         }
+
+        /// <summary>True if this Npc is allowed to perceive/target <paramref name="character"/> —
+        /// false for a null occupant, or for an Invisible one unless this Npc ignores
+        /// invisibility. Shared by spell targeting, basic-attack targeting, and movement
+        /// pathing so an invisible player Character is treated as unseen everywhere.</summary>
+        private static bool CanTarget(NpcTurnContext context, Character character) =>
+            character != null && (context.Npc.IgnoresInvisibility || !character.IsInvisible);
 
         // ------------------------------------------------------------------ //
         // Attack logic                                                        //
@@ -166,7 +174,7 @@ namespace BaaroForce.Characters
             {
                 for (int z = 0; z < context.GridSize; z++)
                 {
-                    if (context.AllTiles[x, z].OccupyingCharacter == null) continue;
+                    if (!CanTarget(context, context.AllTiles[x, z].OccupyingCharacter)) continue;
                     int dist = Mathf.Abs(x - ox) + Mathf.Abs(z - oz);
                     if (dist > range) continue;
                     if (dist < bestDist) { bestDist = dist; best = context.AllTiles[x, z]; }
@@ -179,8 +187,10 @@ namespace BaaroForce.Characters
         // Movement logic                                                      //
         // ------------------------------------------------------------------ //
 
-        /// <summary>Returns the tile occupied by the nearest living player Character,
-        /// or null if there are none.</summary>
+        /// <summary>Returns the tile occupied by the nearest living, targetable player
+        /// Character, or null if there are none (an Invisible one counts as unseen —
+        /// see <see cref="CanTarget"/> — so the Npc doesn't reveal awareness of it by
+        /// pathing straight toward it).</summary>
         private static MapTile FindNearestEnemyTile(NpcTurnContext context)
         {
             int     ox       = context.CurrentTile.GridX;
@@ -192,7 +202,7 @@ namespace BaaroForce.Characters
             {
                 for (int z = 0; z < context.GridSize; z++)
                 {
-                    if (context.AllTiles[x, z].OccupyingCharacter == null) continue;
+                    if (!CanTarget(context, context.AllTiles[x, z].OccupyingCharacter)) continue;
                     int dist = Mathf.Abs(x - ox) + Mathf.Abs(z - oz);
                     if (dist < bestDist) { bestDist = dist; best = context.AllTiles[x, z]; }
                 }
