@@ -18,7 +18,9 @@ namespace BaaroForce.Characters
         public List<PassiveAbility> CharacterPassiveAbilities { get; set; }
         public List<Spell> CharacterSpells { get; set; }
         //public List<Equipment> characterEquipment { get; set; }
-        public string CharacterModelPath { get; set; }
+        /// <summary>Resources-relative path to this character's profile picture sprite,
+        /// used by CharacterSelectionManager to render its card portrait.</summary>
+        public string CharacterProfilePicPath { get; set; }
 
         /// Should a character have their current tile stored here?  Or should the map manager handle that?
         public MapTile CharacterCurrentTile { get; set; }
@@ -74,7 +76,7 @@ namespace BaaroForce.Characters
                         List<Realm> characterRealms,
                         List<PassiveAbility> characterPassiveAbilities,
                         List<Spell> characterSpells,
-                        string characterModelPath)
+                        string characterProfilePicPath)
         {
             this.CharacterClass = characterClass;
             this.CharacterName = characterName;
@@ -82,7 +84,7 @@ namespace BaaroForce.Characters
             this.CharacterRealms             = characterRealms             ?? new List<Realm>();
             this.CharacterPassiveAbilities   = characterPassiveAbilities   ?? new List<PassiveAbility>();
             this.CharacterSpells             = characterSpells             ?? new List<Spell>();
-            this.CharacterModelPath          = characterModelPath;
+            this.CharacterProfilePicPath     = characterProfilePicPath;
 
             // Append one randomly selected class spell from this character's class.
             ClassSpell classSpell = SpellRegistry.GetRandomClassSpell(characterClass?.ClassID);

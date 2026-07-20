@@ -1,4 +1,6 @@
 using UnityEngine;
+using BaaroForce.Characters;
+using BaaroForce.Formulas;
 
 namespace BaaroForce.Passives
 {
@@ -6,14 +8,22 @@ namespace BaaroForce.Passives
     {
         public BurningShield()
             : base("Burning Shield",
-                  "Melee attackers take 1 + 0.25 x [Level] [Fire] damage.",
+                  "Melee attackers take {0} [Fire] damage.",
                   PassiveAbilityType.OnReceivingAttack)
         {
         }
 
+        public override ScalingValue[] ComputeValues(Character owner) =>
+            new[]
+            {
+                new ScalingValue("Damage")
+                    .Add("Base", 1)
+                    .Add($"Level ({owner.Level} × 0.25, floored)", Mathf.FloorToInt(0.25f * owner.Level))
+            };
+
         public override bool Execute(PassiveOnReceivingAttackContext context)
         {
-            int value = Mathf.FloorToInt(1f + 0.25f * context.ReceivingCharacter.Level);
+            int value = ComputeValues(context.ReceivingCharacter)[0].Total;
             context.Attacker.CharacterStats.TakeDamage(value);
 
             if (context.Attacker.CharacterStats.HealthPoints <= 0)

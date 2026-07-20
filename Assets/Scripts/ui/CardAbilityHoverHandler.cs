@@ -15,25 +15,31 @@ namespace BaaroForce.UI
     public class CardAbilityHoverHandler : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         private string _abilityName;
-        private string _description;
+        private string _summaryBody;
+        private string _detailedBody;
 
         /// <summary>
         /// Call once after the label is created to supply the ability data.
         /// </summary>
         /// <param name="abilityName">Display name shown as the tooltip title.</param>
-        /// <param name="description">
-        ///   Raw description string.  May contain <c>[KeywordName]</c> tokens that
-        ///   <see cref="TooltipSystem"/> will colour-highlight and expand into
+        /// <param name="summaryBody">
+        ///   Raw description shown by default. May contain <c>[KeywordName]</c> tokens
+        ///   that <see cref="TooltipSystem"/> will colour-highlight and expand into
         ///   keyword definitions.
         /// </param>
-        public void Initialize(string abilityName, string description)
+        /// <param name="detailedBody">
+        ///   Raw description shown instead while the player holds Shift (e.g. a full
+        ///   scaling breakdown). Pass null when there's nothing beyond the summary.
+        /// </param>
+        public void Initialize(string abilityName, string summaryBody, string detailedBody = null)
         {
-            _abilityName = abilityName;
-            _description = description;
+            _abilityName  = abilityName;
+            _summaryBody  = summaryBody;
+            _detailedBody = detailedBody;
         }
 
         public void OnPointerEnter(PointerEventData _)
-            => TooltipSystem.Instance?.Show(_abilityName, _description);
+            => TooltipSystem.Instance?.Show(_abilityName, _summaryBody, _detailedBody);
 
         public void OnPointerExit(PointerEventData _)
             => TooltipSystem.Instance?.Hide();

@@ -1,4 +1,7 @@
+using System;
 using UnityEngine;
+using BaaroForce.Characters;
+using BaaroForce.Formulas;
 
 namespace BaaroForce.Passives
 {
@@ -8,6 +11,9 @@ namespace BaaroForce.Passives
         private readonly string _description;
 
         public string Name        => _name;
+        /// <summary>Template text for tooltips — may contain <c>{0}</c>/<c>{1}</c>
+        /// placeholders filled in by <see cref="ComputeValues"/>'s totals, and
+        /// <c>[Keyword]</c> tokens resolved by <see cref="BaaroForce.Keywords.KeywordRegistry"/>.</summary>
         public string Description => _description;
         public PassiveAbilityType AbilityType { get; private set; }
 
@@ -55,5 +61,24 @@ namespace BaaroForce.Passives
             Debug.LogWarning($"[PassiveAbility] '{_name}' has no Execute implementation.");
             return false;
         }
+
+        /// <summary>
+        /// Computes this passive's scaling numbers for <paramref name="owner"/> (the
+        /// character the passive belongs to), in the same order as the <c>{0}</c>/<c>{1}</c>
+        /// placeholders in <see cref="Description"/>. Override alongside Execute so the
+        /// tooltip and the actual effect always agree.
+        /// </summary>
+        public virtual ScalingValue[] ComputeValues(Character owner) => Array.Empty<ScalingValue>();
+
+        /// <summary>Description with each scaling value's total substituted in — what the
+        /// tooltip shows by default.</summary>
+        public string GetSummary(Character owner) =>
+            ScalingDescriptionFormatter.GetSummary(Description, ComputeValues(owner));
+
+        /// <summary>Summary plus a full term-by-term breakdown of every scaling value —
+        /// what the tooltip shows while Shift is held. Null when there's nothing to add
+        /// beyond the summary.</summary>
+        public string GetDetailedDescription(Character owner) =>
+            ScalingDescriptionFormatter.GetDetailedDescription(Description, ComputeValues(owner));
     }
 }

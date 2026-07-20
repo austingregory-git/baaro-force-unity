@@ -9,7 +9,7 @@ namespace BaaroForce.Characters
     {
         public override int BaseStrengthIndex => 1;
 
-        static readonly string WolfModelPath = "Characters/frog_wizard_test";
+        static readonly string WolfProfilePicPath = "winston_profile_pic_128x128";
 
         public Wolf()
             : base(
@@ -25,7 +25,7 @@ namespace BaaroForce.Characters
                 {
                     
                 },
-                characterModelPath: WolfModelPath,
+                characterProfilePicPath: WolfProfilePicPath,
                 specialty: NpcSpecialty.Melee)
         {
             AI = new AggressiveNpcAI();

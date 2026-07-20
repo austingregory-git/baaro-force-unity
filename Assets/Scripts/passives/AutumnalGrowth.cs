@@ -1,4 +1,6 @@
 using UnityEngine;
+using BaaroForce.Characters;
+using BaaroForce.Formulas;
 
 namespace BaaroForce.Passives
 {
@@ -6,14 +8,22 @@ namespace BaaroForce.Passives
     {
         public AutumnalGrowth()
             : base("Autumnal Growth",
-                  "[Regen] 1 + 0.25 x [Level] health points per turn",
+                  "[Regen] {0} health points per turn",
                   PassiveAbilityType.StartOfTurn)
         {
         }
 
+        public override ScalingValue[] ComputeValues(Character owner) =>
+            new[]
+            {
+                new ScalingValue("Regen")
+                    .Add("Base", 1)
+                    .Add($"Level ({owner.Level} × 0.25, floored)", Mathf.FloorToInt(0.25f * owner.Level))
+            };
+
         public override bool Execute(PassiveOnTurnContext context)
         {
-            int bonus = Mathf.FloorToInt(1f + 0.25f * context.CharacterLevel);
+            int bonus = ComputeValues(context.Character)[0].Total;
             context.Character.CharacterStats.HealthPoints += bonus;
             context.Character.CharacterStats.HealthPoints = Mathf.Min(
                 context.Character.CharacterStats.HealthPoints,

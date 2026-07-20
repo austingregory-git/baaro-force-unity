@@ -29,7 +29,7 @@ namespace BaaroForce.Characters
                         List<Realm> characterRealms,
                         List<PassiveAbility> characterPassiveAbilities,
                         List<Spell> characterSpells,
-                        string characterModelPath,
+                        string characterProfilePicPath,
                         NpcSpecialty specialty = NpcSpecialty.Melee)
             : base(
                 characterClass: null,
@@ -38,7 +38,7 @@ namespace BaaroForce.Characters
                 characterRealms: characterRealms,
                 characterPassiveAbilities: characterPassiveAbilities,
                 characterSpells: characterSpells,
-                characterModelPath: characterModelPath)
+                characterProfilePicPath: characterProfilePicPath)
         {
             Specialty = specialty;
         }

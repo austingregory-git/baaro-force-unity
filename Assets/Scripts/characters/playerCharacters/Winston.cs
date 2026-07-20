@@ -8,7 +8,7 @@ namespace BaaroForce.Characters
     public class Winston : Character
     {
         static readonly CharacterStats WinstonBaseStats = new CharacterStats(maxHealthPoints: 8, baseAttack: 3, maxMana: 5, movement: 4);
-        static readonly string WinstonModelPath = "Characters/frog_wizard_test";
+        static readonly string WinstonProfilePicPath = "winston_profile_pic_128x128";
         public Winston()
             : base(
                 characterClass: ClassRegistry.Get("Warrior"),
@@ -23,7 +23,7 @@ namespace BaaroForce.Characters
                 {
                     new DeathStare(),
                 },
-                characterModelPath: WinstonModelPath)
+                characterProfilePicPath: WinstonProfilePicPath)
         {
         }
     }

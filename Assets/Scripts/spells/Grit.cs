@@ -1,4 +1,6 @@
+using BaaroForce.Characters;
 using BaaroForce.Classes;
+using BaaroForce.Formulas;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -12,7 +14,7 @@ namespace BaaroForce.Spells
         public Grit() : base(
             characterClass: ClassRegistry.Get("Warrior"),
             name:        "Grit",
-            description: "Gain 3 + 0.5 × [Level] maximum health for the fight.",
+            description: "Gain {0} maximum health for the fight.",
             manaCost:        2,
             actionPointCost: 1,
             range:       0,
@@ -21,9 +23,17 @@ namespace BaaroForce.Spells
             targetType:  SpellTargetType.Self)
         { }
 
+        public override ScalingValue[] ComputeValues(Character caster) =>
+            new[]
+            {
+                new ScalingValue("Max Health")
+                    .Add("Base", 3)
+                    .Add($"Level ({caster.Level} × 0.5, floored)", Mathf.FloorToInt(caster.Level * 0.5f))
+            };
+
         public override bool Execute(SpellContext context)
         {
-            int bonus = Mathf.FloorToInt(3f + 0.5f * context.CasterLevel);
+            int bonus = ComputeValues(context.Caster)[0].Total;
             context.Caster.CharacterStats.MaxHealthPoints += bonus;
             context.Caster.CharacterStats.HealthPoints    += bonus;
 

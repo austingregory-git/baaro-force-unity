@@ -7,7 +7,7 @@ namespace BaaroForce.Characters
     public class Beepo : Character
     {
         static readonly CharacterStats BeepoBaseStats = new CharacterStats(maxHealthPoints: 8, baseAttack: 2, maxMana: 4, movement: 3);
-        static readonly string BeepoModelPath = "Characters/frog_wizard_test";
+        static readonly string BeepoProfilePicPath = "winston_profile_pic_128x128";
         public Beepo()
             : base(
                 characterClass: ClassRegistry.Get("Warrior"),
@@ -22,7 +22,7 @@ namespace BaaroForce.Characters
                 {
                     new BallForm()
                 }, 
-                characterModelPath: BeepoModelPath)
+                characterProfilePicPath: BeepoProfilePicPath)
         {
         }
     }

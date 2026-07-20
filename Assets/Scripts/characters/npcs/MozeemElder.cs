@@ -10,7 +10,7 @@ namespace BaaroForce.Characters
     {
         public override int BaseStrengthIndex => 1;
 
-        static readonly string MozeemElderModelPath = "Characters/frog_wizard_test";
+        static readonly string MozeemElderProfilePicPath = "winston_profile_pic_128x128";
 
         public MozeemElder()
             : base(
@@ -26,7 +26,7 @@ namespace BaaroForce.Characters
                 {
                     
                 },
-                characterModelPath: MozeemElderModelPath,
+                characterProfilePicPath: MozeemElderProfilePicPath,
                 specialty: NpcSpecialty.Magic)
         {
             AI = new AggressiveNpcAI();

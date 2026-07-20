@@ -96,6 +96,7 @@ namespace BaaroForce.Map
         private Spell         _selectedSpell;
         private ActionPanelUI  _actionPanel;
         private SpellPanelUI   _spellPanel;
+        private WarningToastUI _warningToast;
         private bool           _isMoving;
         private MapTile _hoveredTile;
         private Npc     _hoveredTarget;
@@ -145,6 +146,8 @@ namespace BaaroForce.Map
             _spellPanel.OnSpellSelected = ActivateSpell;
             _spellPanel.OnBackClicked   = ShowActionPanel;
             _spellPanel.GetCooldownRemaining = GetCooldownRemaining;
+
+            _warningToast = gameObject.AddComponent<WarningToastUI>();
         }
 
         // ------------------------------------------------------------------ //
@@ -655,12 +658,25 @@ namespace BaaroForce.Map
             if (_selectedSpell == null) return;
 
             Spell spell = _selectedSpell;
+
+            // Reject tiles that don't hold a valid target for this spell's TargetType
+            // (e.g. an Enemy-targeted spell aimed at an empty or ally-occupied tile).
+            // Bail out *before* touching AP/mana/cooldown and stay in targeting mode
+            // so the player can simply pick a real target instead of losing the turn.
+            if (!IsValidSpellTarget(spell, targetTile))
+            {
+                Debug.Log($"[TurnManager] '{spell.Name}' has no valid target on that tile.");
+                _warningToast?.Show(GetNoTargetMessage(spell));
+                return;
+            }
+
             SetMode(InputMode.None);   // clears highlights and nulls _selectedSpell
 
             if (spell.ManaCost > 0 && _selectedCharacter.CharacterStats.Mana < spell.ManaCost)
             {
                 Debug.Log($"[TurnManager] '{_selectedCharacter.CharacterName}' " +
                            "does not have enough mana to cast this spell.");
+                _warningToast?.Show($"Not enough mana to cast '{spell.Name}'.");
                 return;
             }
 
@@ -752,6 +768,36 @@ namespace BaaroForce.Map
             }
         }
 
+        /// <summary>
+        /// True if <paramref name="tile"/> holds an occupant this spell's TargetType
+        /// can legally affect. Area/Self spells have no occupant requirement — Area
+        /// spells resolve against a shape of tiles (some of which may be empty) and
+        /// Self spells never reach this check (no tile is targeted).
+        /// </summary>
+        private bool IsValidSpellTarget(Spell spell, MapTile tile)
+        {
+            if (tile == null) return false;
+
+            switch (spell.TargetType)
+            {
+                case SpellTargetType.Enemy: return tile.OccupyingNpc != null;
+                case SpellTargetType.Ally:  return tile.OccupyingCharacter != null;
+                case SpellTargetType.Both:  return tile.IsOccupied;
+                default:                    return true;
+            }
+        }
+
+        private string GetNoTargetMessage(Spell spell)
+        {
+            switch (spell.TargetType)
+            {
+                case SpellTargetType.Enemy: return $"'{spell.Name}' needs an enemy on the targeted tile.";
+                case SpellTargetType.Ally:  return $"'{spell.Name}' needs an ally on the targeted tile.";
+                case SpellTargetType.Both:  return $"'{spell.Name}' needs a unit on the targeted tile.";
+                default:                    return $"'{spell.Name}' has no valid target there.";
+            }
+        }
+
         private Spell GetFirstUsableSpell(Character character)
         {
             if (character.CharacterSpells == null) return null;
@@ -781,18 +827,22 @@ namespace BaaroForce.Map
             if (ap <= 0)
             {
                 Debug.Log($"[TurnManager] '{_selectedCharacter.CharacterName}' has no actions remaining.");
+                _warningToast?.Show($"'{_selectedCharacter.CharacterName}' has no action points left.");
                 return;
             }
 
             if (spell.ManaCost > 0 && _selectedCharacter.CharacterStats.Mana < spell.ManaCost)
             {
                 Debug.Log($"[TurnManager] Not enough mana to cast '{spell.Name}'.");
+                _warningToast?.Show($"Not enough mana to cast '{spell.Name}'.");
                 return;
             }
 
             if (!IsSpellAvailable(_selectedCharacter, spell))
             {
                 Debug.Log($"[TurnManager] '{spell.Name}' is still on cooldown " +
+                          $"({GetCooldownRemaining(_selectedCharacter, spell)} round(s) left).");
+                _warningToast?.Show($"'{spell.Name}' is on cooldown " +
                           $"({GetCooldownRemaining(_selectedCharacter, spell)} round(s) left).");
                 return;
             }

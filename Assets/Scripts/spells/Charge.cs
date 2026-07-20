@@ -1,5 +1,6 @@
 using BaaroForce.Characters;
 using BaaroForce.Classes;
+using BaaroForce.Formulas;
 using BaaroForce.Map;
 using UnityEngine;
 
@@ -14,7 +15,7 @@ namespace BaaroForce.Spells
         public Charge() : base(
             characterClass: ClassRegistry.Get("Warrior"),
             name:        "Charge",
-            description: "Charge up to 3 squares at an enemy, dealing damage equal to your basic attack.",
+            description: "Charge up to 3 squares at an enemy, dealing {0} damage.",
             manaCost:        0,
             actionPointCost: 1,
             range:       3,
@@ -22,6 +23,9 @@ namespace BaaroForce.Spells
             cooldown:    3,
             targetType:  SpellTargetType.Enemy)
         { }
+
+        public override ScalingValue[] ComputeValues(Character caster) =>
+            new[] { new ScalingValue("Damage").AddTotalAttack(caster.CharacterStats) };
 
         /// <summary>
         /// Finds the unoccupied tile adjacent to the target that is closest to
@@ -75,7 +79,7 @@ namespace BaaroForce.Spells
                 return false;
             }
 
-            int damage = context.Caster.CharacterStats.TotalAttack;
+            int damage = ComputeValues(context.Caster)[0].Total;
             target.CharacterStats.TakeDamage(damage);
 
             Debug.Log($"[Charge] '{context.Caster.CharacterName}' charges '{target.CharacterName}' " +

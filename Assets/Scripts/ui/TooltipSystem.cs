@@ -28,6 +28,15 @@ namespace BaaroForce.UI
         private TextMeshProUGUI    _titleText;
         private TextMeshProUGUI    _bodyText;
 
+        /// <summary>Raw (unformatted) body text for the default view.</summary>
+        private string _summaryRaw;
+        /// <summary>Raw body text shown while Shift is held; null when there's nothing
+        /// beyond the summary (in which case Shift does nothing).</summary>
+        private string _detailedRaw;
+        private bool   _shiftHeldLastFrame;
+
+        private const string ShiftHint = "\n\n<color=#8a8a8a><i>Hold Shift for a breakdown.</i></color>";
+
         private const float PanelWidth   = 270f;
         private const float PaddingH     = 12f;
         private const float PaddingV     = 10f;
@@ -49,8 +58,16 @@ namespace BaaroForce.UI
 
         private void Update()
         {
-            if (_panelRect != null && _panelRect.gameObject.activeSelf)
-                PositionNearCursor();
+            if (_panelRect == null || !_panelRect.gameObject.activeSelf) return;
+
+            PositionNearCursor();
+
+            bool shiftHeld = IsShiftHeld();
+            if (shiftHeld != _shiftHeldLastFrame)
+            {
+                _shiftHeldLastFrame = shiftHeld;
+                RefreshBodyText();
+            }
         }
 
         // ------------------------------------------------------------------ //
@@ -58,13 +75,20 @@ namespace BaaroForce.UI
         // ------------------------------------------------------------------ //
 
         /// <summary>
-        /// Shows the tooltip for the given ability, parsing any keyword tokens in
-        /// <paramref name="rawDescription"/> to colour them and append definitions.
+        /// Shows the tooltip for the given ability. <paramref name="summaryBody"/> is
+        /// shown by default; while the player holds Shift, <paramref name="detailedBody"/>
+        /// is shown instead (if supplied and different — pass null when there's nothing
+        /// beyond the summary). Both may contain <c>[KeywordName]</c> tokens, which are
+        /// colour-highlighted and expanded into a glossary beneath the text.
         /// </summary>
-        public void Show(string abilityName, string rawDescription)
+        public void Show(string abilityName, string summaryBody, string detailedBody = null)
         {
             _titleText.text = abilityName;
-            _bodyText.text  = BuildBodyText(rawDescription);
+            _summaryRaw     = summaryBody;
+            _detailedRaw    = (detailedBody != null && detailedBody != summaryBody) ? detailedBody : null;
+            _shiftHeldLastFrame = IsShiftHeld();
+
+            RefreshBodyText();
 
             _panelRect.gameObject.SetActive(true);
 
@@ -85,6 +109,24 @@ namespace BaaroForce.UI
         // ------------------------------------------------------------------ //
         // Internal helpers                                                     //
         // ------------------------------------------------------------------ //
+
+        private static bool IsShiftHeld() =>
+            Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+
+        /// <summary>Re-renders the body from whichever raw string is currently active
+        /// (summary, or detailed while Shift is held), and re-lays-out the panel so its
+        /// size follows the new text length.</summary>
+        private void RefreshBodyText()
+        {
+            bool showDetailed = _shiftHeldLastFrame && _detailedRaw != null;
+            string raw = showDetailed ? _detailedRaw : _summaryRaw;
+
+            _bodyText.text = BuildBodyText(raw);
+            if (_detailedRaw != null && !showDetailed)
+                _bodyText.text += ShiftHint;
+
+            Canvas.ForceUpdateCanvases();
+        }
 
         private static string BuildBodyText(string raw)
         {

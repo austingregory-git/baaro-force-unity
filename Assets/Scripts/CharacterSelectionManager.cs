@@ -54,15 +54,6 @@ public class CharacterSelectionManager : MonoBehaviour
     // ── Sprite paths ───────────────────────────────────────────────────────
     private const string CharacterTemplateSpritePath = "card_template_512x768";
 
-    // Render textures created for model previews — released on scene unload.
-    private readonly List<RenderTexture> _previewTextures = new List<RenderTexture>();
-
-    private void OnDestroy()
-    {
-        foreach (var rt in _previewTextures)
-            if (rt != null) rt.Release();
-    }
-
     void Awake()
     {
         EnsureEventSystem();
@@ -94,9 +85,8 @@ public class CharacterSelectionManager : MonoBehaviour
         if (Camera.main != null)
         {
             // Match the camera clear colour to the realm background so that any
-            // transparent gap in the Canvas — such as the portrait window before the
-            // RenderTexture is ready, or the card template's transparent interior —
-            // blends against the realm colour instead of white.
+            // transparent gap in the Canvas — such as the card template's
+            // transparent interior — blends against the realm colour instead of white.
             Camera.main.backgroundColor = GetRealmBackgroundColor(PartyManager.Instance.CurrentRealm);
             Camera.main.clearFlags = CameraClearFlags.SolidColor;
         }
@@ -147,17 +137,11 @@ public class CharacterSelectionManager : MonoBehaviour
         Realm realm = PartyManager.Instance.CurrentRealm ?? Realm.Earth;
         List<Character> characters = CharacterUtils.GetRandomCharacters(3, realm);
 
-        var previewer = new CharacterPreviewRenderer(GetRealmBackgroundColor(realm));
         for (int i = 0; i < 3; i++)
-        {
-            RenderTexture rt = previewer.Capture(characters[i].CharacterModelPath);
-            if (rt != null) _previewTextures.Add(rt);
-            CreateCard(parent, positions[i], i, characters[i], rt);
-        }
-        previewer.Cleanup();
+            CreateCard(parent, positions[i], i, characters[i]);
     }
 
-    private void CreateCard(Transform parent, Vector2 anchoredPos, int index, Character character, RenderTexture previewTexture)
+    private void CreateCard(Transform parent, Vector2 anchoredPos, int index, Character character)
     {
         // The card root carries no Graphic of its own — it is a pure layout container.
         // Canvas sibling order drives draw order: sibling 0 is drawn first (furthest back),
@@ -197,11 +181,11 @@ public class CharacterSelectionManager : MonoBehaviour
         cardBgRect.anchoredPosition = Vector2.zero;
 
         // ── Sibling 1: portrait (renders over the fill, behind the template) ─
-        CreatePortrait(card.transform, cardRect.sizeDelta.y, previewTexture);
+        CreatePortrait(card.transform, cardRect.sizeDelta.y, character);
 
         // ── Sibling 2: card template overlay (renders IN FRONT of portrait) ─
         // The template png should be transparent in the portrait window area so
-        // the 3-D preview shows through.
+        // the profile picture shows through.
         Sprite templateSprite = Resources.Load<Sprite>(CharacterTemplateSpritePath);
         GameObject overlayObj  = new GameObject("CardOverlay");
         overlayObj.transform.SetParent(card.transform, false);
@@ -246,19 +230,24 @@ public class CharacterSelectionManager : MonoBehaviour
         }
     }
 
-    private void CreatePortrait(Transform cardParent, float cardHeight, RenderTexture previewTexture)
+    private void CreatePortrait(Transform cardParent, float cardHeight, Character character)
     {
         GameObject portrait = new GameObject("CharacterPortrait");
         portrait.transform.SetParent(cardParent, false);
 
-        if (previewTexture != null)
+        Sprite profileSprite = !string.IsNullOrEmpty(character.CharacterProfilePicPath)
+            ? Resources.Load<Sprite>(character.CharacterProfilePicPath)
+            : null;
+
+        Image img = portrait.AddComponent<Image>();
+        if (profileSprite != null)
         {
-            RawImage rawImg = portrait.AddComponent<RawImage>();
-            rawImg.texture = previewTexture;
+            img.sprite         = profileSprite;
+            img.preserveAspect = true;
         }
         else
         {
-            Image img = portrait.AddComponent<Image>();
+            Debug.LogWarning($"[CharacterSelectionManager] Profile picture not found: '{character.CharacterProfilePicPath}'");
             img.color = new Color(0.4f, 0.6f, 0.8f);
         }
 
@@ -387,13 +376,15 @@ public class CharacterSelectionManager : MonoBehaviour
 
         foreach (PassiveAbility passive in character.CharacterPassiveAbilities)
         {
-            CreateAbilityLabel(cardParent, passive.Name, passive.Description,
+            CreateAbilityLabel(cardParent, passive.Name,
+                passive.GetSummary(character), passive.GetDetailedDescription(character),
                 new Vector2(0f, nextAbilityY), new Vector2(abilityLabelW, abilityLabelH));
             nextAbilityY -= abilityLabelH + abilitySpacing;
         }
         foreach (Spell spell in character.CharacterSpells)
         {
-            CreateAbilityLabel(cardParent, spell.Name, spell.Description,
+            CreateAbilityLabel(cardParent, spell.Name,
+                spell.GetSummary(character), spell.GetDetailedDescription(character),
                 new Vector2(0f, nextAbilityY), new Vector2(abilityLabelW, abilityLabelH));
             nextAbilityY -= abilityLabelH + abilitySpacing;
         }
@@ -401,8 +392,10 @@ public class CharacterSelectionManager : MonoBehaviour
 
     // Creates a hoverable ability-name label.  The label shows only the ability
     // name; the full description (with keyword highlighting) appears in a tooltip
-    // when the pointer enters the label.
-    private void CreateAbilityLabel(Transform parent, string abilityName, string description,
+    // when the pointer enters the label — the clean summary by default, or the full
+    // scaling breakdown while the player holds Shift.
+    private void CreateAbilityLabel(Transform parent, string abilityName,
+        string summaryDescription, string detailedDescription,
         Vector2 anchoredPos, Vector2 size)
     {
         GameObject obj = new GameObject("AbilityLabel_" + abilityName);
@@ -426,7 +419,7 @@ public class CharacterSelectionManager : MonoBehaviour
         rect.anchoredPosition = anchoredPos;
 
         CardAbilityHoverHandler handler = obj.AddComponent<CardAbilityHoverHandler>();
-        handler.Initialize(abilityName, description);
+        handler.Initialize(abilityName, summaryDescription, detailedDescription);
     }
 
     private void CreateLabel(Transform parent, string text, Vector2 anchor, Vector2 pivot,
@@ -519,99 +512,6 @@ public class CharacterSelectionManager : MonoBehaviour
         //   bottom corners → Y = +(pad + CornerIconSize + gap)  (further up)
         textRect.anchoredPosition = textAnchoredPos;
         textRect.sizeDelta        = textSize;
-    }
-
-    // ------------------------------------------------------------------ //
-    // Off-screen model-to-texture renderer                                //
-    // ------------------------------------------------------------------ //
-
-    private sealed class CharacterPreviewRenderer
-    {
-        private readonly GameObject _rig;
-        private readonly Camera     _cam;
-
-        // Placed far from the main scene — CharacterSelectionScene has no 3D world objects.
-        private static readonly Vector3 StagePos = new Vector3(5000f, 0f, 0f);
-
-        public CharacterPreviewRenderer(Color bgColor)
-        {
-            _rig = new GameObject("[CharPreviewRig]");
-            _rig.transform.position = StagePos;
-
-            // Point light that wraps the model in soft fill light.
-            var lightGo = new GameObject("Light");
-            lightGo.transform.SetParent(_rig.transform, false);
-            lightGo.transform.localPosition = new Vector3(-2f, 4f, -3f);
-            var l = lightGo.AddComponent<Light>();
-            l.type      = LightType.Point;
-            l.intensity = 3f;
-            l.range     = 20f;
-            l.color     = Color.white;
-
-            // Camera: slightly elevated, slight three-quarter angle.
-            var camGo = new GameObject("Camera");
-            camGo.transform.SetParent(_rig.transform, false);
-            camGo.transform.localPosition = new Vector3(0f, 0.8f, -2.5f);
-            camGo.transform.LookAt(_rig.transform.position + new Vector3(0f, 0.4f, 0f));
-            _cam = camGo.AddComponent<Camera>();
-            _cam.fieldOfView   = 30f;
-            _cam.nearClipPlane = 0.1f;
-            _cam.farClipPlane  = 20f;
-            // Use the realm colour as the background so the model sits on the same
-            // colour as the scene behind the card.  Transparent-clear approaches are
-            // unreliable across Unity render paths (alpha may not be written correctly),
-            // so matching the background colour is the guaranteed solution.
-            _cam.backgroundColor = bgColor;
-            _cam.clearFlags      = CameraClearFlags.SolidColor;
-            _cam.enabled         = false; // render on demand only
-        }
-
-        /// <summary>
-        /// Instantiates the model at the off-screen stage, renders a 128×128 snapshot,
-        /// destroys the temporary model, and returns the RenderTexture.
-        /// Returns null when the model asset cannot be found.
-        /// </summary>
-        public RenderTexture Capture(string modelPath)
-        {
-            var prefab = Resources.Load<GameObject>(modelPath);
-            if (prefab == null)
-            {
-                Debug.LogWarning($"[CharacterPreviewRenderer] Model not found: '{modelPath}'");
-                return null;
-            }
-
-            var model = Object.Instantiate(prefab, _rig.transform);
-            model.transform.localPosition = Vector3.zero;
-            model.transform.localScale    = Vector3.one;
-            NormalizeScale(model, 1.5f);
-
-            // 256×384 matches PortraitWidth×PortraitHeight exactly (2:3 ratio) so the
-            // captured model preview fills the portrait without any stretching.
-            var rt = new RenderTexture(256, 384, 16);
-            _cam.targetTexture = rt;
-            _cam.Render();
-            _cam.targetTexture = null;
-
-            Object.Destroy(model);
-            return rt;
-        }
-
-        /// <summary>Scales the model so its largest dimension equals <paramref name="targetSize"/>.</summary>
-        private static void NormalizeScale(GameObject obj, float targetSize)
-        {
-            obj.transform.localScale = Vector3.one;
-            Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0) return;
-
-            Bounds b = renderers[0].bounds;
-            foreach (Renderer r in renderers) b.Encapsulate(r.bounds);
-            float maxDim = Mathf.Max(b.size.x, b.size.y, b.size.z);
-            if (maxDim > 0f)
-                obj.transform.localScale = Vector3.one * (targetSize / maxDim);
-        }
-
-        /// <summary>Destroys the entire preview rig (camera + light).</summary>
-        public void Cleanup() => Object.Destroy(_rig);
     }
 }
 }

@@ -1,4 +1,7 @@
+using System;
 using UnityEngine;
+using BaaroForce.Characters;
+using BaaroForce.Formulas;
 using BaaroForce.Map;
 
 namespace BaaroForce.Spells
@@ -13,6 +16,9 @@ namespace BaaroForce.Spells
     public abstract class Spell
     {
         public readonly string         Name;
+        /// <summary>Template text for tooltips — may contain <c>{0}</c>/<c>{1}</c>
+        /// placeholders filled in by <see cref="ComputeValues"/>'s totals, and
+        /// <c>[Keyword]</c> tokens resolved by <see cref="BaaroForce.Keywords.KeywordRegistry"/>.</summary>
         public readonly string         Description;
         /// <summary>Mana required to cast.</summary>
         public readonly int            ManaCost;
@@ -78,6 +84,27 @@ namespace BaaroForce.Spells
         /// resolves (e.g. <see cref="Charge"/>).
         /// </summary>
         public virtual MapTile GetCasterLandingTile(SpellContext context) => null;
+
+        /// <summary>
+        /// Computes this spell's scaling numbers (damage, duration, ...) for
+        /// <paramref name="caster"/>, in the same order as the <c>{0}</c>/<c>{1}</c>
+        /// placeholders in <see cref="Description"/>. Override alongside Execute so the
+        /// tooltip and the actual effect always agree — Execute should read its numbers
+        /// from this same method rather than recomputing them. Spells with nothing to
+        /// scale (rare) can leave the default empty array.
+        /// </summary>
+        public virtual ScalingValue[] ComputeValues(Character caster) => Array.Empty<ScalingValue>();
+
+        /// <summary>Description with each scaling value's total substituted in — what the
+        /// tooltip shows by default.</summary>
+        public string GetSummary(Character caster) =>
+            ScalingDescriptionFormatter.GetSummary(Description, ComputeValues(caster));
+
+        /// <summary>Summary plus a full term-by-term breakdown of every scaling value —
+        /// what the tooltip shows while Shift is held. Null when there's nothing to add
+        /// beyond the summary.</summary>
+        public string GetDetailedDescription(Character caster) =>
+            ScalingDescriptionFormatter.GetDetailedDescription(Description, ComputeValues(caster));
     }
 }
 

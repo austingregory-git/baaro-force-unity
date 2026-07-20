@@ -3,7 +3,6 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UIElements;
 using BaaroForce.Characters;
-using BaaroForce.Keywords;
 using BaaroForce.Spells;
 
 namespace BaaroForce.UI
@@ -160,8 +159,9 @@ namespace BaaroForce.UI
                 row.RegisterCallback<ClickEvent>(_ => OnSpellSelected?.Invoke(captured));
             }
 
-            string tooltipBody = BuildTooltipBody(spell, cooldownRemaining);
-            row.RegisterCallback<PointerEnterEvent>(_ => TooltipSystem.Instance?.Show(spell.Name, tooltipBody));
+            string summaryBody  = BuildTooltipBody(spell, character, cooldownRemaining, detailed: false);
+            string detailedBody = BuildTooltipBody(spell, character, cooldownRemaining, detailed: true);
+            row.RegisterCallback<PointerEnterEvent>(_ => TooltipSystem.Instance?.Show(spell.Name, summaryBody, detailedBody));
             row.RegisterCallback<PointerLeaveEvent>(_ => TooltipSystem.Instance?.Hide());
 
             return row;
@@ -177,10 +177,18 @@ namespace BaaroForce.UI
 
         // ── Helpers ──────────────────────────────────────────────────────────
 
-        private static string BuildTooltipBody(Spell spell, int cooldownRemaining)
+        private static string BuildTooltipBody(Spell spell, Character character, int cooldownRemaining, bool detailed)
         {
+            // Pass the raw (un-formatted) text through — TooltipSystem itself resolves
+            // [Keyword] tokens and appends the glossary; formatting it here too would
+            // strip the brackets before TooltipSystem sees them and silently drop the
+            // glossary.
+            string core = detailed
+                ? (spell.GetDetailedDescription(character) ?? spell.GetSummary(character))
+                : spell.GetSummary(character);
+
             var sb = new StringBuilder();
-            sb.Append(KeywordRegistry.FormatDescription(spell.Description));
+            sb.Append(core);
 
             if (spell.TargetType == SpellTargetType.Self)
                 sb.Append("\n<i>Targets self — no aim required.</i>");

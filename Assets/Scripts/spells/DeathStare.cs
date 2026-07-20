@@ -1,4 +1,5 @@
 using BaaroForce.Characters;
+using BaaroForce.Formulas;
 using BaaroForce.Statuses;
 using UnityEngine;
 
@@ -22,8 +23,7 @@ namespace BaaroForce.Spells
         public DeathStare()
             : base(
                 name:        "Death Stare",
-                description: "Apply [Fear] 1 to an enemy for 1 + 0.25 × [Level] turns" +
-                             "and deal 2 + 0.5 × [Level] [Dark] damage.",
+                description: "Apply [Fear] 1 to an enemy for {0} turns and deal {1} [Dark] damage.",
                 manaCost:        2,
                 actionPointCost: 1,
                 range:       3,
@@ -31,6 +31,18 @@ namespace BaaroForce.Spells
                 cooldown:    1,
                 targetType:  SpellTargetType.Enemy)
         {
+        }
+
+        public override ScalingValue[] ComputeValues(Character caster)
+        {
+            int level = caster.Level;
+            var fearDuration = new ScalingValue("Fear Duration")
+                .Add("Base", 1)
+                .Add($"Level ({level} × 0.25, floored)", Mathf.FloorToInt(0.25f * level));
+            var damage = new ScalingValue("Damage")
+                .Add("Base", 2)
+                .Add($"Level ({level} × 0.5, floored)", Mathf.FloorToInt(0.5f * level));
+            return new[] { fearDuration, damage };
         }
 
         public override bool Execute(SpellContext context)
@@ -49,16 +61,16 @@ namespace BaaroForce.Spells
                 return false;
             }
 
-            int level = context.CasterLevel;
+            ScalingValue[] values = ComputeValues(context.Caster);
+            int fearDuration = values[0].Total;
+            int damage       = values[1].Total;
 
             // Apply Fear — reduces target's attack for N turns.  Npc-cast Death
             // Stare hits harder (attackPenalty 2) than the player-cast version (1).
-            int fearDuration = Mathf.FloorToInt(1f + 0.25f * level);
             var fear = new FearStatus(durationTurns: fearDuration, attackPenalty: casterIsNpc ? 2 : 1);
             target.ApplyStatus(fear);
 
             // Deal dark damage.
-            int damage = Mathf.FloorToInt(2f + 0.5f * level);
             target.CharacterStats.TakeDamage(damage);
 
             Debug.Log($"[DeathStare] '{context.Caster.CharacterName}' casts Death Stare on " +

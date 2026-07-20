@@ -305,3 +305,28 @@
 .spell-badge-cooldown { background-color: rgba(220, 100, 100, 0.35); color: rgb(240, 170, 170); }
 .spell-badge-used     { background-color: rgba(255, 255, 255, 0.08); color: rgba(243, 230, 200, 0.5); }
 .spell-badge-once     { background-color: rgba(201, 163, 90, 0.30);  color: rgb(230, 200, 140); }
+
+/* ---------------- Warning toast (invalid target / can't-cast feedback) - */
+
+.warning-toast {
+    position: absolute;
+    top: 6%;
+    left: 50%;
+    translate: -50% 0;
+    max-width: 420px;
+    background-color: rgb(48, 20, 24);
+    border-width: 2px;
+    border-color: rgb(227, 91, 107);
+    border-radius: 10px;
+    padding: 10px 20px;
+    align-items: center;
+    justify-content: center;
+}
+
+.warning-toast-label {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}

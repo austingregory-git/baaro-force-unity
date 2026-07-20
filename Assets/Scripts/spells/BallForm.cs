@@ -1,4 +1,5 @@
 using BaaroForce.Characters;
+using BaaroForce.Formulas;
 using BaaroForce.Statuses;
 using UnityEngine;
 
@@ -22,7 +23,7 @@ namespace BaaroForce.Spells
         public BallForm()
             : base(
                 name:        "Ball Form",
-                description: "Gain 3 + Level [Shield].",
+                description: "Gain {0} [Shield].",
                 manaCost:        2,
                 actionPointCost: 1,
                 range:       0,
@@ -32,12 +33,18 @@ namespace BaaroForce.Spells
         {
         }
 
+        public override ScalingValue[] ComputeValues(Character caster) =>
+            new[]
+            {
+                new ScalingValue("Shield")
+                    .Add("Base", 3)
+                    .Add("Level", caster.Level)
+            };
+
         public override bool Execute(SpellContext context)
         {
-            int level = context.CasterLevel;
-
             // Apply Shield — increases caster's shield for 3 + level turns.
-            int shieldAmount = 3 + level;
+            int shieldAmount = ComputeValues(context.Caster)[0].Total;
             context.Caster.CharacterStats.ShieldPoints += shieldAmount;
 
             Debug.Log($"[BallForm] '{context.Caster.CharacterName}' gains {shieldAmount} shield points.");
