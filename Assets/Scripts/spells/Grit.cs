@@ -1,6 +1,7 @@
 using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Formulas;
+using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -31,11 +32,19 @@ namespace BaaroForce.Spells
                     .Add($"Level ({caster.Level} × 0.5, floored)", Mathf.FloorToInt(caster.Level * 0.5f))
             };
 
+        /// <summary>Self-only — <paramref name="target"/> is always the caster.</summary>
+        public override ActionPreview GetPreview(Character caster, Character target)
+        {
+            int bonus = ComputeValues(caster)[0].Total;
+            return new ActionPreview { MaxHpDelta = bonus, RawHeal = bonus };
+        }
+
         public override bool Execute(SpellContext context)
         {
             int bonus = ComputeValues(context.Caster)[0].Total;
             context.Caster.CharacterStats.MaxHealthPoints += bonus;
-            context.Caster.CharacterStats.HealthPoints    += bonus;
+            int healed = context.Caster.CharacterStats.Heal(bonus);
+            FloatingCombatTextSystem.Instance?.ShowHeal(context.Caster, healed);
 
             Debug.Log($"[Grit] '{context.Caster.CharacterName}' gained {bonus} max HP.  " +
                       $"HP: {context.Caster.CharacterStats.HealthPoints}" +

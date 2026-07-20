@@ -33,6 +33,9 @@ namespace BaaroForce.Spells
                 case SpellAreaType.HorizontalLine:
                     return GetHorizontalLineTiles(casterTile, targetTile, spell.Range,
                                                   spell.Area, allTiles, gridSize);
+                case SpellAreaType.CircleAround:
+                    // Always centred on the caster — no tile is aimed.
+                    return GetCircleAroundTiles(casterTile, spell.Area, allTiles, gridSize, spell.IncludeOriginTile);
                 default:
                     // Unimplemented area types fall back to single-tile targeting.
                     return new List<MapTile> { targetTile };
@@ -95,7 +98,19 @@ namespace BaaroForce.Spells
             return result;
         }
 
-        public static List<MapTile> GetCircleAroundUnitTiles(MapTile casterTile, int radius, MapTile[,] allTiles, int gridSize)
+        // ------------------------------------------------------------------ //
+        // CircleAround                                                        //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Returns every tile adjacent to and diagonal to <paramref name="casterTile"/> within
+        /// <paramref name="radius"/> squares (Chebyshev distance). Radius 1 = 8 tiles (the 3×3
+        /// block around the caster minus its centre), radius 2 = 24 tiles (5×5 minus centre),
+        /// and so on. The caster's own tile is excluded unless <paramref name="includeCenter"/>
+        /// is set — e.g. a self-centred buff like Rally wants to affect its own tile too, while
+        /// most enemy-targeted AoE spells don't.
+        /// </summary>
+        public static List<MapTile> GetCircleAroundTiles(MapTile casterTile, int radius, MapTile[,] allTiles, int gridSize, bool includeCenter = false)
         {
             var result = new List<MapTile>();
 
@@ -106,17 +121,13 @@ namespace BaaroForce.Spells
             {
                 for (int dz = -radius; dz <= radius; dz++)
                 {
+                    if (dx == 0 && dz == 0 && !includeCenter) continue;
+
                     int x = cx + dx;
                     int z = cz + dz;
 
                     if (x >= 0 && x < gridSize && z >= 0 && z < gridSize)
-                    {
-                        // Check if the tile is within the circle radius
-                        if (dx * dx + dz * dz <= radius * radius)
-                        {
-                            result.Add(allTiles[x, z]);
-                        }
-                    }
+                        result.Add(allTiles[x, z]);
                 }
             }
 

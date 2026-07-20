@@ -61,5 +61,48 @@ namespace BaaroForce.Characters
             HealthPoints -= amount;
             return amount;
         }
+
+        /// <summary>
+        /// Applies healing, clamped so HealthPoints never exceeds MaxHealthPoints. The
+        /// symmetric counterpart to <see cref="TakeDamage"/> — every heal source should
+        /// route through this rather than touching HealthPoints directly, so the actual
+        /// (post-clamp) amount gained is always known at the call site.
+        /// </summary>
+        /// <returns>The amount actually gained, after clamping to MaxHealthPoints.</returns>
+        public int Heal(int amount)
+        {
+            if (amount <= 0) return 0;
+
+            int before = HealthPoints;
+            HealthPoints = Mathf.Min(HealthPoints + amount, MaxHealthPoints);
+            return HealthPoints - before;
+        }
+
+        /// <summary>
+        /// Non-mutating preview of what <see cref="TakeDamage"/> would do — used to show
+        /// a predicted HP/shield outcome before the player commits to an action. Mirrors
+        /// TakeDamage's shield-first absorption exactly, without touching this instance.
+        /// </summary>
+        public (int predictedHp, int predictedShield) PeekDamage(int amount, bool ignoreShield = false)
+        {
+            if (amount <= 0) return (HealthPoints, ShieldPoints);
+
+            int shield = ShieldPoints;
+            if (!ignoreShield && shield > 0)
+            {
+                int absorbed = Mathf.Min(shield, amount);
+                shield -= absorbed;
+                amount -= absorbed;
+            }
+
+            return (HealthPoints - amount, shield);
+        }
+
+        /// <summary>
+        /// Non-mutating preview of what <see cref="Heal"/> would do — mirrors its
+        /// max-HP clamp exactly, without touching this instance.
+        /// </summary>
+        public int PeekHeal(int amount) =>
+            amount <= 0 ? HealthPoints : Mathf.Min(HealthPoints + amount, MaxHealthPoints);
     }
 }

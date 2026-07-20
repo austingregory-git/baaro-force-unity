@@ -4,7 +4,9 @@ using UnityEngine.UIElements;
 using UnityEngine.Serialization;
 using BaaroForce.Characters;
 using BaaroForce.Classes;
+using BaaroForce.Formulas;
 using BaaroForce.Map;
+using BaaroForce.Spells;
 using BaaroForce.Statuses;
 
 namespace BaaroForce.UI
@@ -32,6 +34,18 @@ namespace BaaroForce.UI
         private UIDocument _document;
         private VisualElement _selectedPanel;   // left
         private VisualElement _targetPanel;      // right
+        private ActionArrowIndicator _arrow;
+
+        // Which character each panel currently shows — cached so Update() can preview
+        // the pending action against them without needing a fresh event each frame.
+        private Character _selectedCharacter;
+        private Npc       _targetCharacter;
+
+        // Ghost/preview elements that should pulse this frame — rebuilt every
+        // RefreshAllPreviews() call, one shared oscillator drives all of them.
+        private readonly List<VisualElement> _pulsingElements = new List<VisualElement>();
+        private const float PulseSpeed    = 3f;    // radians/sec
+        private const float MinPulseAlpha = 0.35f;
 
         // All possible zone / weapon-type USS classes, so we can strip them cleanly
         // before applying the new one each time a panel is repopulated.
@@ -44,6 +58,26 @@ namespace BaaroForce.UI
         private void Awake()
         {
             _document = GetComponent<UIDocument>();
+        }
+
+        /// <summary>
+        /// Continuously previews whatever action TurnManager is currently aiming (a
+        /// basic attack or a targeted spell) against the caster's own panel and/or the
+        /// hovered target's panel, and drives the shared pulse animation for any ghost
+        /// elements the preview created. Runs every frame (like TooltipSystem/
+        /// WarningToastUI's own Update polling) rather than trying to track every place
+        /// TurnManager's targeting state can change.
+        /// </summary>
+        private void Update()
+        {
+            if (_selectedPanel == null || _targetPanel == null) return;
+
+            RefreshAllPreviews();
+
+            if (_pulsingElements.Count == 0) return;
+            float alpha = Mathf.Lerp(MinPulseAlpha, 1f, (Mathf.Sin(Time.time * PulseSpeed) + 1f) * 0.5f);
+            foreach (VisualElement el in _pulsingElements)
+                el.style.opacity = alpha;
         }
 
         private Coroutine _hookRoutine;
@@ -116,21 +150,41 @@ namespace BaaroForce.UI
             _targetPanel.AddToClassList("hud-panel--right");
             _targetPanel.style.display = DisplayStyle.None;
             root.Add(_targetPanel);
+
+            _arrow = new ActionArrowIndicator(root);
         }
 
         // ------------------------------------------------------------------ //
         // Left panel — current-turn character                                 //
         // ------------------------------------------------------------------ //
 
-        private void ShowSelected(Character character) => Populate(_selectedPanel, character, useRemainingMovement: true);
-        private void HideSelected() => _selectedPanel.style.display = DisplayStyle.None;
+        private void ShowSelected(Character character)
+        {
+            _selectedCharacter = character;
+            Populate(_selectedPanel, character, useRemainingMovement: true);
+        }
+
+        private void HideSelected()
+        {
+            _selectedCharacter = null;
+            _selectedPanel.style.display = DisplayStyle.None;
+        }
 
         // ------------------------------------------------------------------ //
         // Right panel — hovered / attacked target                             //
         // ------------------------------------------------------------------ //
 
-        private void ShowTarget(Npc npc) => Populate(_targetPanel, npc, useRemainingMovement: false);
-        private void HideTarget() => _targetPanel.style.display = DisplayStyle.None;
+        private void ShowTarget(Npc npc)
+        {
+            _targetCharacter = npc;
+            Populate(_targetPanel, npc, useRemainingMovement: false);
+        }
+
+        private void HideTarget()
+        {
+            _targetCharacter = null;
+            _targetPanel.style.display = DisplayStyle.None;
+        }
 
         private void Populate(VisualElement panel, Character character, bool useRemainingMovement)
         {
@@ -188,6 +242,246 @@ namespace BaaroForce.UI
 
             // --- Active status effects (buffs/debuffs) --------------------------
             PopulateStatusEffects(panel.Q<VisualElement>("status-effects"), character);
+        }
+
+        // ------------------------------------------------------------------ //
+        // Action-outcome preview — "what will happen if this resolves"        //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Re-applies the pending action's predicted outcome (if any) to both panels,
+        /// and points/hides the arrow between them. Always touches both panels — even
+        /// with nothing pending — so bars/labels reliably fall back to their plain
+        /// (non-preview) look through the exact same rendering path, rather than a
+        /// separate "clear" branch that could drift out of sync with it.
+        /// </summary>
+        private void RefreshAllPreviews()
+        {
+            _pulsingElements.Clear();
+
+            var pending = _turnManager != null ? _turnManager.PendingAction : null;
+            Character caster = pending?.caster;
+            Spell     spell   = pending?.spell; // null spell with non-null pending = basic attack
+
+            if (_selectedCharacter != null)
+            {
+                bool casterIsAiming = pending != null && caster == _selectedCharacter;
+                ActionPreview casterPreview = casterIsAiming
+                    ? ComputeCasterPreview(caster, spell)
+                    : ActionPreview.None;
+                int casterManaCost = casterIsAiming ? (spell?.ManaCost ?? 0) : 0;
+                ApplyPreview(_selectedPanel, _selectedCharacter, casterPreview, casterManaCost);
+            }
+
+            bool targetIsAimed = pending != null && _targetCharacter != null &&
+                                  (spell == null || spell.TargetType != SpellTargetType.Self);
+            if (_targetCharacter != null)
+            {
+                ActionPreview targetPreview = targetIsAimed
+                    ? (spell != null
+                        ? spell.GetPreview(caster, _targetCharacter)
+                        : new ActionPreview { RawDamage = caster.CharacterStats.TotalAttack })
+                    : ActionPreview.None;
+                ApplyPreview(_targetPanel, _targetCharacter, targetPreview, manaCost: 0);
+            }
+
+            if (targetIsAimed && _selectedPanel.style.display == DisplayStyle.Flex &&
+                _targetPanel.style.display == DisplayStyle.Flex)
+                _arrow.PointBetween(_selectedPanel, _targetPanel);
+            else
+                _arrow.Hide();
+        }
+
+        /// <summary>A Self-type spell's own effect on its caster (Grit, Rally); anything
+        /// else has nothing to preview on the caster's own panel beyond mana cost.</summary>
+        private static ActionPreview ComputeCasterPreview(Character caster, Spell spell) =>
+            spell != null && spell.TargetType == SpellTargetType.Self
+                ? spell.GetPreview(caster, caster)
+                : ActionPreview.None;
+
+        /// <summary>
+        /// Overlays a predicted outcome onto an already-Populate()'d panel: dual-state
+        /// HP/mana bars, a death overlay on a lethal hit, +/-N labels next to attack and
+        /// shield, and a hollow "ghost" chip for a status effect that would be applied.
+        /// Safe to call with an all-zero <paramref name="preview"/> and 0 mana cost — it
+        /// then just re-renders the plain (non-preview) state via the same code path.
+        /// </summary>
+        private void ApplyPreview(VisualElement panel, Character character, ActionPreview preview, int manaCost)
+        {
+            CharacterStats stats = character.CharacterStats;
+
+            // --- HP (+ predicted death) -----------------------------------------
+            int currentHp    = Mathf.Max(0, stats.HealthPoints);
+            int currentMaxHp = Mathf.Max(1, stats.MaxHealthPoints);
+            int predictedMaxHp = currentMaxHp + Mathf.Max(0, preview.MaxHpDelta);
+
+            int predictedHp = currentHp;
+            if (preview.RawDamage > 0)
+                predictedHp = Mathf.Max(0, stats.PeekDamage(preview.RawDamage).predictedHp);
+            else if (preview.RawHeal > 0)
+                predictedHp = stats.PeekHeal(preview.RawHeal);
+            if (preview.MaxHpDelta > 0)
+                predictedHp = Mathf.Min(predictedMaxHp, predictedHp + preview.MaxHpDelta);
+
+            SetSegmentedBarWithPreview(panel.Q<VisualElement>("hp-bar"), currentHp, currentMaxHp,
+                predictedHp, predictedMaxHp, "seg-fill-hp", _pulsingElements);
+
+            VisualElement chassis = panel.Q<VisualElement>("chassis");
+            VisualElement deathOverlay = chassis?.Q<VisualElement>("death-overlay");
+            if (preview.RawDamage > 0 && predictedHp <= 0)
+            {
+                if (deathOverlay == null)
+                {
+                    deathOverlay = BuildDeathOverlay();
+                    chassis.Add(deathOverlay);
+                }
+                _pulsingElements.Add(deathOverlay);
+            }
+            else
+            {
+                deathOverlay?.RemoveFromHierarchy();
+            }
+
+            // --- Mana (caster-only spend preview) -------------------------------
+            int currentMana   = Mathf.Max(0, stats.Mana);
+            int maxMana       = Mathf.Max(1, stats.MaxMana);
+            int predictedMana = manaCost > 0 ? Mathf.Max(0, currentMana - manaCost) : currentMana;
+            SetSegmentedBarWithPreview(panel.Q<VisualElement>("mana-bar"), currentMana, maxMana,
+                predictedMana, maxMana, "seg-fill-mana", _pulsingElements);
+
+            // --- Attack / Shield deltas ------------------------------------------
+            ShowStatDelta(panel, "atk-num", "atk-delta", preview.AttackBonusDelta, _pulsingElements);
+
+            VisualElement shieldRow = panel.Q<VisualElement>("shield-row");
+            if (preview.ShieldGain > 0) shieldRow.style.display = DisplayStyle.Flex;
+            ShowStatDelta(panel, "shield-num", "shield-delta", preview.ShieldGain, _pulsingElements);
+
+            // --- Ghost status-effect chip ----------------------------------------
+            ApplyGhostStatusChip(panel.Q<VisualElement>("status-effects"), character,
+                preview.StatusEffectName, preview.StatusEffectKind, _pulsingElements);
+        }
+
+        private static VisualElement BuildDeathOverlay()
+        {
+            var overlay = new VisualElement { name = "death-overlay" };
+            overlay.AddToClassList("death-overlay");
+            var label = new Label("✖"); // ✖
+            label.AddToClassList("death-overlay-label");
+            overlay.Add(label);
+            return overlay;
+        }
+
+        /// <summary>Adds/updates/removes the small +N/-N label next to a stat number,
+        /// registering it to pulse while present.</summary>
+        private static void ShowStatDelta(VisualElement panel, string numberElementName,
+            string deltaElementName, int delta, List<VisualElement> pulseTarget)
+        {
+            Label numberEl = panel.Q<Label>(numberElementName);
+            VisualElement parentRow = numberEl.parent;
+            Label deltaLabel = parentRow.Q<Label>(deltaElementName);
+
+            if (delta == 0)
+            {
+                deltaLabel?.RemoveFromHierarchy();
+                return;
+            }
+
+            if (deltaLabel == null)
+            {
+                deltaLabel = new Label { name = deltaElementName };
+                deltaLabel.AddToClassList("stat-delta");
+                parentRow.Add(deltaLabel);
+            }
+
+            deltaLabel.text = (delta > 0 ? "+" : "") + delta;
+            deltaLabel.RemoveFromClassList("stat-delta-buff");
+            deltaLabel.RemoveFromClassList("stat-delta-debuff");
+            deltaLabel.AddToClassList(delta > 0 ? "stat-delta-buff" : "stat-delta-debuff");
+            pulseTarget.Add(deltaLabel);
+        }
+
+        /// <summary>Adds/updates/removes the hollow "would be applied" status chip,
+        /// registering it to pulse while present.</summary>
+        private static void ApplyGhostStatusChip(VisualElement statusContainer, Character character,
+            string statusEffectName, StatusEffect.StatusEffectType? kind, List<VisualElement> pulseTarget)
+        {
+            const string ghostName = "status-chip-ghost";
+            Label ghost = statusContainer.Q<Label>(ghostName);
+
+            bool alreadyActive = statusEffectName != null &&
+                                  character.ActiveEffects.Exists(e => e.Name == statusEffectName);
+            if (statusEffectName == null || alreadyActive)
+            {
+                ghost?.RemoveFromHierarchy();
+            }
+            else
+            {
+                if (ghost == null)
+                {
+                    ghost = new Label { name = ghostName };
+                    ghost.AddToClassList("status-chip");
+                    ghost.AddToClassList("status-chip--ghost");
+                    statusContainer.Add(ghost);
+                }
+
+                ghost.text = statusEffectName;
+                ghost.RemoveFromClassList("status-chip-buff");
+                ghost.RemoveFromClassList("status-chip-debuff");
+                ghost.RemoveFromClassList("status-chip-custom");
+                ghost.AddToClassList(kind switch
+                {
+                    StatusEffect.StatusEffectType.Buff   => "status-chip-buff",
+                    StatusEffect.StatusEffectType.Debuff => "status-chip-debuff",
+                    _                                      => "status-chip-custom",
+                });
+                pulseTarget.Add(ghost);
+            }
+
+            statusContainer.style.display =
+                statusContainer.childCount > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>
+        /// Rebuilds a segmented bar showing both the current filled count and, via
+        /// distinctly-styled "ghost" segments appended to <paramref name="pulseTarget"/>,
+        /// any predicted change: segments about to be lost render orange, segments about
+        /// to be gained (including new capacity beyond the current max) render pale
+        /// green. With <paramref name="predicted"/> == <paramref name="current"/> and
+        /// <paramref name="predictedMax"/> == <paramref name="currentMax"/> this renders
+        /// identically to the plain <see cref="SetSegmentedBar"/>.
+        /// </summary>
+        private static void SetSegmentedBarWithPreview(VisualElement bar, int current, int currentMax,
+            int predicted, int predictedMax, string fillClass, List<VisualElement> pulseTarget)
+        {
+            if (bar == null) return;
+            bar.Clear();
+
+            int total = Mathf.Max(1, Mathf.Max(currentMax, predictedMax));
+            for (int i = 0; i < total; i++)
+            {
+                var seg = new VisualElement();
+                seg.AddToClassList("seg");
+
+                bool filledNow   = i < current;
+                bool filledLater = i < predicted;
+
+                if (filledNow && filledLater)
+                {
+                    seg.AddToClassList(fillClass);
+                }
+                else if (filledNow)
+                {
+                    seg.AddToClassList("seg-pending-loss");
+                    pulseTarget.Add(seg);
+                }
+                else if (filledLater)
+                {
+                    seg.AddToClassList("seg-pending-gain");
+                    pulseTarget.Add(seg);
+                }
+
+                bar.Add(seg);
+            }
         }
 
         private static void PopulateStatusEffects(VisualElement container, Character character)

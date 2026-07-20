@@ -1,6 +1,7 @@
 using UnityEngine;
 using BaaroForce.Characters;
 using BaaroForce.Formulas;
+using BaaroForce.UI;
 
 namespace BaaroForce.Passives
 {
@@ -24,10 +25,8 @@ namespace BaaroForce.Passives
         public override bool Execute(PassiveOnTurnContext context)
         {
             int bonus = ComputeValues(context.Character)[0].Total;
-            context.Character.CharacterStats.HealthPoints += bonus;
-            context.Character.CharacterStats.HealthPoints = Mathf.Min(
-                context.Character.CharacterStats.HealthPoints,
-                context.Character.CharacterStats.MaxHealthPoints);
+            int healed = context.Character.CharacterStats.Heal(bonus);
+            FloatingCombatTextSystem.Instance?.ShowHeal(context.Character, healed);
 
             Debug.Log($"[AutumnalGrowth] '{context.Character.CharacterName}' gained {bonus} HP.  " +
                       $"HP: {context.Character.CharacterStats.HealthPoints}" +

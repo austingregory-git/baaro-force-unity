@@ -2,6 +2,7 @@ using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Formulas;
 using BaaroForce.Map;
+using BaaroForce.UI;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -26,6 +27,11 @@ namespace BaaroForce.Spells
 
         public override ScalingValue[] ComputeValues(Character caster) =>
             new[] { new ScalingValue("Damage").AddTotalAttack(caster.CharacterStats) };
+
+        /// <summary>Previews the single currently-hovered unit's fate — Cleave's line
+        /// can hit two others too, but the HUD only ever shows one "target" at a time.</summary>
+        public override ActionPreview GetPreview(Character caster, Character target) =>
+            new ActionPreview { RawDamage = ComputeValues(caster)[0].Total };
 
         public override bool Execute(SpellContext context)
         {
@@ -54,7 +60,8 @@ namespace BaaroForce.Spells
                 {
                     // Apply damage to the occupant
                     Npc target = tile.OccupyingNpc;
-                    target.CharacterStats.TakeDamage(damage);
+                    int dealt  = target.CharacterStats.TakeDamage(damage);
+                    FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
                     Debug.Log($"[Cleave] '{context.Caster.CharacterName}' dealt {damage} damage to '{target.CharacterName}'. " +
                               $"HP: {target.CharacterStats.HealthPoints}/{target.CharacterStats.MaxHealthPoints}");
                     if (target.CharacterStats.HealthPoints <= 0)

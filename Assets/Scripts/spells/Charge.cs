@@ -2,6 +2,7 @@ using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Formulas;
 using BaaroForce.Map;
+using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -70,6 +71,9 @@ namespace BaaroForce.Spells
             return best;
         }
 
+        public override ActionPreview GetPreview(Character caster, Character target) =>
+            new ActionPreview { RawDamage = ComputeValues(caster)[0].Total };
+
         public override bool Execute(SpellContext context)
         {
             Npc target = context.TargetTile?.OccupyingNpc;
@@ -80,7 +84,8 @@ namespace BaaroForce.Spells
             }
 
             int damage = ComputeValues(context.Caster)[0].Total;
-            target.CharacterStats.TakeDamage(damage);
+            int dealt  = target.CharacterStats.TakeDamage(damage);
+            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
 
             Debug.Log($"[Charge] '{context.Caster.CharacterName}' charges '{target.CharacterName}' " +
                       $"for {damage} damage.  " +

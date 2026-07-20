@@ -14,6 +14,8 @@ namespace BaaroForce.Spells
                 { "Charge", new Charge() },
                 { "Grit",   new Grit()   },
                 { "Cleave", new Cleave() },
+                { "Slam",   new Slam()   },
+                { "Rally",  new Rally()  },
             };
 
         // ── Class-based spell pool ─────────────────────────────────────────
@@ -22,7 +24,9 @@ namespace BaaroForce.Spells
         private static readonly Dictionary<string, List<Func<ClassSpell>>> _byClass =
             new Dictionary<string, List<Func<ClassSpell>>>
             {
-                { "Warrior", new List<Func<ClassSpell>> { () => new Charge(), () => new Grit(), () => new Cleave() } },
+                { "Warrior", new List<Func<ClassSpell>> {
+                    () => new Charge(), () => new Grit(), () => new Cleave(),
+                    () => new Slam(), () => new Rally() } },
             };
 
         // ------------------------------------------------------------------ //

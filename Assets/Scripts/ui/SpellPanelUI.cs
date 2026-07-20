@@ -153,11 +153,11 @@ namespace BaaroForce.UI
             else if (spell.ManaCost > 0)
                 row.Add(MakeBadge($"{spell.ManaCost}MP", "spell-badge-cost"));
 
-            if (usable)
-            {
-                Spell captured = spell;
-                row.RegisterCallback<ClickEvent>(_ => OnSpellSelected?.Invoke(captured));
-            }
+            // Always register the click, even when disabled — TurnManager.ActivateSpell
+            // re-checks affordability/cooldown itself and surfaces a warning toast when it
+            // can't be cast, instead of the click just silently doing nothing.
+            Spell capturedSpell = spell;
+            row.RegisterCallback<ClickEvent>(_ => OnSpellSelected?.Invoke(capturedSpell));
 
             string summaryBody  = BuildTooltipBody(spell, character, cooldownRemaining, detailed: false);
             string detailedBody = BuildTooltipBody(spell, character, cooldownRemaining, detailed: true);

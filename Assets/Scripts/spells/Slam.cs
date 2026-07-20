@@ -2,6 +2,7 @@ using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Formulas;
 using BaaroForce.Map;
+using BaaroForce.UI;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -33,13 +34,17 @@ namespace BaaroForce.Spells
             return new[] { damage };
         }
 
+        public override ActionPreview GetPreview(Character caster, Character target) =>
+            new ActionPreview { RawDamage = ComputeValues(caster)[0].Total };
+
         public override bool Execute(SpellContext context)
         {
             if (context.TargetTile.IsOccupied && context.TargetTile.OccupyingNpc != null)
             {
                 Npc target = context.TargetTile.OccupyingNpc;
                 int damage = ComputeValues(context.Caster)[0].Total;
-                target.CharacterStats.TakeDamage(damage);
+                int dealt  = target.CharacterStats.TakeDamage(damage);
+                FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
                 Debug.Log($"[Slam] '{context.Caster.CharacterName}' dealt {damage} damage to '{target.CharacterName}'. " +
                           $"HP: {target.CharacterStats.HealthPoints}/{target.CharacterStats.MaxHealthPoints}");
                 if (target.CharacterStats.HealthPoints <= 0)

@@ -215,7 +215,12 @@ public class CharacterSelectionManager : MonoBehaviour
         handler.Initialize(character);
     }
 
-    private static Color GetRealmBackgroundColor(Realm? realm)
+    /// <summary>
+    /// The realm's pale background colour, as shown on the character-selection card
+    /// backdrop. Public so BaaroForce.UI.CombatTextColors can reuse the exact same
+    /// palette for floating combat-text damage colours.
+    /// </summary>
+    public static Color GetRealmBackgroundColor(Realm? realm)
     {
         if (!realm.HasValue) return Color.white;
         switch (realm.Value)

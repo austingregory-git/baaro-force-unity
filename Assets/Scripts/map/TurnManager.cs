@@ -585,7 +585,22 @@ namespace BaaroForce.Map
 
         private void ShowSpellRange(MapTile origin, Spell spell)
         {
-            if (spell.TargetType == SpellTargetType.Self) return;
+            if (spell.TargetType == SpellTargetType.Self)
+            {
+                // No tile is aimed, but the spell still affects a fixed set of tiles around
+                // the caster (just the caster's own tile for a plain self-buff like Grit, or
+                // a wider CircleAround area for something like Rally) — highlight exactly
+                // that area, in the same green used for Ally targeting, so the player can see
+                // who/what will be affected before confirming.
+                List<MapTile> affectedTiles = SpellAreaUtils.GetAreaTiles(spell, origin, origin, _tiles, _gridSize);
+                Color selfColor = GetSpellHighlightColor(SpellTargetType.Ally);
+                foreach (MapTile tile in affectedTiles)
+                {
+                    tile.SetSpellHighlight(true, selfColor);
+                    _spellTargetTiles.Add(tile);
+                }
+                return;
+            }
 
             Color color = GetSpellHighlightColor(spell.TargetType);
             int ox = origin.GridX, oz = origin.GridZ;
@@ -808,8 +823,10 @@ namespace BaaroForce.Map
         }
 
         /// <summary>
-        /// Activates a spell for the currently selected character.
-        /// Self-targeting spells execute immediately; all others enter targeting mode.
+        /// Activates a spell for the currently selected character and enters targeting mode.
+        /// Self-targeting spells have nothing to aim, but still highlight the fixed set of
+        /// tiles their effect will actually reach (see <see cref="ShowSpellRange"/>) — the
+        /// player confirms by clicking any highlighted tile, same as any other spell.
         /// Called by both the S key shortcut and the spell panel buttons.
         /// </summary>
         public void ActivateSpell(Spell spell)
@@ -840,48 +857,19 @@ namespace BaaroForce.Map
 
             if (!IsSpellAvailable(_selectedCharacter, spell))
             {
-                Debug.Log($"[TurnManager] '{spell.Name}' is still on cooldown " +
-                          $"({GetCooldownRemaining(_selectedCharacter, spell)} round(s) left).");
-                _warningToast?.Show($"'{spell.Name}' is on cooldown " +
-                          $"({GetCooldownRemaining(_selectedCharacter, spell)} round(s) left).");
+                int cooldownRemaining = GetCooldownRemaining(_selectedCharacter, spell);
+                string cooldownMessage = cooldownRemaining == int.MaxValue
+                    ? $"'{spell.Name}' has already been used this fight."
+                    : $"'{spell.Name}' is on cooldown ({cooldownRemaining} round(s) left).";
+
+                Debug.Log($"[TurnManager] {cooldownMessage}");
+                _warningToast?.Show(cooldownMessage);
                 return;
             }
 
-            if (spell.TargetType == SpellTargetType.Self)
-            {
-                // Self spells need no target tile — execute immediately.
-                SetMode(InputMode.None);
-                var selfContext = new SpellContext(
-                    caster:      _selectedCharacter,
-                    casterLevel: _selectedCharacter.Level,
-                    casterTile:  _selectedTile,
-                    targetTile:  null,
-                    allTiles:    _tiles,
-                    gridSize:    _gridSize);
-
-                bool selfResolved = spell.Execute(selfContext);
-
-                _remainingActions[_selectedCharacter] =
-                    Mathf.Max(0, RemainingActions(_selectedCharacter) - 1);
-
-                if (selfResolved)
-                {
-                    _selectedCharacter.CharacterStats.Mana =
-                        Mathf.Max(0, _selectedCharacter.CharacterStats.Mana - spell.ManaCost);
-                    StartSpellCooldown(_selectedCharacter, spell);
-                }
-
-                CheckAndHandleTurnEnd(_selectedCharacter);
-                if (_selectedCharacter != null)
-                {
-                    ShowActionPanel();
-                    // Push updated shield/HP/mana/AP to the left-side HUD panel.
-                    OnCharacterSelected?.Invoke(_selectedCharacter);
-                }
-                return;
-            }
-
-            // Targeted spell — hide panels and show range highlights.
+            // Enter targeting mode — hide panels and show range/area highlights.
+            // Self-targeting spells with no aim still get a highlight (see ShowSpellRange);
+            // the click that confirms them lands on CommitSpell exactly like any other spell.
             _actionPanel?.Hide();
             _spellPanel?.Hide();
             SetMode(InputMode.Spell);
@@ -1111,6 +1099,7 @@ namespace BaaroForce.Map
 
             int damage = Mathf.Max(0, attacker.CharacterStats.TotalAttack);
             int dealt  = target.CharacterStats.TakeDamage(damage);
+            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
 
             Debug.Log($"[TurnManager] '{attacker.CharacterName}' attacks '{target.CharacterName}' "
                     + $"for {damage} damage ({dealt} after shield).  "
@@ -1343,6 +1332,22 @@ namespace BaaroForce.Map
         // Helpers                                                             //
         // ------------------------------------------------------------------ //
 
+        /// <summary>
+        /// Non-null while the player is aiming a basic attack or a targeted spell.
+        /// <c>spell == null</c> means a basic attack. Used by CharacterHudController to
+        /// preview the pending action's effect on the HUD before the player commits.
+        /// </summary>
+        public (Character caster, Spell spell)? PendingAction
+        {
+            get
+            {
+                if (_selectedCharacter == null) return null;
+                if (_currentMode == InputMode.Attack) return (_selectedCharacter, (Spell)null);
+                if (_currentMode == InputMode.Spell && _selectedSpell != null) return (_selectedCharacter, _selectedSpell);
+                return null;
+            }
+        }
+
         /// <summary>Movement points <paramref name="character"/> has left this turn (0 if untracked, e.g. an enemy Npc).</summary>
         public int RemainingMove(Character character)
         {
@@ -1391,7 +1396,7 @@ namespace BaaroForce.Map
             map[spell] = spell.OncePerFight ? int.MaxValue : _roundNumber + spell.Cooldown + 1;
         }
 
-        /// <summary>Ensures an EventSystem and TooltipSystem exist in the scene.</summary>
+        /// <summary>Ensures an EventSystem, TooltipSystem, and FloatingCombatTextSystem exist in the scene.</summary>
         private void EnsureMapUI()
         {
             if (FindAnyObjectByType<EventSystem>() == null)
@@ -1402,6 +1407,8 @@ namespace BaaroForce.Map
             }
             if (TooltipSystem.Instance == null)
                 new GameObject("[TooltipSystem]").AddComponent<TooltipSystem>();
+            if (FloatingCombatTextSystem.Instance == null)
+                new GameObject("[FloatingCombatTextSystem]").AddComponent<FloatingCombatTextSystem>();
         }
     }
 }

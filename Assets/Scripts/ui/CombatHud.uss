@@ -308,9 +308,12 @@
 
 /* ---------------- Warning toast (invalid target / can't-cast feedback) - */
 
+/* Bottom-centre, clear of the top character-HUD panels and the left-side
+   action/spell panel (which sits vertically centred at left: 2%) so the toast
+   never overlaps other HUD chrome while staying front-and-centre for the player. */
 .warning-toast {
     position: absolute;
-    top: 6%;
+    bottom: 6%;
     left: 50%;
     translate: -50% 0;
     max-width: 420px;
@@ -329,4 +332,60 @@
     color: rgb(243, 230, 200);
     -unity-text-align: middle-center;
     white-space: normal;
+}
+
+/* ---------------- Action-outcome preview ("ghost" states) -------------- */
+/* Base colours are set here; the pulsing opacity itself is driven per-frame
+   from C# (CharacterHudController) since USS has no keyframe animations. */
+
+/* HP/mana segment that is currently filled but would be LOST by the pending action. */
+.seg-pending-loss { background-color: rgb(255, 140, 60); }
+/* HP/mana segment that is currently empty but would be GAINED by the pending action
+   (also used for new segments beyond the current max, e.g. Grit's max-HP growth). */
+.seg-pending-gain { background-color: rgb(166, 235, 166); }
+
+/* Small +N/-N label next to atk-num / shield-num when an action would change them. */
+.stat-delta {
+    font-size: 13px;
+    -unity-font-style: bold;
+    margin-left: 4px;
+    -unity-text-align: middle-left;
+}
+.stat-delta-buff   { color: rgb(120, 199, 140); }
+.stat-delta-debuff { color: rgb(199, 161, 230); }
+
+/* A status-effect chip for an effect that WOULD be applied, not yet active — same
+   buff/debuff border colours as .status-chip-buff/-debuff, but hollow/pending-looking. */
+.status-chip--ghost {
+    background-color: transparent;
+    border-width: 2px;
+}
+
+/* Full-panel overlay shown when the pending action would reduce a unit's predicted
+   HP to 0 or below. Added as a child of .chassis so its rounded corners line up. */
+.death-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(120, 20, 20, 0.55);
+    border-radius: 16px;
+    align-items: center;
+    justify-content: center;
+}
+.death-overlay-label {
+    font-size: 42px;
+    -unity-font-style: bold;
+    color: rgb(255, 220, 220);
+}
+
+/* ---------------- Action arrow (selected panel -> hovered/target panel) - */
+/* Shared by the shaft and both chevron-head wings — all three are just thin
+   rotated bars (see ActionArrowIndicator); thickness/length/position are set
+   per-instance in C# since they depend on the live distance between panels. */
+.action-arrow-shaft {
+    position: absolute;
+    background-color: rgb(227, 91, 107);
+    border-radius: 2px;
 }

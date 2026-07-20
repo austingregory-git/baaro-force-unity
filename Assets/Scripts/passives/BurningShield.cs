@@ -1,6 +1,7 @@
 using UnityEngine;
 using BaaroForce.Characters;
 using BaaroForce.Formulas;
+using BaaroForce.UI;
 
 namespace BaaroForce.Passives
 {
@@ -24,7 +25,8 @@ namespace BaaroForce.Passives
         public override bool Execute(PassiveOnReceivingAttackContext context)
         {
             int value = ComputeValues(context.ReceivingCharacter)[0].Total;
-            context.Attacker.CharacterStats.TakeDamage(value);
+            int dealt = context.Attacker.CharacterStats.TakeDamage(value);
+            FloatingCombatTextSystem.Instance?.ShowDamage(context.Attacker, dealt, SpellType.Fire);
 
             if (context.Attacker.CharacterStats.HealthPoints <= 0)
             {

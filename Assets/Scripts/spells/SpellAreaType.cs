@@ -22,6 +22,11 @@ namespace BaaroForce.Spells
 
         /// <summary>Square-shaped area — tiles in a square pattern around the chosen tile are affected.</summary>
         Square,
+        /// <summary>Square area around the caster — every tile adjacent to and diagonal to the
+        /// caster within a given range (Chebyshev distance), excluding the caster's own tile.
+        /// Range 1 = 8 tiles, range 2 = 24 tiles, and so on. No target tile is aimed; the area
+        /// is always centred on the caster.</summary>
+        CircleAround,
         /// <summary>Cross-shaped area — tiles in a cross pattern around the chosen tile are affected.</summary>
         Cross,
         /// <summary>Custom area — the affected tiles are determined by custom logic.</summary>

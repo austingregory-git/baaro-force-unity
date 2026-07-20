@@ -38,11 +38,19 @@ namespace BaaroForce.Spells
         /// Only meaningful when <see cref="TargetType"/> is <see cref="SpellTargetType.AoE"/>.
         /// Used by <see cref="SpellAreaUtils"/> to resolve the affected tiles.</summary>
         public readonly SpellAreaType AreaType;
+        /// <summary>
+        /// Whether an origin-centred area (currently <see cref="SpellAreaType.CircleAround"/>)
+        /// should include the tile it's centred on — e.g. the caster's own tile for a
+        /// self-centred buff like Rally. Most enemy-targeted AoE spells leave this false so
+        /// they don't hit their own tile; buffs/heals centred on the caster often want it true.
+        /// </summary>
+        public readonly bool IncludeOriginTile;
 
         protected Spell(string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
                      SpellTargetType targetType = SpellTargetType.Enemy,
                      SpellAreaType areaType = SpellAreaType.None,
-                     bool oncePerFight = false)
+                     bool oncePerFight = false,
+                     bool includeOriginTile = false)
         {
             this.Name        = name;
             this.Description = description;
@@ -54,6 +62,7 @@ namespace BaaroForce.Spells
             this.OncePerFight = oncePerFight;
             this.TargetType  = targetType;
             this.AreaType    = areaType;
+            this.IncludeOriginTile = includeOriginTile;
         }
 
         /// <summary>Convenience constructor for name/description-only data stubs.</summary>
@@ -105,6 +114,16 @@ namespace BaaroForce.Spells
         /// beyond the summary.</summary>
         public string GetDetailedDescription(Character caster) =>
             ScalingDescriptionFormatter.GetDetailedDescription(Description, ComputeValues(caster));
+
+        /// <summary>
+        /// Predicts what casting this spell against <paramref name="target"/> would do,
+        /// without applying it — used to preview the pending action on the HUD before the
+        /// player commits. Reuses <see cref="ComputeValues"/> for its numbers, same as
+        /// Execute; override alongside Execute/ComputeValues so the preview never drifts
+        /// from what actually happens. Spells with no meaningful target-facing effect to
+        /// preview (rare) can leave the default <see cref="ActionPreview.None"/>.
+        /// </summary>
+        public virtual ActionPreview GetPreview(Character caster, Character target) => ActionPreview.None;
     }
 }
 

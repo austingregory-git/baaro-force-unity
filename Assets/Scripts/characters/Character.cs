@@ -6,6 +6,7 @@ using BaaroForce.Passives;
 using BaaroForce.Spells;
 using BaaroForce.Statuses;
 using BaaroForce.Map;
+using BaaroForce.UI;
 
 namespace BaaroForce.Characters
 {
@@ -47,6 +48,7 @@ namespace BaaroForce.Characters
             }
             effect.OnApply(CharacterStats);
             ActiveEffects.Add(effect);
+            FloatingCombatTextSystem.Instance?.ShowStatus(this, effect.Name, effect.EffectType);
             Debug.Log($"[{GetType().Name}] '{CharacterName}' afflicted with {effect.Name} ({effect.RemainingTurns} turn(s)).");
         }
 

@@ -1,6 +1,7 @@
 using BaaroForce.Characters;
 using BaaroForce.Formulas;
 using BaaroForce.Statuses;
+using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -45,6 +46,18 @@ namespace BaaroForce.Spells
             return new[] { fearDuration, damage };
         }
 
+        public override ActionPreview GetPreview(Character caster, Character target)
+        {
+            ScalingValue[] values = ComputeValues(caster);
+            return new ActionPreview
+            {
+                RawDamage         = values[1].Total,
+                AttackBonusDelta  = -(caster is Npc ? 2 : 1),
+                StatusEffectName  = "Fear",
+                StatusEffectKind  = StatusEffect.StatusEffectType.Debuff,
+            };
+        }
+
         public override bool Execute(SpellContext context)
         {
             bool casterIsNpc = context.Caster is Npc;
@@ -71,7 +84,8 @@ namespace BaaroForce.Spells
             target.ApplyStatus(fear);
 
             // Deal dark damage.
-            target.CharacterStats.TakeDamage(damage);
+            int dealt = target.CharacterStats.TakeDamage(damage);
+            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Dark);
 
             Debug.Log($"[DeathStare] '{context.Caster.CharacterName}' casts Death Stare on " +
                       $"'{target.CharacterName}'.  Damage: {damage}, " +

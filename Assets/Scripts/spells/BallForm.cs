@@ -41,6 +41,10 @@ namespace BaaroForce.Spells
                     .Add("Level", caster.Level)
             };
 
+        /// <summary>Self-only — <paramref name="target"/> is always the caster.</summary>
+        public override ActionPreview GetPreview(Character caster, Character target) =>
+            new ActionPreview { ShieldGain = ComputeValues(caster)[0].Total };
+
         public override bool Execute(SpellContext context)
         {
             // Apply Shield — increases caster's shield for 3 + level turns.
