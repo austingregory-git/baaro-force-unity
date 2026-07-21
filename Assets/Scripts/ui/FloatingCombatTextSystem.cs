@@ -82,6 +82,14 @@ namespace BaaroForce.UI
             Spawn(target, $"+{amount}", CombatTextColors.HealColor);
         }
 
+        /// <summary>Pops a mana-gain number above <paramref name="target"/> in blue.
+        /// No-ops for zero/negative amounts.</summary>
+        public void ShowMana(Character target, int amount)
+        {
+            if (amount <= 0) return;
+            Spawn(target, $"+{amount} MP", CombatTextColors.ManaColor);
+        }
+
         /// <summary>Pops a gold-gain number above <paramref name="target"/> in gold/yellow.
         /// No-ops for zero/negative amounts.</summary>
         public void ShowGold(Character target, int amount)

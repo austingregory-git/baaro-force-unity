@@ -24,6 +24,11 @@ namespace BaaroForce.Characters
         /// used by CharacterSelectionManager to render its card portrait.</summary>
         public string CharacterProfilePicPath { get; set; }
 
+        /// <summary>This character's isometric directional sprite set, used by
+        /// SpriteCharacterView when its on-map unit is placed. Null falls back to
+        /// MapTile's shared DefaultSpriteKit for characters without their own art yet.</summary>
+        public SpriteKit CharacterSpriteKit { get; set; }
+
         /// Should a character have their current tile stored here?  Or should the map manager handle that?
         public MapTile CharacterCurrentTile { get; set; }
 
@@ -156,7 +161,8 @@ namespace BaaroForce.Characters
                         List<Realm> characterRealms,
                         List<PassiveAbility> characterPassiveAbilities,
                         List<Spell> characterSpells,
-                        string characterProfilePicPath)
+                        string characterProfilePicPath,
+                        SpriteKit characterSpriteKit = null)
         {
             this.CharacterClass = characterClass;
             this.CharacterName = characterName;
@@ -165,6 +171,7 @@ namespace BaaroForce.Characters
             this.CharacterPassiveAbilities   = characterPassiveAbilities   ?? new List<PassiveAbility>();
             this.CharacterSpells             = characterSpells             ?? new List<Spell>();
             this.CharacterProfilePicPath     = characterProfilePicPath;
+            this.CharacterSpriteKit          = characterSpriteKit;
 
             // Append one randomly selected class spell from this character's class.
             ClassSpell classSpell = SpellRegistry.GetRandomClassSpell(characterClass?.ClassID);

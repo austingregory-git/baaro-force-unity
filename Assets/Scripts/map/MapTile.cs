@@ -45,10 +45,12 @@ namespace BaaroForce.Map
         private GameObject _moveHighlightOverlay;
         private GameObject _attackHighlightOverlay;
         private GameObject _spellHighlightOverlay;
+        private GameObject _zoneOfControlOverlay;
 
         private static readonly Color OverlayColor         = new Color(0.3f, 0.6f, 1f, 0.92f);
         private static readonly Color MoveHighlightColor    = new Color(0.3f, 0.6f, 1f, 0.92f);
         private static readonly Color AttackHighlightColor  = new Color(0.9f, 0.15f, 0.1f, 0.55f);
+        private static readonly Color ZoneOfControlColor    = new Color(1f, 0.65f, 0.1f, 0.35f);
 
         // ------------------------------------------------------------------ //
         // Lifecycle                                                           //
@@ -119,10 +121,14 @@ namespace BaaroForce.Map
         // ------------------------------------------------------------------ //
 
         /// <summary>
-        /// Shows or hides the near-opaque blue overlay used to indicate tiles
-        /// the selected character can move to during the player's turn.
+        /// Shows or hides the near-opaque overlay used to indicate tiles the selected
+        /// character can move to during the player's turn. Defaults to blue; callers pass
+        /// a distinct color (e.g. amber) for a reachable tile that also lies within an
+        /// enemy's Zone of Control, so leaving it costs extra without needing a second
+        /// stacked overlay (see <see cref="SetZoneOfControlHighlight"/> for unreachable
+        /// zone tiles, where no move overlay exists to color instead).
         /// </summary>
-        public void SetMoveHighlight(bool active)
+        public void SetMoveHighlight(bool active, Color? color = null)
         {
             if (active)
             {
@@ -139,7 +145,7 @@ namespace BaaroForce.Map
                 _moveHighlightOverlay.transform.localScale    = Vector3.one;
 
                 var mat = new Material(Shader.Find("Standard"));
-                ApplyTransparency(mat, MoveHighlightColor);
+                ApplyTransparency(mat, color ?? MoveHighlightColor);
                 _moveHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
             }
             else
@@ -186,6 +192,42 @@ namespace BaaroForce.Map
         }
 
         /// <summary>
+        /// Shows or hides a translucent amber warning overlay marking this tile as inside an
+        /// enemy's Zone of Control while it is NOT currently in the selected character's
+        /// movable range — i.e. there is no <see cref="SetMoveHighlight"/> overlay here to
+        /// recolor instead, so a separate low-alpha overlay is used to avoid ever stacking
+        /// two highlight quads on the same tile.
+        /// </summary>
+        public void SetZoneOfControlHighlight(bool active)
+        {
+            if (active)
+            {
+                if (_zoneOfControlOverlay != null) return;
+
+                _zoneOfControlOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                _zoneOfControlOverlay.name = "ZoneOfControlHighlight";
+                Destroy(_zoneOfControlOverlay.GetComponent<Collider>());
+
+                _zoneOfControlOverlay.transform.SetParent(transform, false);
+                _zoneOfControlOverlay.transform.localPosition = new Vector3(0f, 0.545f, 0f);
+                _zoneOfControlOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                _zoneOfControlOverlay.transform.localScale    = Vector3.one;
+
+                var mat = new Material(Shader.Find("Standard"));
+                ApplyTransparency(mat, ZoneOfControlColor);
+                _zoneOfControlOverlay.GetComponent<MeshRenderer>().material = mat;
+            }
+            else
+            {
+                if (_zoneOfControlOverlay != null)
+                {
+                    Destroy(_zoneOfControlOverlay);
+                    _zoneOfControlOverlay = null;
+                }
+            }
+        }
+
+        /// <summary>
         /// Shows or hides a coloured spell-range overlay on this tile.
         /// The colour is determined by the spell's target type and passed in by TurnManager:
         ///   red = enemy spells, green = ally spells, purple = either.
@@ -223,9 +265,8 @@ namespace BaaroForce.Map
         // Occupancy                                                           //
         // ------------------------------------------------------------------ //
 
-        // All units currently share Winston's sprite art (see BaaroForce.Animations.SpriteKit) —
-        // the only isometric set that exists so far. Once other characters get their own art,
-        // this should move onto Character as a per-instance SpriteKit instead of being shared.
+        // Fallback sprite art (Winston's) for characters that don't yet have their own
+        // SpriteKit set via Character.CharacterSpriteKit.
         private static readonly SpriteKit DefaultSpriteKit = new SpriteKit(
             backLeftSpritePath: "winston_back_left_128x128",
             backRightSpritePath: "winston_back_right_128x128",
@@ -249,7 +290,7 @@ namespace BaaroForce.Map
             _unitObject = new GameObject($"{(unit is Npc ? "Npc" : "Character")}_{unit.CharacterName}");
             var spriteRenderer = _unitObject.AddComponent<SpriteRenderer>();
             var view = _unitObject.AddComponent<SpriteCharacterView>();
-            view.Initialize(DefaultSpriteKit, unit is Npc);
+            view.Initialize(unit.CharacterSpriteKit ?? DefaultSpriteKit, unit is Npc);
 
             // Parent to the MapGenerator (tile's parent) — it has uniform scale (1,1,1),
             // so world-space and local-space transforms are equivalent.

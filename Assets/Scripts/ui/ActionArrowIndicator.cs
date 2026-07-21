@@ -70,8 +70,8 @@ namespace BaaroForce.UI
             float   angleDeg = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
 
             PositionBar(_shaft, start, delta.magnitude, angleDeg, ShaftThickness, pivotOnRight: false);
-            PositionBar(_wingA, end, WingLength, angleDeg + 180f - WingSpreadDeg, WingThickness, pivotOnRight: true);
-            PositionBar(_wingB, end, WingLength, angleDeg + 180f + WingSpreadDeg, WingThickness, pivotOnRight: true);
+            PositionBar(_wingA, end, WingLength, angleDeg - WingSpreadDeg, WingThickness, pivotOnRight: true);
+            PositionBar(_wingB, end, WingLength, angleDeg + WingSpreadDeg, WingThickness, pivotOnRight: true);
 
             _visible = true;
         }

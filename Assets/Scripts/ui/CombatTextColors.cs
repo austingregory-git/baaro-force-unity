@@ -29,6 +29,7 @@ namespace BaaroForce.UI
 
         /// <summary>Colour for gold-gain numbers (Mug, loot, etc.).</summary>
         public static readonly Color GoldColor = new Color(0.95f, 0.80f, 0.25f); // gold/yellow
+        public static readonly Color ManaColor = new Color(0.25f, 0.50f, 0.95f); // blue
 
         /// <summary>Colour for a damage number of the given elemental/physical type.</summary>
         public static Color ForDamageType(SpellType type)

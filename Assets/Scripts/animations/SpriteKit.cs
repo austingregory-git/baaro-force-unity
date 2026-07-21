@@ -2,6 +2,11 @@ using System.Collections.Generic;
 
 namespace BaaroForce.Animations
 {
+    /// <summary>
+    /// Import settings required for each directional sprite referenced here (Texture Type: Sprite):
+    /// Sprite Mode = Single, Pivot = Custom, positioned at the character's feet (not center) so the
+    /// sprite sits on top of its tile instead of sinking into it — see MapTile.PlaceUnit.
+    /// </summary>
     public class SpriteKit
     {
         public string BackLeftSpritePath { get; private set; }

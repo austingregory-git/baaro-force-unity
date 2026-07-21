@@ -24,13 +24,20 @@ namespace BaaroForce.Formulas
         public int AttackBonusDelta;
         /// <summary>Name of a status effect this action would apply, or null.</summary>
         public string StatusEffectName;
+        /// <summary>Change to Mana (e.g. Meditate).</summary>
+        public int ManaDelta;
         public StatusEffect.StatusEffectType? StatusEffectKind;
 
         /// <summary>Sentinel for "this action has nothing to preview".</summary>
         public static readonly ActionPreview None = new ActionPreview();
 
         public bool HasEffect =>
-            this != None && (RawDamage != 0 || RawHeal != 0 || MaxHpDelta != 0 ||
-                              ShieldGain != 0 || AttackBonusDelta != 0 || StatusEffectName != null);
+            this != None && (RawDamage != 0 || 
+                             RawHeal != 0 || 
+                             MaxHpDelta != 0 ||
+                             ShieldGain != 0 || 
+                             AttackBonusDelta != 0 || 
+                             StatusEffectName != null || 
+                             ManaDelta != 0);
     }
 }

@@ -38,6 +38,13 @@ namespace BaaroForce.Characters
         /// as an ordered list starting at origin.</summary>
         public Func<MapTile, MapTile, List<MapTile>> FindPath;
 
+        /// <summary>Total Zone-of-Control-aware movement point cost of an already-found path.</summary>
+        public Func<List<MapTile>, int> PathCost;
+
+        /// <summary>Returns the longest prefix of a path (starting at its first tile) affordable
+        /// within a given movement point budget, accounting for Zone-of-Control step costs.</summary>
+        public Func<List<MapTile>, int, List<MapTile>> TrimPathToMovement;
+
         // ------------------------------------------------------------------ //
         // Execution delegates (set by TurnManager)                           //
         // ------------------------------------------------------------------ //

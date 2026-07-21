@@ -88,6 +88,12 @@ namespace BaaroForce.Map
 
         private readonly List<MapTile> _highlightedMoveTiles   = new List<MapTile>();
         private readonly List<MapTile> _highlightedAttackTiles = new List<MapTile>();
+        private readonly List<MapTile> _highlightedZoneTiles   = new List<MapTile>();
+
+        /// <summary>Move-highlight color for a reachable tile that also lies within an
+        /// enemy's Zone of Control — same alpha as the normal blue so it reads as a
+        /// single opaque tile color rather than a blend.</summary>
+        private static readonly Color ZoneMoveHighlightColor = new Color(1f, 0.65f, 0.1f, 0.92f);
 
         //_spellTargetTiles
         private readonly List<MapTile> _spellTargetTiles = new List<MapTile>();
@@ -437,6 +443,7 @@ namespace BaaroForce.Map
         private void SetMode(InputMode mode)
         {
             ClearMoveHighlights();
+            ClearZoneOfControlHighlights();
             ClearAttackHighlights();
             ClearSpellHighlights();
             ClearPreviewTiles();
@@ -468,12 +475,44 @@ namespace BaaroForce.Map
 
         private void ShowMovableRange(MapTile origin, int range)
         {
-            foreach (MapTile tile in BfsReachable(origin, range))
+            HashSet<MapTile> zoneTiles = GetEnemyZoneOfControlTiles(_selectedCharacter);
+            HashSet<MapTile> reachable = BfsReachable(origin, range, _selectedCharacter);
+
+            foreach (MapTile tile in reachable)
             {
                 if (tile == origin) continue;
-                tile.SetMoveHighlight(true);
+                bool inZone = zoneTiles.Contains(tile);
+                tile.SetMoveHighlight(true, inZone ? ZoneMoveHighlightColor : (Color?)null);
                 _highlightedMoveTiles.Add(tile);
             }
+
+            // Tiles inside an enemy's zone that the mover can't currently reach get a
+            // separate, lower-alpha warning tint — there's no move-highlight quad there
+            // to recolor instead, so this avoids ever stacking two overlays on one tile.
+            foreach (MapTile tile in zoneTiles)
+            {
+                if (tile == origin || reachable.Contains(tile)) continue;
+                tile.SetZoneOfControlHighlight(true);
+                _highlightedZoneTiles.Add(tile);
+            }
+        }
+
+        /// <summary>Every tile within an enemy's Zone of Control (the 8 tiles surrounding
+        /// it), relative to <paramref name="mover"/>.</summary>
+        private HashSet<MapTile> GetEnemyZoneOfControlTiles(Character mover)
+        {
+            var zone = new HashSet<MapTile>();
+            for (int x = 0; x < _gridSize; x++)
+                for (int z = 0; z < _gridSize; z++)
+                {
+                    MapTile t = _tiles[x, z];
+                    Character occupant = t.OccupyingUnit;
+                    if (occupant == null || !IsEnemyOf(mover, occupant)) continue;
+
+                    foreach (MapTile zoneTile in SpellAreaUtils.GetCircleAroundTiles(t, 1, _tiles, _gridSize))
+                        zone.Add(zoneTile);
+                }
+            return zone;
         }
 
         private void ClearMoveHighlights()
@@ -483,11 +522,18 @@ namespace BaaroForce.Map
             _highlightedMoveTiles.Clear();
         }
 
+        private void ClearZoneOfControlHighlights()
+        {
+            foreach (MapTile t in _highlightedZoneTiles)
+                t.SetZoneOfControlHighlight(false);
+            _highlightedZoneTiles.Clear();
+        }
+
         private void CommitMove(MapTile destination)
         {
             SetMode(InputMode.None);
-            List<MapTile> path = FindShortestPath(_selectedTile, destination);
-            int manaCost = path.Count - 1;
+            List<MapTile> path = FindShortestPath(_selectedTile, destination, _selectedCharacter);
+            int manaCost = PathCost(path, _selectedCharacter);
             _remainingMovement[_selectedCharacter] =
                 Mathf.Max(0, RemainingMove(_selectedCharacter) - manaCost);
             OnCharacterSelected?.Invoke(_selectedCharacter);
@@ -542,6 +588,7 @@ namespace BaaroForce.Map
             Npc target = targetTile.OccupyingNpc;
             if (target == null) return;
 
+            FaceTowardTile(_selectedCharacter, targetTile);
             ResolveBasicAttack(_selectedCharacter, target, targetTile);
 
             _remainingActions[_selectedCharacter] =
@@ -736,6 +783,7 @@ namespace BaaroForce.Map
                 return;
             }
 
+            FaceTowardTile(_selectedCharacter, targetTile);
             bool resolved = spell.Execute(context);
 
             // Spend the spell's own action-point cost — the attempt was made.
@@ -771,7 +819,7 @@ namespace BaaroForce.Map
         {
             _isMoving = true;
 
-            List<MapTile> path = FindShortestPath(fromTile, landingTile);
+            List<MapTile> path = FindShortestPath(fromTile, landingTile, caster);
             yield return StartCoroutine(MoveUnitAlongPath(caster, fromTile, path, finalTile =>
             {
                 _selectedTile = finalTile;
@@ -780,6 +828,7 @@ namespace BaaroForce.Map
             _isMoving = false;
 
             // Caster is now in position — resolve the spell's damage / effect.
+            FaceTowardTile(caster, context.TargetTile);
             bool resolved = spell.Execute(context);
 
             _remainingActions[caster] =
@@ -1069,8 +1118,10 @@ namespace BaaroForce.Map
                     remainingMovement: npc.CharacterStats.Movement,
                     remainingActions:  npc.CharacterStats.MaxActionPoints);
 
-                context.BfsReachable   = BfsReachable;
-                context.FindPath       = FindShortestPath;
+                context.BfsReachable       = (origin, range) => BfsReachable(origin, range, npc);
+                context.FindPath           = (origin, dest)  => FindShortestPath(origin, dest, npc);
+                context.PathCost           = path            => PathCost(path, npc);
+                context.TrimPathToMovement = (path, budget)  => TrimPathToMovement(path, budget, npc);
                 context.AnimateNpcMove = path => AnimateNpcMoveCoroutine(npc, context, path);
                 context.ExecuteAttack  = targetTile => NpcExecuteAttack(npc, targetTile);
                 context.ExecuteSpell   = (spell, targetTile)
@@ -1118,6 +1169,30 @@ namespace BaaroForce.Map
                 Debug.Log($"[TurnManager] '{npc.CharacterName}' moved to "
                         + $"({finalTile.GridX}, {finalTile.GridZ}).");
             }));
+        }
+
+        /// <summary>
+        /// Turns <paramref name="unit"/> to face <paramref name="targetTile"/> from its
+        /// current tile, snapping to whichever grid axis (X or Z) has the larger offset —
+        /// unlike step-by-step movement, an attack or spell target can be several _tiles
+        /// away in both axes at once. No-ops if the unit has no tile/model yet or is
+        /// already standing on the target tile (e.g. a Self-targeted spell).
+        /// </summary>
+        private static void FaceTowardTile(Character unit, MapTile targetTile)
+        {
+            MapTile fromTile = unit?.CharacterCurrentTile;
+            if (fromTile == null || targetTile == null || fromTile == targetTile) return;
+
+            int dx = targetTile.GridX - fromTile.GridX;
+            int dz = targetTile.GridZ - fromTile.GridZ;
+            if (dx == 0 && dz == 0) return;
+
+            Vector2Int dir = Mathf.Abs(dx) >= Mathf.Abs(dz)
+                ? new Vector2Int(dx > 0 ? 1 : -1, 0)
+                : new Vector2Int(0, dz > 0 ? 1 : -1);
+
+            fromTile.UnitObject?.GetComponent<SpriteCharacterView>()?.FaceGridDirection(dir.x, dir.y);
+            unit.FacingDirection = dir;
         }
 
         /// <summary>
@@ -1181,6 +1256,7 @@ namespace BaaroForce.Map
                 return;
             }
 
+            FaceTowardTile(attacker, targetTile);
             ResolveBasicAttack(attacker, target, targetTile);
         }
 
@@ -1211,6 +1287,7 @@ namespace BaaroForce.Map
                 allTiles:    _tiles,
                 gridSize:    _gridSize);
 
+            FaceTowardTile(caster, targetTile);
             bool resolved = spell.Execute(context);
 
             if (resolved)
@@ -1225,56 +1302,149 @@ namespace BaaroForce.Map
         }
 
         /// <summary>
-        /// BFS: returns all _tiles reachable within <paramref name="range"/> cardinal steps,
-        /// excluding occupied _tiles (characters may not pass through or land on them).
+        /// True if <paramref name="other"/> is an enemy of <paramref name="mover"/> for
+        /// Zone-of-Control purposes — factions are simply Npc vs. non-Npc Character.
+        /// An Invisible <paramref name="other"/> is not considered an enemy unless
+        /// <paramref name="mover"/> is an Npc that ignores invisibility, matching the
+        /// perception rule <see cref="AggressiveNpcAI"/> already uses for targeting/pathing
+        /// (see AggressiveNpcAI.CanTarget) — otherwise ZoC would reveal an invisible unit's
+        /// position via a doubled movement cost the mover shouldn't be able to notice.
         /// </summary>
-        private HashSet<MapTile> BfsReachable(MapTile origin, int range)
+        private static bool IsEnemyOf(Character mover, Character other)
         {
-            var dist  = new Dictionary<MapTile, int>();
-            var queue = new Queue<MapTile>();
-            dist[origin] = 0;
-            queue.Enqueue(origin);
-
-            while (queue.Count > 0)
-            {
-                MapTile cur = queue.Dequeue();
-                int     d   = dist[cur];
-                if (d >= range) continue;
-
-                foreach (MapTile nb in Neighbors(cur))
-                {
-                    if (dist.ContainsKey(nb)) continue;
-                    if (nb.IsOccupied) continue;
-                    dist[nb] = d + 1;
-                    queue.Enqueue(nb);
-                }
-            }
-
-            return new HashSet<MapTile>(dist.Keys);
+            if ((mover is Npc) == (other is Npc)) return false;
+            if (other.IsInvisible && !(mover is Npc n && n.IgnoresInvisibility)) return false;
+            return true;
         }
 
         /// <summary>
-        /// BFS shortest path from <paramref name="origin"/> to <paramref name="dest"/>.
+        /// Movement cost of a single cardinal step from <paramref name="from"/> to
+        /// <paramref name="to"/> for <paramref name="mover"/>. Costs 2 (instead of 1) if
+        /// <paramref name="from"/> lies within an enemy's Zone of Control (the 8 tiles
+        /// surrounding that enemy) and <paramref name="to"/> lies outside that same enemy's
+        /// zone — i.e. the step leaves the zone. Checking all enemies adjacent to
+        /// <paramref name="from"/> with an early-exit means overlapping enemy zones still
+        /// only double the cost once, never stack.
+        /// </summary>
+        private int StepCost(MapTile from, MapTile to, Character mover)
+        {
+            foreach (MapTile t in SpellAreaUtils.GetCircleAroundTiles(from, 1, _tiles, _gridSize))
+            {
+                Character occupant = t.OccupyingUnit;
+                if (occupant == null || !IsEnemyOf(mover, occupant)) continue;
+
+                int dx = Mathf.Abs(to.GridX - t.GridX);
+                int dz = Mathf.Abs(to.GridZ - t.GridZ);
+                if (Mathf.Max(dx, dz) > 1) return 2;
+            }
+            return 1;
+        }
+
+        /// <summary>Total Zone-of-Control-aware movement cost of an already-found
+        /// <paramref name="path"/> (as returned by <see cref="FindShortestPath"/>).</summary>
+        private int PathCost(List<MapTile> path, Character mover)
+        {
+            int cost = 0;
+            for (int i = 1; i < path.Count; i++)
+                cost += StepCost(path[i - 1], path[i], mover);
+            return cost;
+        }
+
+        /// <summary>Returns the longest affordable prefix of <paramref name="path"/> (which
+        /// must start at the mover's current tile) given a movement point <paramref name="budget"/>,
+        /// accounting for Zone-of-Control step costs. May return just the origin tile if even
+        /// the first step is unaffordable.</summary>
+        private List<MapTile> TrimPathToMovement(List<MapTile> path, int budget, Character mover)
+        {
+            var trimmed = new List<MapTile> { path[0] };
+            int spent = 0;
+            for (int i = 1; i < path.Count; i++)
+            {
+                int stepCost = StepCost(path[i - 1], path[i], mover);
+                if (spent + stepCost > budget) break;
+                spent += stepCost;
+                trimmed.Add(path[i]);
+            }
+            return trimmed;
+        }
+
+        /// <summary>
+        /// Dijkstra: returns all _tiles reachable within <paramref name="range"/> movement
+        /// points of <paramref name="mover"/>, excluding occupied _tiles (characters may not
+        /// pass through or land on them). Step costs vary (see <see cref="StepCost"/>), so a
+        /// genuine relax-then-settle loop is used rather than plain BFS.
+        /// </summary>
+        private HashSet<MapTile> BfsReachable(MapTile origin, int range, Character mover)
+        {
+            var dist     = new Dictionary<MapTile, int> { [origin] = 0 };
+            var settled  = new HashSet<MapTile>();
+            var frontier = new List<MapTile> { origin };
+
+            while (frontier.Count > 0)
+            {
+                MapTile cur  = null;
+                int     best = int.MaxValue;
+                foreach (MapTile t in frontier)
+                    if (dist[t] < best) { best = dist[t]; cur = t; }
+
+                frontier.Remove(cur);
+                settled.Add(cur);
+                if (best > range) break;
+
+                foreach (MapTile nb in Neighbors(cur))
+                {
+                    if (nb.IsOccupied || settled.Contains(nb)) continue;
+
+                    int nd = best + StepCost(cur, nb, mover);
+                    if (nd > range) continue;
+
+                    if (!dist.TryGetValue(nb, out int old) || nd < old)
+                    {
+                        dist[nb] = nd;
+                        if (!frontier.Contains(nb)) frontier.Add(nb);
+                    }
+                }
+            }
+
+            return new HashSet<MapTile>(settled);
+        }
+
+        /// <summary>
+        /// Dijkstra shortest (cheapest) path from <paramref name="origin"/> to
+        /// <paramref name="dest"/> for <paramref name="mover"/>, accounting for
+        /// Zone-of-Control step costs (see <see cref="StepCost"/>).
         /// Returns an ordered list that starts with origin and ends with dest.
         /// </summary>
-        private List<MapTile> FindShortestPath(MapTile origin, MapTile dest)
+        private List<MapTile> FindShortestPath(MapTile origin, MapTile dest, Character mover)
         {
-            var prev  = new Dictionary<MapTile, MapTile>();
-            var queue = new Queue<MapTile>();
-            prev[origin] = null;
-            queue.Enqueue(origin);
+            var dist     = new Dictionary<MapTile, int> { [origin] = 0 };
+            var prev     = new Dictionary<MapTile, MapTile>();
+            var settled  = new HashSet<MapTile>();
+            var frontier = new List<MapTile> { origin };
 
-            while (queue.Count > 0)
+            while (frontier.Count > 0)
             {
-                MapTile cur = queue.Dequeue();
+                MapTile cur  = null;
+                int     best = int.MaxValue;
+                foreach (MapTile t in frontier)
+                    if (dist[t] < best) { best = dist[t]; cur = t; }
+
+                frontier.Remove(cur);
+                settled.Add(cur);
                 if (cur == dest) break;
 
                 foreach (MapTile nb in Neighbors(cur))
                 {
-                    if (prev.ContainsKey(nb)) continue;
                     if (nb.IsOccupied && nb != dest) continue;
-                    prev[nb] = cur;
-                    queue.Enqueue(nb);
+                    if (settled.Contains(nb)) continue;
+
+                    int nd = best + StepCost(cur, nb, mover);
+                    if (!dist.TryGetValue(nb, out int old) || nd < old)
+                    {
+                        dist[nb] = nd;
+                        prev[nb] = cur;
+                        if (!frontier.Contains(nb)) frontier.Add(nb);
+                    }
                 }
             }
 

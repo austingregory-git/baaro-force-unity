@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BaaroForce.Animations;
 using BaaroForce.Classes;
 using BaaroForce.Passives;
 using BaaroForce.Spells;
@@ -35,7 +36,8 @@ namespace BaaroForce.Characters
                         List<PassiveAbility> characterPassiveAbilities,
                         List<Spell> characterSpells,
                         string characterProfilePicPath,
-                        NpcSpecialty specialty = NpcSpecialty.Melee)
+                        NpcSpecialty specialty = NpcSpecialty.Melee,
+                        SpriteKit characterSpriteKit = null)
             : base(
                 characterClass: null,
                 characterName: characterName,
@@ -43,7 +45,8 @@ namespace BaaroForce.Characters
                 characterRealms: characterRealms,
                 characterPassiveAbilities: characterPassiveAbilities,
                 characterSpells: characterSpells,
-                characterProfilePicPath: characterProfilePicPath)
+                characterProfilePicPath: characterProfilePicPath,
+                characterSpriteKit: characterSpriteKit)
         {
             Specialty = specialty;
         }

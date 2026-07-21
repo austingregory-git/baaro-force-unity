@@ -54,9 +54,9 @@ namespace BaaroForce.Characters
                 List<MapTile> approachPath = BuildApproachPath(context, nearest);
                 if (approachPath == null || approachPath.Count <= 1) break;
 
-                int steps = approachPath.Count - 1;
+                int cost = context.PathCost(approachPath);
                 yield return context.AnimateNpcMove(approachPath);
-                context.RemainingMovement -= steps;
+                context.RemainingMovement -= cost;
                 // Loop back — check spells/attacks from the new position.
             }
 
@@ -69,9 +69,9 @@ namespace BaaroForce.Characters
                     List<MapTile> advancePath = BuildApproachPath(context, nearest);
                     if (advancePath != null && advancePath.Count > 1)
                     {
-                        int steps = advancePath.Count - 1;
+                        int cost = context.PathCost(advancePath);
                         yield return context.AnimateNpcMove(advancePath);
-                        context.RemainingMovement -= steps;
+                        context.RemainingMovement -= cost;
                     }
                 }
             }
@@ -212,8 +212,8 @@ namespace BaaroForce.Characters
 
         /// <summary>
         /// Builds the longest walkable path toward <paramref name="target"/> that fits
-        /// within <see cref="NpcTurnContext.RemainingMovement"/> steps and stops
-        /// one tile short of the (occupied) target tile.
+        /// within <see cref="NpcTurnContext.RemainingMovement"/> movement points (accounting
+        /// for Zone-of-Control step costs) and stops one tile short of the (occupied) target tile.
         /// Returns null when the Npc is already adjacent or cannot move at all.
         /// </summary>
         private static List<MapTile> BuildApproachPath(NpcTurnContext context, MapTile target)
@@ -226,8 +226,8 @@ namespace BaaroForce.Characters
             int stepsToAdjacentTile = fullPath.Count - 2;   // steps to reach the tile before target
             if (stepsToAdjacentTile < 1) return null;       // already adjacent
 
-            int steps = Mathf.Min(stepsToAdjacentTile, context.RemainingMovement);
-            return fullPath.GetRange(0, steps + 1);         // +1 to include the origin tile
+            List<MapTile> pathToAdjacentTile = fullPath.GetRange(0, stepsToAdjacentTile + 1);
+            return context.TrimPathToMovement(pathToAdjacentTile, context.RemainingMovement);
         }
 
         // ------------------------------------------------------------------ //
