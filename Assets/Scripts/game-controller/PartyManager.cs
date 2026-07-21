@@ -34,7 +34,21 @@ namespace BaaroForce.GameController
         /// <summary>The Realm chosen for this game session. Null until set by MainMenu.</summary>
         public Realm? CurrentRealm { get; private set; }
 
+        /// <summary>How many fights into the run the party currently is (1 = the first fight).
+        /// Used to scale things like fight-end gold rewards. Advances via <see cref="AdvanceDepth"/>.</summary>
+        public int Depth { get; private set; } = 1;
+
         public void SetRealm(Realm realm) => CurrentRealm = realm;
+
+        /// <summary>Advances progression to the next fight's depth.</summary>
+        public void AdvanceDepth() => Depth++;
+
+        /// <summary>Resets the party and progression for a fresh run (e.g. after Game Over).</summary>
+        public void ResetForNewRun()
+        {
+            ClearParty();
+            Depth = 1;
+        }
 
         private void Awake()
         {

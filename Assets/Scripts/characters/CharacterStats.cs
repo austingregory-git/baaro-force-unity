@@ -78,6 +78,15 @@ namespace BaaroForce.Characters
             return HealthPoints - before;
         }
 
+        public int ManaGain(int amount)
+        {
+            if (amount <= 0) return 0;
+
+            int before = Mana;
+            Mana = Mathf.Min(Mana + amount, MaxMana);
+            return Mana - before;
+        }
+
         /// <summary>
         /// Non-mutating preview of what <see cref="TakeDamage"/> would do — used to show
         /// a predicted HP/shield outcome before the player commits to an action. Mirrors

@@ -21,6 +21,11 @@ namespace BaaroForce.Spells
                 { "Shiv",           new Shiv()         },
                 { "Backstab",       new Backstab()     },
                 { "Throwing Knife", new ThrowingKnife()},
+                { "Meditate",       new Meditate()     },
+                { "Magic Dart",     new MagicDart()    },
+                { "Arcane Beam",    new ArcaneBeam()   },
+                { "Bind",           new Bind()         },
+                { "Arcane Explosion", new ArcaneExplosion() },
             };
 
         // ── Class-based spell pool ─────────────────────────────────────────
@@ -35,6 +40,9 @@ namespace BaaroForce.Spells
                 { "Rogue", new List<Func<ClassSpell>> {
                     () => new Evasion(), () => new Mug(), () => new Shiv(),
                     () => new Backstab(), () => new ThrowingKnife() } },
+                { "Mage", new List<Func<ClassSpell>> {
+                    () => new Meditate(), () => new MagicDart(), () => new ArcaneBeam(), () => new Bind(),
+                    () => new ArcaneExplosion() } },
             };
 
         // ------------------------------------------------------------------ //

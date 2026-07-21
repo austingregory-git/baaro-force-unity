@@ -54,15 +54,43 @@ public class CharacterSelectionManager : MonoBehaviour
     // ── Sprite paths ───────────────────────────────────────────────────────
     private const string CharacterTemplateSpritePath = "card_template_512x768";
 
+    private Transform _canvasTransform;
+
     void Awake()
     {
         EnsureEventSystem();
         EnsureTooltipSystem();
         SetupCamera();
         GameObject canvasObj = CreateCanvas();
+        _canvasTransform = canvasObj.transform;
         CreateBackground(canvasObj.transform);
         CreateCards(canvasObj.transform);
     }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    // Dev-only reroll: stripped from release builds by the compiler directive above,
+    // so there's no risk of shipping a cheat key.
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.R))
+            RerollCards();
+    }
+
+    /// <summary>Destroys and rebuilds the three character cards with a fresh random
+    /// roll, so new stat/spell/passive combinations can be tried without restarting
+    /// the scene.</summary>
+    private void RerollCards()
+    {
+        for (int i = _canvasTransform.childCount - 1; i >= 0; i--)
+        {
+            Transform child = _canvasTransform.GetChild(i);
+            if (child.name.StartsWith("CharacterCard_"))
+                Destroy(child.gameObject);
+        }
+        CreateCards(_canvasTransform);
+        Debug.Log("[CharacterSelectionManager] Rerolled character options.");
+    }
+#endif
 
     private void EnsureTooltipSystem()
     {

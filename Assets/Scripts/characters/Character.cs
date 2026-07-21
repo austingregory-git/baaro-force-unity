@@ -51,6 +51,9 @@ namespace BaaroForce.Characters
         /// character with attacks or spells (see Npc.IgnoresInvisibility for exceptions).</summary>
         public bool IsInvisible => ActiveEffects.Exists(e => e.Name == "Invisible");
 
+        /// <summary>True while a Root effect prevents this character from moving.</summary>
+        public bool IsRooted => ActiveEffects.Exists(e => e.Name == "Root");
+
         /// <summary>
         /// Applies a status effect to this character, calling its OnApply hook immediately.
         /// If an effect of the same type is already active it is removed first.
@@ -105,6 +108,8 @@ namespace BaaroForce.Characters
         /// the attack is avoided entirely (Dodge is consumed and no damage lands). Basic
         /// attacks and physical-typed spells should route damage through this instead of
         /// calling CharacterStats.TakeDamage directly, so Dodge is respected everywhere.
+        /// Falls through to <see cref="TakeDamage"/> for the actual (Bubble-Shield-aware)
+        /// damage application.
         /// </summary>
         public int TakePhysicalDamage(int amount)
         {
@@ -112,6 +117,25 @@ namespace BaaroForce.Characters
             {
                 FloatingCombatTextSystem.Instance?.ShowStatus(this, "Dodge", StatusEffect.StatusEffectType.Buff);
                 Debug.Log($"[{GetType().Name}] '{CharacterName}' dodged an attack.");
+                return 0;
+            }
+            return TakeDamage(amount);
+        }
+
+        /// <summary>
+        /// Applies damage of any kind — physical or magical — first checking for an active
+        /// Bubble Shield status, which absorbs the hit entirely (Bubble Shield is consumed
+        /// and no damage lands) regardless of damage type. Every damage source (basic
+        /// attacks via TakePhysicalDamage, and spells/passives directly) should route
+        /// through this instead of calling CharacterStats.TakeDamage directly, so Bubble
+        /// Shield is respected everywhere.
+        /// </summary>
+        public int TakeDamage(int amount)
+        {
+            if (TryConsumeBubbleShield())
+            {
+                FloatingCombatTextSystem.Instance?.ShowStatus(this, "Bubble Shield", StatusEffect.StatusEffectType.Buff);
+                Debug.Log($"[{GetType().Name}] '{CharacterName}'s bubble shield absorbed a hit.");
                 return 0;
             }
             int dealt = CharacterStats.TakeDamage(amount);
@@ -125,6 +149,21 @@ namespace BaaroForce.Characters
             for (int i = ActiveEffects.Count - 1; i >= 0; i--)
             {
                 if (ActiveEffects[i].Name == "Dodge")
+                {
+                    ActiveEffects[i].OnRemove(CharacterStats);
+                    ActiveEffects.RemoveAt(i);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>Removes this character's active Bubble Shield status (if any) and returns true if one was consumed.</summary>
+        public bool TryConsumeBubbleShield()
+        {
+            for (int i = ActiveEffects.Count - 1; i >= 0; i--)
+            {
+                if (ActiveEffects[i].Name == "Bubble Shield")
                 {
                     ActiveEffects[i].OnRemove(CharacterStats);
                     ActiveEffects.RemoveAt(i);
@@ -178,6 +217,39 @@ namespace BaaroForce.Characters
             if (classSpell != null)
                 this.CharacterSpells.Add(classSpell);
             //this.characterEquipment = characterEquipment ?? new List<Equipment>();
+        }
+
+        /// <summary>
+        /// Returns a random Realm from this character's CharacterRealms list, or Realm.Light if the list is empty.
+        /// </summary>
+        public Realm GetRandomRealmType()
+        {
+            if (CharacterRealms == null || CharacterRealms.Count == 0)
+                return Realm.Light;
+            int index = UnityEngine.Random.Range(0, CharacterRealms.Count);
+            return CharacterRealms[index];
+        }
+
+        /// <summary>
+        /// Returns a random SpellType matching one of this character's realms — for
+        /// single-realm characters this is deterministic; for multi-realm characters
+        /// it picks uniformly at random. Used by realm-typed spells like Magic Dart.
+        /// </summary>
+        public SpellType GetRandomSpellType() => RealmToSpellType(GetRandomRealmType());
+
+        /// <summary>Converts a Realm to its matching elemental SpellType.</summary>
+        public static SpellType RealmToSpellType(Realm realm)
+        {
+            switch (realm)
+            {
+                case Realm.Fire:  return SpellType.Fire;
+                case Realm.Water: return SpellType.Water;
+                case Realm.Earth: return SpellType.Earth;
+                case Realm.Wind:  return SpellType.Wind;
+                case Realm.Dark:  return SpellType.Dark;
+                case Realm.Light: return SpellType.Light;
+                default:          return SpellType.Physical;
+            }
         }
     }
 

@@ -22,7 +22,8 @@ namespace BaaroForce.Spells
             range:       1,
             area:        3,
             cooldown:    3,
-            targetType:  SpellTargetType.Area)
+            targetType:  SpellTargetType.Area,
+            type:        SpellType.Physical)
         { }
 
         public override ScalingValue[] ComputeValues(Character caster) =>
@@ -60,7 +61,7 @@ namespace BaaroForce.Spells
                 {
                     // Apply damage to the occupant
                     Npc target = tile.OccupyingNpc;
-                    int dealt  = target.CharacterStats.TakeDamage(damage);
+                    int dealt  = target.TakeDamage(damage);
                     FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
                     Debug.Log($"[Cleave] '{context.Caster.CharacterName}' dealt {damage} damage to '{target.CharacterName}'. " +
                               $"HP: {target.CharacterStats.HealthPoints}/{target.CharacterStats.MaxHealthPoints}");

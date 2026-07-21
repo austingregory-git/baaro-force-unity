@@ -30,7 +30,8 @@ namespace BaaroForce.Spells
                 range:       3,
                 area:        0,
                 cooldown:    1,
-                targetType:  SpellTargetType.Enemy)
+                targetType:  SpellTargetType.Enemy,
+                type:        SpellType.Dark)
         {
         }
 
@@ -84,7 +85,7 @@ namespace BaaroForce.Spells
             target.ApplyStatus(fear);
 
             // Deal dark damage.
-            int dealt = target.CharacterStats.TakeDamage(damage);
+            int dealt = target.TakeDamage(damage);
             FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Dark);
 
             Debug.Log($"[DeathStare] '{context.Caster.CharacterName}' casts Death Stare on " +

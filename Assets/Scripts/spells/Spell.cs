@@ -45,12 +45,20 @@ namespace BaaroForce.Spells
         /// they don't hit their own tile; buffs/heals centred on the caster often want it true.
         /// </summary>
         public readonly bool IncludeOriginTile;
+        /// <summary>The elemental/physical category this spell's effect belongs to, if it
+        /// has one — used to colour its selectable-range/self highlight the same way
+        /// <see cref="BaaroForce.UI.CombatTextColors.ForDamageType"/> colours its floating
+        /// damage numbers. Null for spells with no single established type (Rally's attack
+        /// buff, Meditate's mana gain, ...), which fall back to a TargetType-based colour
+        /// instead (see TurnManager.GetSpellHighlightColor).</summary>
+        public readonly SpellType? Type;
 
         protected Spell(string name, string description, int manaCost, int actionPointCost, int range, int area, int cooldown,
                      SpellTargetType targetType = SpellTargetType.Enemy,
                      SpellAreaType areaType = SpellAreaType.None,
                      bool oncePerFight = false,
-                     bool includeOriginTile = false)
+                     bool includeOriginTile = false,
+                     SpellType? type = null)
         {
             this.Name        = name;
             this.Description = description;
@@ -63,6 +71,7 @@ namespace BaaroForce.Spells
             this.TargetType  = targetType;
             this.AreaType    = areaType;
             this.IncludeOriginTile = includeOriginTile;
+            this.Type        = type;
         }
 
         /// <summary>Convenience constructor for name/description-only data stubs.</summary>
@@ -105,14 +114,16 @@ namespace BaaroForce.Spells
         public virtual ScalingValue[] ComputeValues(Character caster) => Array.Empty<ScalingValue>();
 
         /// <summary>Description with each scaling value's total substituted in — what the
-        /// tooltip shows by default.</summary>
-        public string GetSummary(Character caster) =>
+        /// tooltip shows by default. Virtual so spells whose description depends on
+        /// caster-specific state (e.g. Magic Dart's realm-typed damage) can build their
+        /// template dynamically instead of using the fixed <see cref="Description"/> field.</summary>
+        public virtual string GetSummary(Character caster) =>
             ScalingDescriptionFormatter.GetSummary(Description, ComputeValues(caster));
 
         /// <summary>Summary plus a full term-by-term breakdown of every scaling value —
         /// what the tooltip shows while Shift is held. Null when there's nothing to add
         /// beyond the summary.</summary>
-        public string GetDetailedDescription(Character caster) =>
+        public virtual string GetDetailedDescription(Character caster) =>
             ScalingDescriptionFormatter.GetDetailedDescription(Description, ComputeValues(caster));
 
         /// <summary>
@@ -124,11 +135,19 @@ namespace BaaroForce.Spells
         /// preview (rare) can leave the default <see cref="ActionPreview.None"/>.
         /// </summary>
         public virtual ActionPreview GetPreview(Character caster, Character target) => ActionPreview.None;
+
+        /// <summary>The type used to colour this spell's highlight for <paramref name="caster"/>
+        /// (see TurnManager.GetSpellHighlightColor). Defaults to the static <see cref="Type"/>
+        /// field; override for spells whose type depends on caster state instead of being fixed
+        /// at construction (e.g. Magic Dart's realm-randomised damage).</summary>
+        public virtual SpellType? GetHighlightType(Character caster) => Type;
     }
 }
 
-/// <summary>Elemental/physical category used for damage-type calculations.</summary>
+/// <summary>Elemental/physical category used for damage-type calculations, plus Buff/Debuff
+/// for non-damage spells (Rally, ...) that still want a consistent, established highlight
+/// colour (see BaaroForce.UI.CombatTextColors.ForDamageType) instead of dealing typed damage.</summary>
 public enum SpellType
 {
-    Fire, Water, Earth, Wind, Dark, Light, Physical
+    Fire, Water, Earth, Wind, Dark, Light, Physical, Magical, Buff, Debuff
 }

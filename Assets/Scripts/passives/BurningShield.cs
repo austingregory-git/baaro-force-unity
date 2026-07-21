@@ -25,7 +25,7 @@ namespace BaaroForce.Passives
         public override bool Execute(PassiveOnReceivingAttackContext context)
         {
             int value = ComputeValues(context.ReceivingCharacter)[0].Total;
-            int dealt = context.Attacker.CharacterStats.TakeDamage(value);
+            int dealt = context.Attacker.TakeDamage(value);
             FloatingCombatTextSystem.Instance?.ShowDamage(context.Attacker, dealt, SpellType.Fire);
 
             if (context.Attacker.CharacterStats.HealthPoints <= 0)

@@ -380,6 +380,101 @@
     color: rgb(255, 220, 220);
 }
 
+/* ---------------- Fight result modal (Game Over / Fight Won) ----------- */
+/* Full-screen dim backdrop with a centered chassis panel, same dark/gold
+   language as the rest of the Combat HUD. Shown once a fight ends. */
+
+.fight-result-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(8, 6, 10, 0.72);
+    align-items: center;
+    justify-content: center;
+}
+
+.fight-result-chassis {
+    width: 360px;
+    padding: 26px 24px 20px 24px;
+    align-items: center;
+    border-color: rgb(201, 163, 90);
+}
+
+.fight-result-title {
+    font-size: 30px;
+    -unity-font-style: bold;
+    margin-bottom: 16px;
+    -unity-text-align: middle-center;
+}
+
+.fight-result-title-loss { color: rgb(227, 110, 107); }
+.fight-result-title-win  { color: rgb(232, 194, 94); }
+
+.loot-list {
+    width: 100%;
+    flex-direction: column;
+    margin-bottom: 18px;
+}
+
+.loot-row {
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 0 0 8px 0;
+}
+.loot-row:hover { background-color: rgba(255, 255, 255, 0.16); }
+.loot-row-claimed {
+    background-color: rgba(255, 255, 255, 0.04);
+    opacity: 0.6;
+}
+
+.loot-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    margin-right: 12px;
+    align-items: center;
+    justify-content: center;
+}
+.loot-icon-gold { background-color: rgb(201, 163, 90); }
+.loot-icon-item { background-color: rgb(90, 100, 120); }
+
+.loot-icon-glyph {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(16, 12, 20);
+}
+
+.loot-label {
+    flex-grow: 1;
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+}
+
+.loot-claimed-tag {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(166, 235, 166);
+    background-color: rgba(120, 200, 140, 0.18);
+    border-radius: 10px;
+    padding: 2px 8px;
+    margin-left: 8px;
+}
+
+.fight-result-btn {
+    width: 100%;
+    color: rgb(243, 230, 200);
+    background-color: rgba(255, 255, 255, 0.10);
+    font-size: 14px;
+}
+.fight-result-btn:hover  { background-color: rgba(255, 255, 255, 0.18); }
+.fight-result-btn:active { background-color: rgba(255, 255, 255, 0.26); }
+
 /* ---------------- Action arrow (selected panel -> hovered/target panel) - */
 /* Shared by the shaft and both chevron-head wings — all three are just thin
    rotated bars (see ActionArrowIndicator); thickness/length/position are set

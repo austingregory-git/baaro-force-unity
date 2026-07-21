@@ -27,7 +27,8 @@ namespace BaaroForce.Spells
             area:        0,
             cooldown:    0,
             targetType:  SpellTargetType.Enemy,
-            oncePerFight: true)
+            oncePerFight: true,
+            type:        SpellType.Physical)
         { }
 
         public override ScalingValue[] ComputeValues(Character caster) =>

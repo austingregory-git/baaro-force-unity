@@ -24,6 +24,13 @@ namespace BaaroForce.Keywords
                 { "Shield",  new Shield()  },
                 { "Dodge",   new Dodge()   },
                 { "Silence", new Silence() },
+                { "Root",    new Root()    },
+                { "Fire",    new Fire()    },
+                { "Water",   new Water()   },
+                { "Earth",   new Earth()   },
+                { "Wind",    new Wind()    },
+                { "Light",   new Light()   },
+                { "Magical", new Magical() },
             };
 
         // ------------------------------------------------------------------ //

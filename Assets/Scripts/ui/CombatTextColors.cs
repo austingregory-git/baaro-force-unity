@@ -19,6 +19,10 @@ namespace BaaroForce.UI
         /// <summary>Matches the AoE targeting-preview highlight colour (TurnManager.UpdateSpellPreview).</summary>
         private static readonly Color PhysicalColor = new Color(1f, 0.5f, 0f);
 
+        /// <summary>Matches the Magical keyword's colour (KeywordRegistry) — arcane damage
+        /// with no elemental realm, e.g. Arcane Beam.</summary>
+        private static readonly Color MagicalColor = new Color(0.65f, 0.35f, 0.95f);
+
         private static readonly Color BuffColor   = new Color(0.47f, 0.78f, 0.55f); // green
         private static readonly Color DebuffColor = new Color(0.78f, 0.63f, 0.90f); // light purple
         private static readonly Color NeutralColor = new Color(0.95f, 0.90f, 0.78f); // cream, for Custom effects
@@ -35,6 +39,11 @@ namespace BaaroForce.UI
         public static Color ForDamageType(SpellType type)
         {
             if (type == SpellType.Physical) return PhysicalColor;
+            if (type == SpellType.Magical) return MagicalColor;
+            // Buff/Debuff aren't damage types — they let a non-damage spell (Rally, ...) still
+            // reuse the same established colour language as ForStatusEffect's status chips.
+            if (type == SpellType.Buff) return BuffColor;
+            if (type == SpellType.Debuff) return DebuffColor;
 
             Realm? realm = type switch
             {

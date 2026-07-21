@@ -13,6 +13,7 @@ namespace BaaroForce.Passives
             {
                 { "Autumnal Growth", new AutumnalGrowth() },
                 { "In The Trees",    new InTheTrees()     },
+                { "Bubble Shield",   new BubbleShield()   },
             };
 
         // ── Class-based spell pool ─────────────────────────────────────────

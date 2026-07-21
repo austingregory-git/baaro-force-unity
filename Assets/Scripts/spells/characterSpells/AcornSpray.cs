@@ -33,7 +33,8 @@ namespace BaaroForce.Spells
                 area:        3,
                 cooldown:    1,
                 targetType:  SpellTargetType.Area,
-                areaType:    SpellAreaType.Cone)
+                areaType:    SpellAreaType.Cone,
+                type:        SpellType.Earth)
         {
         }
 
@@ -64,7 +65,7 @@ namespace BaaroForce.Spells
                 Character target = casterIsNpc ? tile.OccupyingCharacter : (Character)tile.OccupyingNpc;
                 if (target == null) continue;
 
-                int dealt = target.CharacterStats.TakeDamage(damage);
+                int dealt = target.TakeDamage(damage);
                 FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Earth);
                 hits++;
 

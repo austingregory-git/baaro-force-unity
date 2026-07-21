@@ -38,6 +38,11 @@ namespace BaaroForce.Spells
                     return GetCircleAroundTiles(casterTile, spell.Area, allTiles, gridSize, spell.IncludeOriginTile);
                 case SpellAreaType.Cone:
                     return GetConeTiles(casterTile, targetTile, spell.Area, allTiles, gridSize);
+                case SpellAreaType.VerticalLine:
+                    return GetVerticalLineTiles(casterTile, targetTile, spell.Range, spell.Area, allTiles, gridSize);
+                case SpellAreaType.Circle:
+                    // Always centred on the caster — no tile is aimed.
+                    return GetTrueCircleAreaTiles(casterTile, spell.Range, spell.Area, allTiles, gridSize, spell.IncludeOriginTile);
                 default:
                     // Unimplemented area types fall back to single-tile targeting.
                     return new List<MapTile> { targetTile };
@@ -101,6 +106,56 @@ namespace BaaroForce.Spells
         }
 
         // ------------------------------------------------------------------ //
+        // VerticalLine                                                        //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Returns the tiles in a straight, 1-tile-wide line extending forward from
+        /// <paramref name="casterTile"/> toward <paramref name="targetTile"/>, <paramref name="area"/>
+        /// tiles long — e.g. Arcane Beam's 4-tile beam. "Forward" is restricted to the four
+        /// cardinal directions, same as <see cref="GetConeTiles"/> — this grid has no diagonal
+        /// movement. <paramref name="range"/> is unused (kept for signature parity with the
+        /// other Get*Tiles helpers, which are all called uniformly from <see cref="GetAreaTiles"/>).
+        ///
+        /// Example (area = 4):
+        /// <code>
+        ///   Caster at (5,5), target (5,6) — beaming north:
+        ///     → (5,6) (5,7) (5,8) (5,9)
+        /// </code>
+        /// </summary>
+        public static List<MapTile> GetVerticalLineTiles(
+            MapTile casterTile,
+            MapTile targetTile,
+            int range,
+            int area,
+            MapTile[,] allTiles, int gridSize)
+        {
+            var result = new List<MapTile>();
+            if (casterTile == null || targetTile == null) return result;
+
+            int dx = targetTile.GridX - casterTile.GridX;
+            int dz = targetTile.GridZ - casterTile.GridZ;
+
+            // Normalise to a unit cardinal direction; default to +Z if aimed at the caster's own tile.
+            int ndx = Math.Sign(dx);
+            int ndz = Math.Sign(dz);
+            if (ndx == 0 && ndz == 0) ndz = 1;
+
+            int cx = casterTile.GridX;
+            int cz = casterTile.GridZ;
+
+            for (int d = 1; d <= area; d++)
+            {
+                int x = cx + d * ndx;
+                int z = cz + d * ndz;
+                if (x >= 0 && x < gridSize && z >= 0 && z < gridSize)
+                    result.Add(allTiles[x, z]);
+            }
+
+            return result;
+        }
+
+        // ------------------------------------------------------------------ //
         // CircleAround                                                        //
         // ------------------------------------------------------------------ //
 
@@ -122,6 +177,50 @@ namespace BaaroForce.Spells
             for (int dx = -radius; dx <= radius; dx++)
             {
                 for (int dz = -radius; dz <= radius; dz++)
+                {
+                    if (dx == 0 && dz == 0 && !includeCenter) continue;
+
+                    int x = cx + dx;
+                    int z = cz + dz;
+
+                    if (x >= 0 && x < gridSize && z >= 0 && z < gridSize)
+                        result.Add(allTiles[x, z]);
+                }
+            }
+
+            return result;
+        }
+
+        // ------------------------------------------------------------------ //
+        // Circle (true circle — no diagonals)                                 //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Returns every tile within Manhattan distance <paramref name="area"/> of
+        /// <paramref name="casterTile"/> — a diamond shape that follows this grid's
+        /// 4-directional movement, unlike <see cref="GetCircleAroundTiles"/>'s Chebyshev
+        /// (diagonal-inclusive) square. Area 1 = 4 tiles, area 2 = 12 tiles, and so on
+        /// (2 × area × (area + 1) tiles total). The caster's own tile is excluded unless
+        /// <paramref name="includeCenter"/> is set. <paramref name="range"/> is unused
+        /// (kept for signature parity with the other Get*Tiles helpers).
+        /// </summary>
+        public static List<MapTile> GetTrueCircleAreaTiles(
+            MapTile casterTile,
+            int range,
+            int area,
+            MapTile[,] allTiles, int gridSize,
+            bool includeCenter = false)
+        {
+            var result = new List<MapTile>();
+            if (casterTile == null) return result;
+
+            int cx = casterTile.GridX;
+            int cz = casterTile.GridZ;
+
+            for (int dx = -area; dx <= area; dx++)
+            {
+                int spread = area - Math.Abs(dx);
+                for (int dz = -spread; dz <= spread; dz++)
                 {
                     if (dx == 0 && dz == 0 && !includeCenter) continue;
 

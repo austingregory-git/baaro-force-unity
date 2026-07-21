@@ -22,7 +22,8 @@ namespace BaaroForce.Spells
             range:       3,
             area:        0,
             cooldown:    3,
-            targetType:  SpellTargetType.Enemy)
+            targetType:  SpellTargetType.Enemy,
+            type:        SpellType.Physical)
         { }
 
         public override ScalingValue[] ComputeValues(Character caster) =>
@@ -84,7 +85,7 @@ namespace BaaroForce.Spells
             }
 
             int damage = ComputeValues(context.Caster)[0].Total;
-            int dealt  = target.CharacterStats.TakeDamage(damage);
+            int dealt  = target.TakeDamage(damage);
             FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
 
             Debug.Log($"[Charge] '{context.Caster.CharacterName}' charges '{target.CharacterName}' " +

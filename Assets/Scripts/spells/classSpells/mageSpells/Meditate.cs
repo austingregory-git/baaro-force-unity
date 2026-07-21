@@ -42,10 +42,10 @@ namespace BaaroForce.Spells
         public override bool Execute(SpellContext context)
         {
             int bonus = ComputeValues(context.Caster)[0].Total;
-            context.Caster.CharacterStats.Mana += bonus;
-            FloatingCombatTextSystem.Instance?.ShowMana(context.Caster, bonus);
+            int gained = context.Caster.CharacterStats.ManaGain(bonus);
+            FloatingCombatTextSystem.Instance?.ShowMana(context.Caster, gained);
 
-            Debug.Log($"[Meditate] '{context.Caster.CharacterName}' gained {bonus} mana.  " +
+            Debug.Log($"[Meditate] '{context.Caster.CharacterName}' gained {gained} mana.  " +
                       $"Mana: {context.Caster.CharacterStats.Mana}" +
                       $"/{context.Caster.CharacterStats.MaxMana}");
             return true;

@@ -8,9 +8,11 @@ using BaaroForce.Classes;
 using BaaroForce.Spells;
 using BaaroForce.UI;
 using System;
+using UnityEngine.SceneManagement;
 using BaaroForce.Passives;
 using BaaroForce.GameController;
 using BaaroForce.Relics;
+using BaaroForce.Loot;
 
 namespace BaaroForce.Map
 {
@@ -103,7 +105,9 @@ namespace BaaroForce.Map
         private ActionPanelUI  _actionPanel;
         private SpellPanelUI   _spellPanel;
         private WarningToastUI _warningToast;
+        private FightResultUI  _fightResultUI;
         private bool           _isMoving;
+        private bool           _fightEnded;
         private MapTile _hoveredTile;
         private Npc     _hoveredTarget;
 
@@ -154,6 +158,23 @@ namespace BaaroForce.Map
             _spellPanel.GetCooldownRemaining = GetCooldownRemaining;
 
             _warningToast = gameObject.AddComponent<WarningToastUI>();
+
+            _fightResultUI = gameObject.AddComponent<FightResultUI>();
+            _fightResultUI.OnReturnToMainMenu = () =>
+            {
+                PartyManager.Instance.ResetForNewRun();
+                SceneManager.LoadScene("MainMenu");
+            };
+            _fightResultUI.OnMoveOn = () =>
+                Debug.Log("[TurnManager] Move on — not yet implemented.");
+            _fightResultUI.OnLootClaimed = ClaimLoot;
+        }
+
+        private static void ClaimLoot(LootEntry entry)
+        {
+            if (entry.Type == LootType.Gold)
+                PartyManager.Instance.Party.AddGold(entry.Amount);
+            // Item loot has no inventory to add to yet — nothing to do until one exists.
         }
 
         // ------------------------------------------------------------------ //
@@ -247,6 +268,7 @@ namespace BaaroForce.Map
 
         private void Update()
         {
+            if (_fightEnded) return;
             if (CurrentPhase != TurnPhase.PlayerTurn) return;
             if (_isMoving) return;
 
@@ -403,6 +425,33 @@ namespace BaaroForce.Map
                 ToggleSpellMode();
             else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.I))
                 Debug.Log("[TurnManager] Items — not yet implemented.");
+            else
+                HandleSpellHotkeys();
+        }
+
+        /// <summary>Number-row hotkeys 1–9, bound to the selected character's spells in
+        /// list order (e.g. their 2nd spell activates on '2') — same entry point as
+        /// clicking the row in SpellPanelUI, so affordability/cooldown checks and the
+        /// targeting-mode toggle behave identically either way.</summary>
+        private static readonly KeyCode[] SpellHotkeys =
+        {
+            KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4, KeyCode.Alpha5,
+            KeyCode.Alpha6, KeyCode.Alpha7, KeyCode.Alpha8, KeyCode.Alpha9,
+        };
+
+        private void HandleSpellHotkeys()
+        {
+            List<Spell> spells = _selectedCharacter.CharacterSpells;
+            if (spells == null) return;
+
+            for (int i = 0; i < SpellHotkeys.Length && i < spells.Count; i++)
+            {
+                if (Input.GetKeyDown(SpellHotkeys[i]))
+                {
+                    ActivateSpell(spells[i]);
+                    return;
+                }
+            }
         }
 
         // ------------------------------------------------------------------ //
@@ -461,6 +510,13 @@ namespace BaaroForce.Map
         private void ToggleMoveMode()
         {
             if (_currentMode == InputMode.Move) { SetMode(InputMode.None); return; }
+
+            if (_selectedCharacter.IsRooted)
+            {
+                Debug.Log($"[TurnManager] '{_selectedCharacter.CharacterName}' is rooted and cannot move.");
+                _warningToast?.Show($"'{_selectedCharacter.CharacterName}' is rooted and cannot move.");
+                return;
+            }
 
             int mp = RemainingMove(_selectedCharacter);
             if (mp <= 0)
@@ -605,6 +661,9 @@ namespace BaaroForce.Map
                 OnTargetHighlighted?.Invoke(target);
             }
 
+            CheckFightOutcome();
+            if (_fightEnded) return;
+
             CheckAndHandleTurnEnd(_selectedCharacter);
             if (_selectedCharacter != null)
             {
@@ -659,10 +718,9 @@ namespace BaaroForce.Map
                 // No tile is aimed, but the spell still affects a fixed set of tiles around
                 // the caster (just the caster's own tile for a plain self-buff like Grit, or
                 // a wider CircleAround area for something like Rally) — highlight exactly
-                // that area, in the same green used for Ally targeting, so the player can see
-                // who/what will be affected before confirming.
+                // that area so the player can see who/what will be affected before confirming.
                 List<MapTile> affectedTiles = SpellAreaUtils.GetAreaTiles(spell, origin, origin, _tiles, _gridSize);
-                Color selfColor = GetSpellHighlightColor(SpellTargetType.Ally);
+                Color selfColor = GetSpellHighlightColor(spell);
                 foreach (MapTile tile in affectedTiles)
                 {
                     tile.SetSpellHighlight(true, selfColor);
@@ -671,7 +729,7 @@ namespace BaaroForce.Map
                 return;
             }
 
-            Color color = GetSpellHighlightColor(spell.TargetType);
+            Color color = GetSpellHighlightColor(spell);
             int ox = origin.GridX, oz = origin.GridZ;
 
             for (int x = 0; x < _gridSize; x++)
@@ -713,12 +771,12 @@ namespace BaaroForce.Map
                     _tiles,
                     _gridSize);
 
+            // Higher alpha than the selectable-range highlight (0.8 vs 0.55) so the exact
+            // tiles about to be hit stand out from the wider "you could aim here" range.
+            Color previewColor = GetSpellHighlightColor(_selectedSpell, alpha: 0.8f);
             foreach (var tile in areaTiles)
             {
-                tile.SetSpellHighlight(
-                    true,
-                    new Color(1f, 0.5f, 0f, 0.8f));
-
+                tile.SetSpellHighlight(true, previewColor);
                 _spellPreviewTiles.Add(tile);
             }
         }
@@ -800,6 +858,9 @@ namespace BaaroForce.Map
                 _selectedCharacter.BreakInvisibility();
             }
 
+            CheckFightOutcome();
+            if (_fightEnded) return;
+
             CheckAndHandleTurnEnd(_selectedCharacter);
             if (_selectedCharacter != null)
             {
@@ -842,19 +903,43 @@ namespace BaaroForce.Map
                 caster.BreakInvisibility();
             }
 
+            CheckFightOutcome();
+            if (_fightEnded) yield break;
+
             CheckAndHandleTurnEnd(caster);
             if (_selectedCharacter != null)
                 ShowActionPanel();
         }
 
-        private Color GetSpellHighlightColor(SpellTargetType targetType)
+        /// <summary>Highlight tint for <paramref name="spell"/>'s selectable-range/self area.
+        /// Prefers the spell's own elemental/physical <see cref="Spell.Type"/> — reusing
+        /// <see cref="CombatTextColors.ForDamageType"/> so a spell's highlight always matches
+        /// the colour its damage numbers use (Physical = orange, Magical = light purple, ...).
+        /// Falls back to a TargetType-based colour for spells with no established type
+        /// (buffs like Grit/Meditate, whose effect isn't a damage type at all).</summary>
+        /// <summary>Highlight tint for <paramref name="spell"/>, at <paramref name="alpha"/>.
+        /// Prefers <see cref="Spell.GetHighlightType"/> (the caster-aware hook, so a
+        /// randomised-type spell like Magic Dart can highlight its resolved type) — reusing
+        /// <see cref="CombatTextColors.ForDamageType"/> so a spell's highlight always matches
+        /// the colour its damage numbers use (Physical = orange, Magical = light purple,
+        /// Buff = green, ...). Falls back to a TargetType-based colour for spells with no
+        /// established type at all.</summary>
+        private Color GetSpellHighlightColor(Spell spell, float alpha = 0.55f)
         {
-            switch (targetType)
+            SpellType? type = spell.GetHighlightType(_selectedCharacter);
+            if (type.HasValue)
             {
-                case SpellTargetType.Enemy: return new Color(0.9f, 0.15f, 0.10f, 0.55f); // red
-                case SpellTargetType.Ally:  return new Color(0.1f, 0.80f, 0.20f, 0.55f); // green
-                case SpellTargetType.Both:  return new Color(0.6f, 0.10f, 0.85f, 0.55f); // purple
-                default:                   return new Color(0.9f, 0.15f, 0.10f, 0.55f);
+                Color c = CombatTextColors.ForDamageType(type.Value);
+                return new Color(c.r, c.g, c.b, alpha);
+            }
+
+            switch (spell.TargetType)
+            {
+                case SpellTargetType.Enemy: return new Color(0.9f, 0.15f, 0.10f, alpha); // red
+                case SpellTargetType.Ally:  return new Color(0.1f, 0.80f, 0.20f, alpha); // green
+                case SpellTargetType.Self:  return new Color(0.1f, 0.80f, 0.20f, alpha); // green, same as Ally
+                case SpellTargetType.Both:  return new Color(0.6f, 0.10f, 0.85f, alpha); // purple
+                default:                   return new Color(0.9f, 0.15f, 0.10f, alpha);
             }
         }
 
@@ -1057,6 +1142,9 @@ namespace BaaroForce.Map
 
         private void CheckAllCharactersDone()
         {
+            CheckFightOutcome();
+            if (_fightEnded) return;
+
             var members = PartyManager.Instance?.Party?.Members;
             if (members == null || members.Count == 0) { StartEnemyTurn(); return; }
 
@@ -1067,7 +1155,57 @@ namespace BaaroForce.Map
             var relics = PartyManager.Instance?.Relics;
             CheckAndHandlePlayerTurnEnd(members, relics);
 
+            CheckFightOutcome();
+            if (_fightEnded) return;
+
             StartEnemyTurn();
+        }
+
+        /// <summary>
+        /// Scans the party and the grid for remaining living allies/enemies. If either side
+        /// has been wiped, ends the fight: hides all HUD panels, blocks further input, and
+        /// shows the appropriate Game Over / Fight Won screen. No-ops once already ended,
+        /// and no-ops while both sides still have a survivor.
+        /// </summary>
+        private void CheckFightOutcome()
+        {
+            if (_fightEnded) return;
+
+            var members = PartyManager.Instance?.Party?.Members;
+            bool anyAllyAlive = false;
+            if (members != null)
+                foreach (Character c in members)
+                    if (c.CharacterStats.HealthPoints > 0) { anyAllyAlive = true; break; }
+
+            bool anyEnemyAlive = false;
+            for (int x = 0; x < _gridSize && !anyEnemyAlive; x++)
+                for (int z = 0; z < _gridSize && !anyEnemyAlive; z++)
+                {
+                    MapTile tile = _tiles[x, z];
+                    if (tile == null) continue;
+                    Npc npc = tile.OccupyingNpc;
+                    if (npc != null && npc.CharacterStats.HealthPoints > 0)
+                        anyEnemyAlive = true;
+                }
+
+            if (anyAllyAlive && anyEnemyAlive) return;
+
+            _fightEnded = true;
+            Deselect();
+
+            if (!anyAllyAlive)
+            {
+                Debug.Log("[TurnManager] All allies defeated. Game over.");
+                _fightResultUI?.ShowGameOver();
+            }
+            else
+            {
+                Debug.Log("[TurnManager] All enemies defeated. Fight won!");
+                int depth = PartyManager.Instance.Depth;
+                List<LootEntry> loot = FightRewardGenerator.Generate(depth);
+                PartyManager.Instance.AdvanceDepth();
+                _fightResultUI?.ShowFightWon(loot);
+            }
         }
 
         private void StartEnemyTurn()
@@ -1115,7 +1253,7 @@ namespace BaaroForce.Map
                     currentTile:       currentTile,
                     allTiles:          _tiles,
                     gridSize:          _gridSize,
-                    remainingMovement: npc.CharacterStats.Movement,
+                    remainingMovement: npc.IsRooted ? 0 : npc.CharacterStats.Movement,
                     remainingActions:  npc.CharacterStats.MaxActionPoints);
 
                 context.BfsReachable       = (origin, range) => BfsReachable(origin, range, npc);
@@ -1129,6 +1267,9 @@ namespace BaaroForce.Map
 
                 yield return StartCoroutine(npc.AI.ExecuteTurn(context));
 
+                CheckFightOutcome();
+                if (_fightEnded) yield break;
+
                 // Small pause between Npc turns so the player can follow the action.
                 yield return new WaitForSeconds(0.25f);
             }
@@ -1140,6 +1281,9 @@ namespace BaaroForce.Map
                 if (npc.CharacterStats.HealthPoints <= 0) continue;
                 npc.TickStatusEffects();
             }
+
+            CheckFightOutcome();
+            if (_fightEnded) yield break;
 
             StartPlayerTurn();
         }
@@ -1258,6 +1402,7 @@ namespace BaaroForce.Map
 
             FaceTowardTile(attacker, targetTile);
             ResolveBasicAttack(attacker, target, targetTile);
+            CheckFightOutcome();
         }
 
         /// <summary>
@@ -1297,6 +1442,8 @@ namespace BaaroForce.Map
                 StartSpellCooldown(caster, spell);
                 caster.BreakInvisibility();
             }
+
+            CheckFightOutcome();
 
             return resolved;
         }

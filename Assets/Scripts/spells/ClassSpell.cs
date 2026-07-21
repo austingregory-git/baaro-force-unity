@@ -10,8 +10,9 @@ namespace BaaroForce.Spells
                           SpellTargetType targetType = SpellTargetType.Enemy,
                           SpellAreaType areaType = SpellAreaType.None,
                           bool oncePerFight = false,
-                          bool includeOriginTile = false)
-            : base(name, description, manaCost, actionPointCost, range, area, cooldown, targetType, areaType, oncePerFight, includeOriginTile)
+                          bool includeOriginTile = false,
+                          SpellType? type = null)
+            : base(name, description, manaCost, actionPointCost, range, area, cooldown, targetType, areaType, oncePerFight, includeOriginTile, type)
         {
             this.CharacterClass = characterClass;
         }

@@ -22,7 +22,8 @@ namespace BaaroForce.Spells
             range:       1,
             area:        0,
             cooldown:    2,
-            targetType:  SpellTargetType.Enemy)
+            targetType:  SpellTargetType.Enemy,
+            type:        SpellType.Physical)
         { }
 
         public override ScalingValue[] ComputeValues(Character caster)
@@ -39,24 +40,22 @@ namespace BaaroForce.Spells
 
         public override bool Execute(SpellContext context)
         {
-            if (context.TargetTile.IsOccupied && context.TargetTile.OccupyingNpc != null)
+            Npc target = context.TargetTile?.OccupyingNpc;
+            if (target == null)
             {
-                Npc target = context.TargetTile.OccupyingNpc;
-                int damage = ComputeValues(context.Caster)[0].Total;
-                int dealt  = target.CharacterStats.TakeDamage(damage);
-                FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
-                Debug.Log($"[Slam] '{context.Caster.CharacterName}' dealt {damage} damage to '{target.CharacterName}'. " +
-                          $"HP: {target.CharacterStats.HealthPoints}/{target.CharacterStats.MaxHealthPoints}");
-                if (target.CharacterStats.HealthPoints <= 0)
-                {
-                    Debug.Log($"[Slam] '{target.CharacterName}' has been defeated!");
-                    context.TargetTile.RemoveUnit();
-                }
-            }
-            else
-            {
-                Debug.LogWarning("[Slam] No target found on the selected tile.");
+                Debug.LogWarning("[Slam] No enemy on the target tile.");
                 return false;
+            }
+
+            int damage = ComputeValues(context.Caster)[0].Total;
+            int dealt  = target.TakeDamage(damage);
+            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
+            Debug.Log($"[Slam] '{context.Caster.CharacterName}' dealt {damage} damage to '{target.CharacterName}'. " +
+                        $"HP: {target.CharacterStats.HealthPoints}/{target.CharacterStats.MaxHealthPoints}");
+            if (target.CharacterStats.HealthPoints <= 0)
+            {
+                Debug.Log($"[Slam] '{target.CharacterName}' has been defeated!");
+                context.TargetTile.RemoveUnit();
             }
             return true;
         }

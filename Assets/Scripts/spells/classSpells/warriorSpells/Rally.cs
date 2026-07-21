@@ -32,7 +32,8 @@ namespace BaaroForce.Spells
             cooldown:    3,
             targetType:  SpellTargetType.Self,
             areaType:    SpellAreaType.CircleAround,
-            includeOriginTile: true)
+            includeOriginTile: true,
+            type:        SpellType.Buff)
         { }
 
         public override ScalingValue[] ComputeValues(Character caster) =>
