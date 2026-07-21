@@ -2,7 +2,6 @@ using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Formulas;
 using BaaroForce.Map;
-using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -85,19 +84,12 @@ namespace BaaroForce.Spells
             }
 
             int damage = ComputeValues(context.Caster)[0].Total;
-            int dealt  = target.TakeDamage(damage);
-            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
+            DealDamage(target, context.TargetTile, damage, SpellType.Physical, "Charge");
 
             Debug.Log($"[Charge] '{context.Caster.CharacterName}' charges '{target.CharacterName}' " +
                       $"for {damage} damage.  " +
                       $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}" +
                       $"/{target.CharacterStats.MaxHealthPoints}");
-
-            if (target.CharacterStats.HealthPoints <= 0)
-            {
-                Debug.Log($"[Charge] '{target.CharacterName}' has been defeated!");
-                context.TargetTile.RemoveUnit();
-            }
 
             return true;
         }

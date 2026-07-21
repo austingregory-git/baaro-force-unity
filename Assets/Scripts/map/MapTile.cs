@@ -46,11 +46,13 @@ namespace BaaroForce.Map
         private GameObject _attackHighlightOverlay;
         private GameObject _spellHighlightOverlay;
         private GameObject _zoneOfControlOverlay;
+        private GameObject _hoverHighlightOverlay;
 
         private static readonly Color OverlayColor         = new Color(0.3f, 0.6f, 1f, 0.92f);
         private static readonly Color MoveHighlightColor    = new Color(0.3f, 0.6f, 1f, 0.92f);
         private static readonly Color AttackHighlightColor  = new Color(0.9f, 0.15f, 0.1f, 0.55f);
         private static readonly Color ZoneOfControlColor    = new Color(1f, 0.65f, 0.1f, 0.35f);
+        private static readonly Color HoverHighlightColor   = new Color(0.79f, 0.64f, 0.35f, 0.8f);
 
         // ------------------------------------------------------------------ //
         // Lifecycle                                                           //
@@ -257,6 +259,42 @@ namespace BaaroForce.Map
                 {
                     Destroy(_spellHighlightOverlay);
                     _spellHighlightOverlay = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Shows or hides a gold outline-style overlay marking this tile's occupant as the
+        /// currently hovered/targeted unit — driven by TurnManager regardless of whether the
+        /// hover came from the mouse over the 3D tile or a party-frame status bar (see
+        /// TurnManager.SetHoveredTarget). Sits above every other overlay (0.56) so it stays
+        /// visible even while a move/attack/spell/zone-of-control highlight is also active.
+        /// </summary>
+        public void SetHoverHighlight(bool active)
+        {
+            if (active)
+            {
+                if (_hoverHighlightOverlay != null) return;
+
+                _hoverHighlightOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                _hoverHighlightOverlay.name = "HoverHighlight";
+                Destroy(_hoverHighlightOverlay.GetComponent<Collider>());
+
+                _hoverHighlightOverlay.transform.SetParent(transform, false);
+                _hoverHighlightOverlay.transform.localPosition = new Vector3(0f, 0.56f, 0f);
+                _hoverHighlightOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                _hoverHighlightOverlay.transform.localScale    = Vector3.one;
+
+                var mat = new Material(Shader.Find("Standard"));
+                ApplyTransparency(mat, HoverHighlightColor);
+                _hoverHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
+            }
+            else
+            {
+                if (_hoverHighlightOverlay != null)
+                {
+                    Destroy(_hoverHighlightOverlay);
+                    _hoverHighlightOverlay = null;
                 }
             }
         }

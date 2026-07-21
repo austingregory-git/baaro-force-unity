@@ -2,7 +2,6 @@ using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Formulas;
 using BaaroForce.Map;
-using BaaroForce.UI;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -61,16 +60,9 @@ namespace BaaroForce.Spells
                 {
                     // Apply damage to the occupant
                     Npc target = tile.OccupyingNpc;
-                    int dealt  = target.TakeDamage(damage);
-                    FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
+                    DealDamage(target, tile, damage, SpellType.Physical, "Cleave");
                     Debug.Log($"[Cleave] '{context.Caster.CharacterName}' dealt {damage} damage to '{target.CharacterName}'. " +
-                              $"HP: {target.CharacterStats.HealthPoints}/{target.CharacterStats.MaxHealthPoints}");
-                    if (target.CharacterStats.HealthPoints <= 0)
-                    {
-                        Debug.Log($"[Cleave] '{target.CharacterName}' has been defeated!");
-                        tile.RemoveUnit();
-                    }
-                              
+                              $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}/{target.CharacterStats.MaxHealthPoints}");
                 }
             }
             return true;

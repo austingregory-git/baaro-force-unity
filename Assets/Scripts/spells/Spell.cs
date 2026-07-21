@@ -3,6 +3,7 @@ using UnityEngine;
 using BaaroForce.Characters;
 using BaaroForce.Formulas;
 using BaaroForce.Map;
+using BaaroForce.UI;
 
 namespace BaaroForce.Spells
 {
@@ -47,7 +48,7 @@ namespace BaaroForce.Spells
         public readonly bool IncludeOriginTile;
         /// <summary>The elemental/physical category this spell's effect belongs to, if it
         /// has one — used to colour its selectable-range/self highlight the same way
-        /// <see cref="BaaroForce.UI.CombatTextColors.ForDamageType"/> colours its floating
+        /// <see cref="CombatTextColors.ForDamageType"/> colours its floating
         /// damage numbers. Null for spells with no single established type (Rally's attack
         /// buff, Meditate's mana gain, ...), which fall back to a TargetType-based colour
         /// instead (see TurnManager.GetSpellHighlightColor).</summary>
@@ -102,6 +103,33 @@ namespace BaaroForce.Spells
         /// resolves (e.g. <see cref="Charge"/>).
         /// </summary>
         public virtual MapTile GetCasterLandingTile(SpellContext context) => null;
+
+        /// <summary>
+        /// Applies <paramref name="amount"/> damage to <paramref name="target"/>, shows the
+        /// floating combat-text number, and — if this brings the target to 0 HP — logs the
+        /// defeat and clears its tile. Every damaging spell should route its hit(s) through
+        /// this instead of duplicating the TakeDamage/ShowDamage/defeat/RemoveUnit sequence
+        /// inline. <paramref name="logTag"/> becomes the "[Tag]" prefix on the defeat log line —
+        /// CombatLogUI keys its combat-log filtering off that exact convention, so pass the
+        /// same tag the spell's own Debug.Log calls use (e.g. "Bind", "Arcane Beam").
+        /// </summary>
+        /// <param name="physical">True to route through <see cref="Character.TakePhysicalDamage"/>
+        /// (respects Dodge) instead of <see cref="Character.TakeDamage"/>.</param>
+        /// <returns>The amount actually dealt, after shield/dodge absorption.</returns>
+        protected static int DealDamage(Character target, MapTile targetTile, int amount,
+                                         SpellType damageType, string logTag, bool physical = false)
+        {
+            int dealt = physical ? target.TakePhysicalDamage(amount) : target.TakeDamage(amount);
+            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, damageType);
+
+            if (target.CharacterStats.HealthPoints <= 0)
+            {
+                Debug.Log($"[{logTag}] '{target.CharacterName}' has been defeated!");
+                targetTile.RemoveUnit();
+            }
+
+            return dealt;
+        }
 
         /// <summary>
         /// Computes this spell's scaling numbers (damage, duration, ...) for

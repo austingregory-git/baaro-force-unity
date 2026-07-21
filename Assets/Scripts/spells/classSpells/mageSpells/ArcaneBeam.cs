@@ -3,7 +3,6 @@ using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Formulas;
 using BaaroForce.Map;
-using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -69,20 +68,13 @@ namespace BaaroForce.Spells
                 Character target = casterIsNpc ? tile.OccupyingCharacter : (Character)tile.OccupyingNpc;
                 if (target == null) continue;
 
-                int dealt = target.TakeDamage(damage);
-                FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Magical);
+                DealDamage(target, tile, damage, SpellType.Magical, "Arcane Beam");
                 hits++;
 
                 Debug.Log($"[Arcane Beam] '{context.Caster.CharacterName}' hits '{target.CharacterName}' " +
                           $"for {damage} magical damage.  " +
                           $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}" +
                           $"/{target.CharacterStats.MaxHealthPoints}");
-
-                if (target.CharacterStats.HealthPoints <= 0)
-                {
-                    Debug.Log($"[Arcane Beam] '{target.CharacterName}' has been defeated!");
-                    tile.RemoveUnit();
-                }
             }
 
             Debug.Log($"[Arcane Beam] '{context.Caster.CharacterName}' fires a beam, hitting {hits} target(s).");

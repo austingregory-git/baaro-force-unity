@@ -1,24 +1,23 @@
 using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Formulas;
-using BaaroForce.Map;
 using UnityEngine;
-using System.Collections.Generic;
 
 namespace BaaroForce.Spells
 {
     /// <summary>
-    /// Cleave — strike in front of you with your weapon, dealing damage equal to your basic attack.
+    /// Double shot - Shoots the target twice, dealing damage each time.  Damage is calculated as:
+    /// TotalAttack for each shot
     /// </summary>
-    public class Slam : ClassSpell
+    public class DoubleShot : ClassSpell
     {
-        public Slam() : base(
-            characterClass: ClassRegistry.Get("Warrior"),
-            name:        "Slam",
-            description: "Slam into the target, dealing {0} damage.",
+        public DoubleShot() : base(
+            characterClass: ClassRegistry.Get("Archer"),
+            name:        "Double Shot",
+            description: "Shoot the target twice, dealing {0} damage each time.",
             manaCost:        0,
             actionPointCost: 1,
-            range:       1,
+            range:       3,
             area:        0,
             cooldown:    2,
             targetType:  SpellTargetType.Enemy,
@@ -27,9 +26,7 @@ namespace BaaroForce.Spells
 
         public override ScalingValue[] ComputeValues(Character caster)
         {
-            var damage = new ScalingValue("Damage")
-                .Add("Base", 3)
-                .Add($"Level ({caster.Level} × 0.5, floored)", Mathf.FloorToInt(caster.Level * 0.5f));
+            var damage = new ScalingValue("Damage");
             damage.AddTotalAttack(caster.CharacterStats);
             return new[] { damage };
         }
@@ -42,14 +39,17 @@ namespace BaaroForce.Spells
             Npc target = context.TargetTile?.OccupyingNpc;
             if (target == null)
             {
-                Debug.LogWarning("[Slam] No enemy on the target tile.");
+                Debug.LogWarning("[Double Shot] No enemy on the target tile.");
                 return false;
             }
 
             int damage = ComputeValues(context.Caster)[0].Total;
-            DealDamage(target, context.TargetTile, damage, SpellType.Physical, "Slam");
-            Debug.Log($"[Slam] '{context.Caster.CharacterName}' dealt {damage} damage to '{target.CharacterName}'. " +
-                        $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}/{target.CharacterStats.MaxHealthPoints}");
+            DealDamage(target, context.TargetTile, damage, SpellType.Physical, "Double Shot");
+            DealDamage(target, context.TargetTile, damage, SpellType.Physical, "Double Shot");
+
+            Debug.Log($"[Double Shot] '{context.Caster.CharacterName}' dealt {damage} damage to '{target.CharacterName}'. " +
+                        $"HP: {target.CharacterStats.HealthPoints}/{target.CharacterStats.MaxHealthPoints}");
+
             return true;
         }
     }

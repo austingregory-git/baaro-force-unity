@@ -231,8 +231,89 @@
 .action-panel {
     width: 200px;
     left: 2%;
+    bottom: 3%;
+}
+
+/* ---------------- Persistent party frames (ally/enemy status stack) ----- */
+/* WoW-party-frame layout: portrait (with a level badge overlapping its
+   corner, like .crest does for the bigger panel) beside a tightly stacked
+   HP bar directly above a mana bar. The HP/mana values are overlaid ON
+   each bar (position: absolute) rather than sitting in their own label
+   column — that keeps them out of the box-model entirely, so they can
+   never reintroduce a gap between the bars the way an in-flow label did. */
+
+.party-frame-list {
+    position: absolute;
+    flex-direction: column;
     top: 50%;
     translate: 0 -50%;
+}
+.party-frame-list--ally  { left: 1%;  align-items: flex-start; }
+.party-frame-list--enemy { right: 1%; align-items: flex-end; }
+
+.party-frame-row {
+    flex-direction: row;
+    align-items: center;
+    width: 200px;
+    background-color: rgba(24, 17, 27, 0.85);
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.15);
+    padding: 6px 8px;
+    margin-bottom: 10px; /* a bit more room now the level badge overhangs below */
+    /* .seg-fill-mana reads --glow-color, normally supplied by a character's
+       zone-theme class (.zone-fire/.zone-water/etc, see CharacterHudController)
+       — party frames don't apply zone theming, so give mana bars their own
+       fixed default here instead of an undefined (invisible) fill. */
+    --glow-color: rgb(70, 150, 190);
+}
+.party-frame-row:hover { border-color: rgba(255, 255, 255, 0.35); }
+
+.party-frame-portrait-wrap {
+    position: relative;
+    margin-right: 10px;
+}
+
+/* Compound selector (2 class-selectors) so this reliably wins over the
+   single-class .portrait rule regardless of source order. */
+.party-frame-portrait.portrait {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    margin-right: 0;
+}
+
+.party-frame-level {
+    position: absolute;
+    bottom: -6px;
+    left: -6px;
+    min-width: 18px;
+    height: 16px;
+    padding: 0 3px;
+    border-radius: 8px;
+    background-color: rgb(201, 163, 90);
+    border-width: 1px;
+    border-color: rgb(24, 17, 27);
+    color: rgb(16, 12, 20);
+    font-size: 9px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.party-frame-body { flex-direction: column; flex-grow: 1; justify-content: center; }
+
+.party-frame-name {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+    margin-bottom: 2px;
+}
+
+/* Compound selector so this reliably wins over the single-class .seg-bar rule. */
+.party-frame-bar.seg-bar {
+    width: 130px;
+    height: 11px;
+    margin-right: 0;
 }
 
 .action-chassis {
@@ -474,6 +555,50 @@
 }
 .fight-result-btn:hover  { background-color: rgba(255, 255, 255, 0.18); }
 .fight-result-btn:active { background-color: rgba(255, 255, 255, 0.26); }
+
+/* ---------------- Combat log (bottom-left scrolling action feed) ------- */
+/* Anchored to the opposite corner from the action panel (which sits at
+   left: 2%% vertically centred) so the two never overlap — the log lives
+   below it, hugging the bottom-left corner like the web kit's log widget. */
+
+.combat-log-panel {
+    position: absolute;
+    left: 2%;
+    bottom: 1.5%;
+    width: 340px;
+    height: 190px;
+}
+
+.combat-log-chassis {
+    flex-grow: 1;
+    padding: 10px 6px 8px 12px;
+    background-color: rgba(24, 17, 27, 0.85);
+}
+
+.combat-log-title {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgba(243, 230, 200, 0.6);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    margin-right: 6px;
+}
+
+.combat-log-scroll {
+    flex-grow: 1;
+}
+
+.combat-log-entry {
+    font-size: 12px;
+    color: rgb(243, 230, 200);
+    white-space: normal;
+    margin-bottom: 3px;
+}
+
+/* Older entries fade slightly so the freshest lines read as "current". */
+.combat-log-entry--faded {
+    opacity: 0.55;
+}
 
 /* ---------------- Action arrow (selected panel -> hovered/target panel) - */
 /* Shared by the shaft and both chevron-head wings — all three are just thin

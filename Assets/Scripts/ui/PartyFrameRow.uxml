@@ -1,0 +1,17 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:VisualElement name="frame-root" class="party-frame-row">
+        <ui:VisualElement class="party-frame-portrait-wrap">
+            <ui:VisualElement name="portrait" class="portrait party-frame-portrait" />
+            <ui:Label name="level-badge" text="1" class="party-frame-level" />
+        </ui:VisualElement>
+        <ui:VisualElement name="party-frame-body" class="party-frame-body">
+            <ui:Label name="unit-name" text="Unit Name" class="party-frame-name" />
+            <ui:VisualElement class="party-frame-bar-wrap">
+                <ui:VisualElement name="hp-bar" class="seg-bar party-frame-bar" />
+            </ui:VisualElement>
+            <ui:VisualElement class="party-frame-bar-wrap">
+                <ui:VisualElement name="mana-bar" class="seg-bar party-frame-bar" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,7 +1,6 @@
 using BaaroForce.Characters;
 using BaaroForce.Formulas;
 using BaaroForce.Statuses;
-using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -62,22 +61,14 @@ namespace BaaroForce.Spells
             ScalingValue[] values = ComputeValues(context.Caster);
             int damage = values[0].Total;
 
-
             // Deal water damage.
-            int dealt = target.TakeDamage(damage);
-            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Water);
+            DealDamage(target, context.TargetTile, damage, SpellType.Water, "BubbleBlast");
 
             Debug.Log($"[BubbleBlast] '{context.Caster.CharacterName}' casts Bubble Blast on " +
                       $"'{target.CharacterName}'.  Damage: {damage}, " +
                       $"Spell Power Bonus: {context.Caster.CharacterStats.SpellPowerBonus}.  " +
                       $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}" +
                       $"/{target.CharacterStats.MaxHealthPoints}");
-
-            if (target.CharacterStats.HealthPoints <= 0)
-            {
-                Debug.Log($"[BubbleBlast] '{target.CharacterName}' has been defeated!");
-                context.TargetTile.RemoveUnit();
-            }
 
             return true;
         }

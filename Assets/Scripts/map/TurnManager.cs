@@ -110,6 +110,7 @@ namespace BaaroForce.Map
         private bool           _fightEnded;
         private MapTile _hoveredTile;
         private Npc     _hoveredTarget;
+        private MapTile _hoverHighlightTile;
 
 
         private const float MoveSpeed = 5f;   // world-units per second
@@ -158,6 +159,8 @@ namespace BaaroForce.Map
             _spellPanel.GetCooldownRemaining = GetCooldownRemaining;
 
             _warningToast = gameObject.AddComponent<WarningToastUI>();
+
+            gameObject.AddComponent<CombatLogUI>();
 
             _fightResultUI = gameObject.AddComponent<FightResultUI>();
             _fightResultUI.OnReturnToMainMenu = () =>
@@ -291,6 +294,14 @@ namespace BaaroForce.Map
 
         private void UpdateHoveredTile()
         {
+            // While the pointer is over a UI element (e.g. a party-frame status bar),
+            // leave the hover target alone rather than immediately re-raycasting into
+            // the 3D scene and clobbering it — PartyFrameHudController drives the same
+            // hover state directly via SetHoveredTarget in that case (see PointerEnter/
+            // PointerLeaveEvent handlers there).
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+                return;
+
             if (!TryGetTileUnderMouse(out MapTile tile))
             {
                 _hoveredTile = null;
@@ -302,14 +313,38 @@ namespace BaaroForce.Map
             UpdateHoveredTarget(tile.OccupyingNpc);
         }
 
+        /// <summary>
+        /// Public alternate entry point for UI-driven hover input (party-frame status
+        /// bar hover) — drives the exact same OnTargetHighlighted/OnTargetCleared
+        /// pipeline a 3D-tile hover already does, so CharacterHudController's right-side
+        /// panel and preview logic need no changes to support it.
+        /// </summary>
+        public void SetHoveredTarget(Npc npc) => UpdateHoveredTarget(npc);
+
         /// <summary>Raises OnTargetHighlighted/OnTargetCleared only when the hovered Npc actually changes.</summary>
         private void UpdateHoveredTarget(Npc npc)
         {
             if (npc == _hoveredTarget) return;
 
             _hoveredTarget = npc;
+            SetHoverHighlightTile(npc?.CharacterCurrentTile);
             if (npc != null) OnTargetHighlighted?.Invoke(npc);
             else              OnTargetCleared?.Invoke();
+        }
+
+        /// <summary>
+        /// Moves the gold hover-highlight overlay (see MapTile.SetHoverHighlight) onto
+        /// whichever tile the hovered/targeted unit currently occupies, clearing it off
+        /// the previous one. Single choke point for both hover-state mutation sites
+        /// (UpdateHoveredTarget, and CommitAttack's post-kill clear) so the overlay can
+        /// never go stale on a tile whose occupant is no longer the hovered target.
+        /// </summary>
+        private void SetHoverHighlightTile(MapTile tile)
+        {
+            if (_hoverHighlightTile == tile) return;
+            if (_hoverHighlightTile != null) _hoverHighlightTile.SetHoverHighlight(false);
+            _hoverHighlightTile = tile;
+            if (_hoverHighlightTile != null) _hoverHighlightTile.SetHoverHighlight(true);
         }
 
         private bool TryGetTileUnderMouse(out MapTile tile)
@@ -348,6 +383,17 @@ namespace BaaroForce.Map
                 return;
             if (!TryGetClickedTile(out MapTile clicked)) return;
 
+            HandleTileActivated(clicked);
+        }
+
+        /// <summary>
+        /// Everything that happens once a MapTile has been "activated" — via an actual
+        /// 3D-tile mouse click (HandleClick) or an equivalent alternate input, e.g.
+        /// clicking a party-frame status bar (see ActivateCharacterFrame). Single entry
+        /// point so both input paths get identical validation with zero duplicated logic.
+        /// </summary>
+        private void HandleTileActivated(MapTile clicked)
+        {
             switch (_currentMode)
             {
                 case InputMode.Move:
@@ -360,6 +406,10 @@ namespace BaaroForce.Map
                 case InputMode.Attack:
                     if (_highlightedAttackTiles.Contains(clicked) && clicked.OccupyingNpc != null)
                         CommitAttack(clicked);
+                    else if (clicked.OccupyingNpc != null)
+                        // Real target, just beyond the attacker's reach — warn instead of
+                        // silently cancelling so the player doesn't lose their targeting mode.
+                        _warningToast?.Show("Target is out of range.");
                     else
                         SetMode(InputMode.None);
                     break;
@@ -367,6 +417,12 @@ namespace BaaroForce.Map
                 case InputMode.Spell:
                     if (_spellTargetTiles.Contains(clicked))
                         CommitSpell(clicked);
+                    else if (_selectedSpell != null &&
+                             _selectedSpell.TargetType != SpellTargetType.Self &&
+                             IsValidSpellTarget(_selectedSpell, clicked))
+                        // Same idea as the attack case above: a legal target that's simply
+                        // out of the spell's range shouldn't silently drop out of targeting.
+                        _warningToast?.Show($"'{_selectedSpell.Name}' is out of range.");
                     else
                         SetMode(InputMode.None);
                     break;
@@ -378,6 +434,42 @@ namespace BaaroForce.Map
                         Deselect();
                     break;
             }
+        }
+
+        /// <summary>
+        /// Public alternate entry point for UI-driven target/select input (party-frame
+        /// status bar clicks). Resolves the character's current tile and runs it through
+        /// the exact same validation as a real tile click. No-ops outside the player's
+        /// turn, after the fight has ended, or if the character has no current tile.
+        /// </summary>
+        public void ActivateCharacterFrame(Character character)
+        {
+            if (character == null) return;
+            if (_fightEnded || CurrentPhase != TurnPhase.PlayerTurn) return;
+
+            MapTile tile = character.CharacterCurrentTile;
+            if (tile == null) return;
+
+            HandleTileActivated(tile);
+        }
+
+        /// <summary>
+        /// Scans the grid for every Npc still alive. Read-only alternative to exposing
+        /// the tile grid itself; mirrors the scan/HealthPoints filter CheckFightOutcome
+        /// and RunEnemyTurns already do internally (left independent here to keep this
+        /// addition purely additive).
+        /// </summary>
+        public IEnumerable<Npc> GetLivingEnemies()
+        {
+            for (int x = 0; x < _gridSize; x++)
+                for (int z = 0; z < _gridSize; z++)
+                {
+                    MapTile tile = _tiles[x, z];
+                    if (tile == null) continue;
+                    Npc npc = tile.OccupyingNpc;
+                    if (npc != null && npc.CharacterStats.HealthPoints > 0)
+                        yield return npc;
+                }
         }
 
         private bool TryGetClickedTile(out MapTile tile)
@@ -654,6 +746,7 @@ namespace BaaroForce.Map
             {
                 OnTargetCleared?.Invoke();
                 _hoveredTarget = null;
+                SetHoverHighlightTile(null);
             }
             else
             {
@@ -771,9 +864,9 @@ namespace BaaroForce.Map
                     _tiles,
                     _gridSize);
 
-            // Higher alpha than the selectable-range highlight (0.8 vs 0.55) so the exact
+            // Higher alpha than the selectable-range highlight (0.9 vs 0.75) so the exact
             // tiles about to be hit stand out from the wider "you could aim here" range.
-            Color previewColor = GetSpellHighlightColor(_selectedSpell, alpha: 0.8f);
+            Color previewColor = GetSpellHighlightColor(_selectedSpell, alpha: 0.9f);
             foreach (var tile in areaTiles)
             {
                 tile.SetSpellHighlight(true, previewColor);
@@ -924,7 +1017,7 @@ namespace BaaroForce.Map
         /// the colour its damage numbers use (Physical = orange, Magical = light purple,
         /// Buff = green, ...). Falls back to a TargetType-based colour for spells with no
         /// established type at all.</summary>
-        private Color GetSpellHighlightColor(Spell spell, float alpha = 0.55f)
+        private Color GetSpellHighlightColor(Spell spell, float alpha = 0.75f)
         {
             SpellType? type = spell.GetHighlightType(_selectedCharacter);
             if (type.HasValue)
@@ -1352,8 +1445,14 @@ namespace BaaroForce.Map
             CheckAndHandleReceivingBasicAttackDamage(attacker, target);
 
             int damage = Mathf.Max(0, attacker.CharacterStats.TotalAttack);
-            int dealt  = target.TakePhysicalDamage(damage);
-            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
+
+            // Magic-specialty basic attacks (e.g. a Mage's wand hit) deal magical damage —
+            // routed through TakeDamage so Dodge (a physical-evasion mechanic) doesn't apply,
+            // same as every other magic-typed spell in the game.
+            bool isMagic = attacker.CharacterClass != null &&
+                           attacker.CharacterClass.Specialty == CharacterClass.ClassSpecialty.Magic;
+            int dealt = isMagic ? target.TakeDamage(damage) : target.TakePhysicalDamage(damage);
+            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, isMagic ? SpellType.Magical : SpellType.Physical);
 
             Debug.Log($"[TurnManager] '{attacker.CharacterName}' attacks '{target.CharacterName}' "
                     + $"for {damage} damage ({dealt} after shield).  "

@@ -3,7 +3,6 @@ using BaaroForce.Classes;
 using BaaroForce.Formulas;
 using BaaroForce.Map;
 using BaaroForce.Statuses;
-using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -56,8 +55,7 @@ namespace BaaroForce.Spells
             }
 
             int damage = ComputeValues(context.Caster)[0].Total;
-            int dealt  = target.TakePhysicalDamage(damage);
-            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
+            DealDamage(target, context.TargetTile, damage, SpellType.Physical, "Shiv", physical: true);
 
             target.ApplyStatus(new SilenceStatus(SilenceDurationTurns));
 
@@ -65,12 +63,6 @@ namespace BaaroForce.Spells
                       $"and silences them for {SilenceDurationTurns} turns.  " +
                       $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}" +
                       $"/{target.CharacterStats.MaxHealthPoints}");
-
-            if (target.CharacterStats.HealthPoints <= 0)
-            {
-                Debug.Log($"[Shiv] '{target.CharacterName}' has been defeated!");
-                context.TargetTile.RemoveUnit();
-            }
 
             return true;
         }

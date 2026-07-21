@@ -48,8 +48,7 @@ namespace BaaroForce.Spells
             }
 
             int damage = ComputeValues(context.Caster)[0].Total;
-            int dealt  = target.TakePhysicalDamage(damage);
-            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
+            DealDamage(target, context.TargetTile, damage, SpellType.Physical, "Mug", physical: true);
 
             int goldStolen = RollGold(context.Caster);
             PartyManager.Instance?.Party?.AddGold(goldStolen);
@@ -59,12 +58,6 @@ namespace BaaroForce.Spells
                       $"and steals {goldStolen} gold.  " +
                       $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}" +
                       $"/{target.CharacterStats.MaxHealthPoints}");
-
-            if (target.CharacterStats.HealthPoints <= 0)
-            {
-                Debug.Log($"[Mug] '{target.CharacterName}' has been defeated!");
-                context.TargetTile.RemoveUnit();
-            }
 
             return true;
         }

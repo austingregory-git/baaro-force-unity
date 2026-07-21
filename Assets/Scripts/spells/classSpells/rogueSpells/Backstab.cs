@@ -2,7 +2,6 @@ using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Formulas;
 using BaaroForce.Map;
-using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -54,18 +53,11 @@ namespace BaaroForce.Spells
             }
 
             int damage = ComputeValues(context.Caster)[0].Total;
-            int dealt  = target.TakePhysicalDamage(damage);
-            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Physical);
+            DealDamage(target, context.TargetTile, damage, SpellType.Physical, "Backstab", physical: true);
 
             Debug.Log($"[Backstab] '{context.Caster.CharacterName}' backstabs '{target.CharacterName}' for {damage} damage.  " +
                       $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}" +
                       $"/{target.CharacterStats.MaxHealthPoints}");
-
-            if (target.CharacterStats.HealthPoints <= 0)
-            {
-                Debug.Log($"[Backstab] '{target.CharacterName}' has been defeated!");
-                context.TargetTile.RemoveUnit();
-            }
 
             return true;
         }

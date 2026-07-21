@@ -1,7 +1,6 @@
 using BaaroForce.Characters;
 using BaaroForce.Formulas;
 using BaaroForce.Statuses;
-using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -85,20 +84,13 @@ namespace BaaroForce.Spells
             target.ApplyStatus(fear);
 
             // Deal dark damage.
-            int dealt = target.TakeDamage(damage);
-            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Dark);
+            DealDamage(target, context.TargetTile, damage, SpellType.Dark, "DeathStare");
 
             Debug.Log($"[DeathStare] '{context.Caster.CharacterName}' casts Death Stare on " +
                       $"'{target.CharacterName}'.  Damage: {damage}, " +
                       $"Fear: {fearDuration} turn(s).  " +
                       $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}" +
                       $"/{target.CharacterStats.MaxHealthPoints}");
-
-            if (target.CharacterStats.HealthPoints <= 0)
-            {
-                Debug.Log($"[DeathStare] '{target.CharacterName}' has been defeated!");
-                context.TargetTile.RemoveUnit();
-            }
 
             return true;
         }

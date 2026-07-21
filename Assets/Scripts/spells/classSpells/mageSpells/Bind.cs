@@ -4,7 +4,6 @@ using BaaroForce.Classes;
 using BaaroForce.Formulas;
 using BaaroForce.Map;
 using BaaroForce.Statuses;
-using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -63,20 +62,13 @@ namespace BaaroForce.Spells
             var root = new RootStatus(durationTurns: RootDurationTurns);
             target.ApplyStatus(root);
 
-            int damage       = ComputeValues(context.Caster)[0].Total;
-            int dealt = target.TakeDamage(damage);
-            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, SpellType.Magical);
+            int damage = ComputeValues(context.Caster)[0].Total;
+            DealDamage(target, context.TargetTile, damage, SpellType.Magical, "Bind");
 
             Debug.Log($"[Bind] '{context.Caster.CharacterName}' hits '{target.CharacterName}' " +
                         $"for {damage} magical damage and roots them for {RootDurationTurns} turn(s).  " +
                         $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}" +
                         $"/{target.CharacterStats.MaxHealthPoints}");
-
-            if (target.CharacterStats.HealthPoints <= 0)
-            {
-                Debug.Log($"[Bind] '{target.CharacterName}' has been defeated!");
-                context.TargetTile.RemoveUnit();
-            }
 
             return true;
         }

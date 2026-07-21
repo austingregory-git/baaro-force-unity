@@ -1,7 +1,6 @@
 using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Formulas;
-using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
@@ -82,17 +81,10 @@ namespace BaaroForce.Spells
 
             SpellType type = ResolveType(context.Caster);
             int damage     = ComputeValues(context.Caster)[0].Total;
-            int dealt      = target.TakeDamage(damage);
-            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, type);
+            DealDamage(target, context.TargetTile, damage, type, "Magic Dart");
 
             Debug.Log($"[Magic Dart] '{context.Caster.CharacterName}' dealt {damage} {type} damage to '{target.CharacterName}'. " +
                       $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}/{target.CharacterStats.MaxHealthPoints}");
-
-            if (target.CharacterStats.HealthPoints <= 0)
-            {
-                Debug.Log($"[Magic Dart] '{target.CharacterName}' has been defeated!");
-                context.TargetTile.RemoveUnit();
-            }
 
             // Clear the cached roll so the next cast picks a fresh damage type.
             _resolvedType = null;
