@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using BaaroForce.ActMap;
 using BaaroForce.Characters;
 using BaaroForce.Party;
 using BaaroForce.Relics;
@@ -31,6 +32,10 @@ namespace BaaroForce.GameController
         public BaaroForce.Party.Party Party { get; private set; }
         public List<Relic> Relics { get; private set; } = new List<Relic>();
 
+        /// <summary>The Act 1 map and run progress. Created fresh in Awake/ResetForNewRun
+        /// alongside Party.</summary>
+        public ActRunState ActRun { get; private set; }
+
         /// <summary>The Realm chosen for this game session. Null until set by MainMenu.</summary>
         public Realm? CurrentRealm { get; private set; }
 
@@ -48,6 +53,8 @@ namespace BaaroForce.GameController
         {
             ClearParty();
             Depth = 1;
+            Relics.Clear();
+            ActRun = new ActRunState();
         }
 
         private void Awake()
@@ -60,6 +67,7 @@ namespace BaaroForce.GameController
             _instance = this;
             DontDestroyOnLoad(gameObject);
             Party = new BaaroForce.Party.Party(new List<Character>(), maximumPartySize: 4);
+            ActRun = new ActRunState();
         }
 
         /// <summary>Returns true if the member was added, false if the party is full.</summary>

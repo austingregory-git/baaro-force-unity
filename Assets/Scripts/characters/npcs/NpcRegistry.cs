@@ -13,6 +13,9 @@ namespace BaaroForce.Characters
         private static readonly List<Func<Npc>> _factories = new List<Func<Npc>>
         {
             () => new Wolf(),
+            () => new MozeemGuardian(),
+            () => new MozeemElder(),
+            () => new MozeemArcher(),
         };
 
         /// <summary>Returns the full list of Npc factory functions.</summary>

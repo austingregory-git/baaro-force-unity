@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using BaaroForce.Animations;
 using BaaroForce.Classes;
+using BaaroForce.Items;
 using BaaroForce.Passives;
 using BaaroForce.Spells;
 using BaaroForce.Statuses;
 using BaaroForce.Map;
 using BaaroForce.UI;
+using BaaroForce.Utils;
 
 namespace BaaroForce.Characters
 {
@@ -19,7 +21,7 @@ namespace BaaroForce.Characters
         public List<Realm> CharacterRealms { get; set; }
         public List<PassiveAbility> CharacterPassiveAbilities { get; set; }
         public List<Spell> CharacterSpells { get; set; }
-        //public List<Equipment> characterEquipment { get; set; }
+        public List<Equipment> CharacterEquipment { get; } = new List<Equipment>();
         /// <summary>Resources-relative path to this character's profile picture sprite,
         /// used by CharacterSelectionManager to render its card portrait.</summary>
         public string CharacterProfilePicPath { get; set; }
@@ -34,6 +36,15 @@ namespace BaaroForce.Characters
 
         /// <summary>Current level; used for spell and ability power scaling. Defaults to 1.</summary>
         public int Level { get; set; } = 1;
+
+        /// <summary>Experience banked toward the next level-up. See <see cref="GrantExperience"/>.</summary>
+        public int Experience { get; private set; }
+
+        /// <summary>True once this character has reached Level 5 and is awaiting a class
+        /// promotion choice (see <see cref="Promote"/>) — surfaced by ActMapController.</summary>
+        public bool HasPendingPromotion { get; private set; }
+
+        private const int ExperiencePerLevel = 10;
 
         /// <summary>Grid direction (dx,dz) this unit is currently facing, updated whenever it
         /// moves (see TurnManager.MoveUnitAlongPath). Used by positional effects like Backstab.
@@ -286,7 +297,131 @@ namespace BaaroForce.Characters
             ClassSpell classSpell = SpellRegistry.GetRandomClassSpell(characterClass?.ClassID);
             if (classSpell != null)
                 this.CharacterSpells.Add(classSpell);
-            //this.characterEquipment = characterEquipment ?? new List<Equipment>();
+        }
+
+        // ------------------------------------------------------------------ //
+        // Equipment                                                            //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Grants a piece of equipment and immediately applies its stat bonuses — there is no
+        /// separate loadout/unequip step yet, so being granted an item is equivalent to
+        /// equipping it.
+        /// </summary>
+        public void AddEquipment(Equipment equipment)
+        {
+            if (equipment == null) return;
+            CharacterEquipment.Add(equipment);
+            ApplyEquipmentBonuses(equipment);
+        }
+
+        /// <summary>
+        /// Upgrades an already-held piece of equipment to its "+" variant (see
+        /// <see cref="Equipment.Upgrade"/>) in place — removes the original's stat bonuses,
+        /// replaces it with the upgraded copy in <see cref="CharacterEquipment"/>, and applies
+        /// the upgraded bonuses. Returns the upgraded item, or null if this character doesn't
+        /// hold <paramref name="equipment"/>.
+        /// </summary>
+        public Equipment UpgradeEquipment(Equipment equipment)
+        {
+            int index = CharacterEquipment.IndexOf(equipment);
+            if (index < 0) return null;
+
+            RemoveEquipmentBonuses(equipment);
+            Equipment upgraded = equipment.Upgrade();
+            CharacterEquipment[index] = upgraded;
+            ApplyEquipmentBonuses(upgraded);
+            return upgraded;
+        }
+
+        private void ApplyEquipmentBonuses(Equipment equipment)
+        {
+            CharacterStats.MaxHealthPoints += equipment.HealthBonus;
+            CharacterStats.HealthPoints    += equipment.HealthBonus;
+            CharacterStats.AttackBonus     += equipment.AttackBonus;
+            CharacterStats.SpellPowerBonus += equipment.SpellPowerBonus;
+            CharacterStats.MaxMana         += equipment.ManaBonus;
+            CharacterStats.Mana            += equipment.ManaBonus;
+            CharacterStats.Movement        += equipment.MovementBonus;
+        }
+
+        private void RemoveEquipmentBonuses(Equipment equipment)
+        {
+            CharacterStats.MaxHealthPoints -= equipment.HealthBonus;
+            CharacterStats.HealthPoints    = Mathf.Min(CharacterStats.HealthPoints, CharacterStats.MaxHealthPoints);
+            CharacterStats.AttackBonus     -= equipment.AttackBonus;
+            CharacterStats.SpellPowerBonus -= equipment.SpellPowerBonus;
+            CharacterStats.MaxMana         -= equipment.ManaBonus;
+            CharacterStats.Mana            = Mathf.Min(CharacterStats.Mana, CharacterStats.MaxMana);
+            CharacterStats.Movement        -= equipment.MovementBonus;
+        }
+
+        // ------------------------------------------------------------------ //
+        // Experience, leveling, and class promotion                           //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Banks experience and applies as many level-ups as it covers (a single grant can
+        /// cross more than one level, e.g. a 20xp boss-fight reward from Level 1). Each
+        /// level-up rolls a class-growth-weighted stat increase (see <see cref="LevelUtils"/>),
+        /// grants a random class talent at Level 3, and flags <see cref="HasPendingPromotion"/>
+        /// at Level 5 for the Act Map to resolve.
+        /// </summary>
+        public void GrantExperience(int amount)
+        {
+            if (amount <= 0) return;
+            Experience += amount;
+            while (Experience >= ExperiencePerLevel)
+            {
+                Experience -= ExperiencePerLevel;
+                LevelUp();
+            }
+        }
+
+        private void LevelUp()
+        {
+            Level++;
+            if (CharacterClass != null)
+                LevelUtils.LevelUp(CharacterStats, CharacterClass.ClassGrowthWeights, 1);
+            Debug.Log($"[{GetType().Name}] '{CharacterName}' reached level {Level}.");
+
+            if (Level == 3)
+            {
+                PassiveAbility talent = PassiveAbilityRegistry.GetRandomClassPassive(CharacterClass?.ClassID);
+                if (talent != null)
+                {
+                    CharacterPassiveAbilities.Add(talent);
+                    Debug.Log($"[{GetType().Name}] '{CharacterName}' learned the talent '{talent.Name}'.");
+                }
+            }
+            else if (Level == 5)
+            {
+                HasPendingPromotion = true;
+            }
+        }
+
+        /// <summary>
+        /// Resolves a pending Level-5 promotion into <paramref name="targetClassID"/> (one of
+        /// <see cref="ClassTree.GetPromotions"/> for this character's current class). Falls
+        /// back to a <see cref="PlaceholderCharacterClass"/> when the target has no concrete
+        /// <see cref="CharacterClass"/> registered yet — most promotion targets don't, today —
+        /// and grants a random class spell for the new class if one is registered.
+        /// </summary>
+        public void Promote(string targetClassID)
+        {
+            CharacterClass target = ClassRegistry.Get(targetClassID) ?? new PlaceholderCharacterClass(
+                targetClassID,
+                CharacterClass?.ClassTier ?? CharacterClass.Tier.TierTwo,
+                CharacterClass?.Specialty ?? CharacterClass.ClassSpecialty.Melee);
+
+            CharacterClass = target;
+            HasPendingPromotion = false;
+
+            ClassSpell spell = SpellRegistry.GetRandomClassSpell(targetClassID);
+            if (spell != null)
+                CharacterSpells.Add(spell);
+
+            Debug.Log($"[{GetType().Name}] '{CharacterName}' promoted to '{targetClassID}'.");
         }
 
         /// <summary>

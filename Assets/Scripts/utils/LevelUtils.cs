@@ -1,27 +1,35 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 using BaaroForce.Classes;
 using BaaroForce.Characters;
 
 namespace BaaroForce.Utils
 {
-    public class LevelUtils : MonoBehaviour
+    /// <summary>Applies class-growth-weighted stat gains on level-up (see
+    /// <see cref="BaaroForce.Characters.Character.GrantExperience"/>).</summary>
+    public static class LevelUtils
     {
-
-        private readonly System.Random _random = new System.Random();
-
-        CharacterStats LevelUp(CharacterStats characterStats, ClassGrowthWeights weights, int newLevel)
+        /// <summary>
+        /// Rolls one stat increase (health, attack, or mana) weighted by <paramref name="weights"/>
+        /// for each of <paramref name="levelsGained"/> new levels, mutating and returning
+        /// <paramref name="characterStats"/> in place.
+        /// </summary>
+        public static CharacterStats LevelUp(CharacterStats characterStats, ClassGrowthWeights weights, int levelsGained)
         {
-            for (int i = 0; i < newLevel; i++)
+            for (int i = 0; i < levelsGained; i++)
             {
-                double roll = _random.NextDouble();
+                double roll = Random.value;
                 if (roll < weights.HealthPointsGrowthWeight)
+                {
+                    characterStats.MaxHealthPoints++;
                     characterStats.HealthPoints++;
+                }
                 else if (roll < weights.HealthPointsGrowthWeight + weights.BaseAttackGrowthWeight)
                     characterStats.BaseAttack++;
                 else
+                {
+                    characterStats.MaxMana++;
                     characterStats.Mana++;
+                }
             }
             return characterStats;
         }

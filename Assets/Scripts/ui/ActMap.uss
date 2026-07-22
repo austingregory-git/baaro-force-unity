@@ -1,0 +1,179 @@
+/* =====================================================================
+   ActMap.uss
+   Act Map node-spine layout, layered on top of CombatHud.uss's chassis/
+   rivet/action-btn/fight-result-* language so modals (Decree, Event,
+   Village, ...) reuse that dark/gold vocabulary instead of inventing a
+   parallel one.
+   ===================================================================== */
+
+.act-map-root {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgb(14, 10, 16);
+    align-items: center;
+}
+
+.act-map-header {
+    margin-top: 18px;
+    margin-bottom: 6px;
+    align-items: center;
+}
+
+.act-map-title {
+    font-size: 26px;
+    -unity-font-style: bold;
+    color: rgb(232, 194, 94);
+}
+
+.act-map-subtitle {
+    font-size: 13px;
+    color: rgba(243, 230, 200, 0.7);
+    margin-top: 2px;
+}
+
+.act-map-gold {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    font-size: 16px;
+    -unity-font-style: bold;
+    color: rgb(232, 194, 94);
+    background-color: rgba(24, 17, 27, 0.85);
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: rgb(201, 163, 90);
+    padding: 6px 14px;
+}
+
+.act-map-scroll {
+    width: 100%;
+    flex-grow: 1;
+}
+
+.act-map-column {
+    flex-direction: column-reverse;
+    align-items: center;
+    padding: 24px 0;
+}
+
+.act-map-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.act-map-connector {
+    width: 4px;
+    height: 26px;
+    background-color: rgba(201, 163, 90, 0.35);
+    margin-bottom: 8px;
+}
+
+.act-fork-gap {
+    width: 28px;
+    font-size: 11px;
+    color: rgba(243, 230, 200, 0.5);
+    -unity-text-align: middle-center;
+}
+
+/* ---------------- Node badges ------------------------------------------ */
+
+.act-node-wrap {
+    align-items: center;
+    margin: 0 10px;
+}
+
+.act-node {
+    width: 72px;
+    height: 72px;
+    border-radius: 36px;
+    background-color: rgb(24, 17, 27);
+    border-width: 3px;
+    border-color: rgb(90, 78, 70);
+    -unity-background-scale-mode: scale-to-fit;
+    padding: 12px;
+    justify-content: center;
+    align-items: center;
+}
+
+.act-node-label {
+    margin-top: 4px;
+    font-size: 10px;
+    -unity-font-style: bold;
+    color: rgba(243, 230, 200, 0.8);
+    -unity-text-align: middle-center;
+    max-width: 90px;
+    white-space: normal;
+}
+
+.act-node-current {
+    border-color: rgb(232, 194, 94);
+    border-width: 4px;
+}
+.act-node-current:hover { background-color: rgb(40, 30, 44); }
+
+.act-node-completed {
+    border-color: rgb(120, 140, 110);
+    opacity: 0.55;
+}
+
+.act-node-locked {
+    border-color: rgb(60, 52, 58);
+    opacity: 0.35;
+}
+
+.act-node-elite  { border-color: rgb(199, 100, 90); }
+.act-node-boss   { border-color: rgb(232, 194, 94); }
+
+/* ---------------- Modal content (fills .fight-result-chassis) --------- */
+
+.act-modal-wide { width: 460px; }
+
+.act-modal-description {
+    font-size: 14px;
+    color: rgba(243, 230, 200, 0.85);
+    white-space: normal;
+    margin-bottom: 16px;
+    -unity-text-align: upper-center;
+}
+
+.act-choice-row {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 0 0 8px 0;
+}
+.act-choice-row:hover { background-color: rgba(255, 255, 255, 0.16); }
+
+.act-choice-label {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+}
+
+.act-choice-sub {
+    font-size: 11px;
+    color: rgba(243, 230, 200, 0.6);
+    margin-top: 2px;
+    white-space: normal;
+}
+
+.act-tab-row {
+    flex-direction: row;
+    width: 100%;
+    margin-bottom: 14px;
+}
+
+.act-tab-btn {
+    flex-grow: 1;
+    margin: 0 3px;
+}
+
+.act-tab-btn-active {
+    background-color: rgba(201, 163, 90, 0.35);
+    color: rgb(232, 194, 94);
+}

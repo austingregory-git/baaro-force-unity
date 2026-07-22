@@ -16,13 +16,19 @@ namespace BaaroForce.Passives
                 { "Bubble Shield",   new BubbleShield()   },
             };
 
-        // ── Class-based spell pool ─────────────────────────────────────────
+        // ── Class-based talent pool ────────────────────────────────────────
         // Maps classID → factories so each character receives a fresh instance.
-        // Add new class spells here alongside the class that grants them.
+        // Drawn from at Level 3 (see Character.GrantExperience). Seeded with existing
+        // "signature" passives reused as generic class talents — a foundation pool
+        // until dedicated tier-1 talents are authored per class.
         private static readonly Dictionary<string, List<Func<PassiveAbility>>> _byClass =
             new Dictionary<string, List<Func<PassiveAbility>>>
             {
-                
+                { "Warrior", new List<Func<PassiveAbility>> { () => new BurningShield(), () => new AutumnalGrowth() } },
+                { "Rogue",   new List<Func<PassiveAbility>> { () => new InTheTrees(),    () => new BubbleShield()   } },
+                { "Mage",    new List<Func<PassiveAbility>> { () => new BubbleShield(),  () => new AutumnalGrowth() } },
+                { "Archer",  new List<Func<PassiveAbility>> { () => new LongBow(),       () => new InTheTrees()     } },
+                { "Mystic",  new List<Func<PassiveAbility>> { () => new AutumnalGrowth(),() => new SpiritualProtector() } },
             };
 
         // ------------------------------------------------------------------ //

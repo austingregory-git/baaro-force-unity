@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using BaaroForce.ActMap;
+using BaaroForce.ActMap.Encounters;
 using BaaroForce.Animations;
 using BaaroForce.Characters;
 using BaaroForce.Classes;
@@ -170,15 +172,32 @@ namespace BaaroForce.Map
                 SceneManager.LoadScene("MainMenu");
             };
             _fightResultUI.OnMoveOn = () =>
-                Debug.Log("[TurnManager] Move on — not yet implemented.");
+            {
+                PartyManager.Instance.ActRun.PendingEncounter = null;
+                PartyManager.Instance.ActRun.CompleteCurrentNode();
+                SceneManager.LoadScene("ActMapScene");
+            };
             _fightResultUI.OnLootClaimed = ClaimLoot;
         }
 
         private static void ClaimLoot(LootEntry entry)
         {
             if (entry.Type == LootType.Gold)
+            {
                 PartyManager.Instance.Party.AddGold(entry.Amount);
-            // Item loot has no inventory to add to yet — nothing to do until one exists.
+                return;
+            }
+
+            if (entry.Equipment != null)
+            {
+                var members = PartyManager.Instance.Party.Members;
+                if (members.Count > 0)
+                    members[UnityEngine.Random.Range(0, members.Count)].AddEquipment(entry.Equipment);
+            }
+            else if (entry.Potion != null)
+            {
+                PartyManager.Instance.Party.Potions.Add(entry.Potion);
+            }
         }
 
         // ------------------------------------------------------------------ //
@@ -1323,7 +1342,17 @@ namespace BaaroForce.Map
             {
                 Debug.Log("[TurnManager] All enemies defeated. Fight won!");
                 int depth = PartyManager.Instance.Depth;
-                List<LootEntry> loot = FightRewardGenerator.Generate(depth);
+                // Falls back to a Normal-tier reward shape when testing MapScene standalone,
+                // outside the Act Map flow (no PendingEncounter set) — mirrors the RealmType
+                // override pattern in MapGenerator.Start().
+                EncounterPoolTier tier = PartyManager.Instance.ActRun?.PendingEncounter?.Tier ?? EncounterPoolTier.Normal2;
+
+                List<LootEntry> loot = FightRewardGenerator.Generate(depth, tier);
+                int xp = FightRewardGenerator.GetExperience(tier);
+                foreach (Character member in members)
+                    if (member.CharacterStats.HealthPoints > 0)
+                        member.GrantExperience(xp);
+
                 PartyManager.Instance.AdvanceDepth();
                 _fightResultUI?.ShowFightWon(loot);
             }

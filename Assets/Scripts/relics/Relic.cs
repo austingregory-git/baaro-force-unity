@@ -1,21 +1,24 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+using BaaroForce.Items;
 
 namespace BaaroForce.Relics
 {
-    public class Relic : MonoBehaviour
+    /// <summary>
+    /// A passive run-wide reward carried in <see cref="BaaroForce.GameController.PartyManager.Relics"/>.
+    /// Plain C# class (was an empty, unused MonoBehaviour stub) so it matches the rest of the
+    /// data model. TurnManager.CheckAndHandleTurnStartRelics/CheckAndHandleTurnEndRelics remain
+    /// no-op hooks for future relic effects — this pass only adds the data shape and a seed pool.
+    /// </summary>
+    public class Relic
     {
-        // Start is called before the first frame update
-        void Start()
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public Rarity Rarity { get; set; }
+
+        public Relic(string name, string description, Rarity rarity)
         {
-
-        }
-
-        // Update is called once per frame
-        void Update()
-        {
-
+            Name = name;
+            Description = description;
+            Rarity = rarity;
         }
     }
 }

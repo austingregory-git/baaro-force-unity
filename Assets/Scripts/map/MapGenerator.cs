@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
+using BaaroForce.ActMap;
 using BaaroForce.Characters;
 using BaaroForce.GameController;
 
@@ -28,6 +29,9 @@ namespace BaaroForce.Map
         [FormerlySerializedAs("enemyPackStrength")]
         public int EnemyPackStrength = 2;
 
+        [Tooltip("Level applied to every spawned Npc.")]
+        public int EnemyLevel = 1;
+
         [Header("Tile Appearance")]
         [Tooltip("World-unit side length of each cube tile.")]
         [FormerlySerializedAs("tileSize")]
@@ -54,6 +58,18 @@ namespace BaaroForce.Map
             // Falls back to the Inspector value when testing MapScene in isolation.
             if (PartyManager.Instance.CurrentRealm.HasValue)
                 RealmType = PartyManager.Instance.CurrentRealm.Value;
+
+            // Same override pattern for the Fight/Elite/Boss node the Act Map just sent us
+            // here to resolve — falls back to the Inspector defaults when testing MapScene
+            // in isolation (no PendingEncounter set).
+            PendingEncounter pending = PartyManager.Instance.ActRun?.PendingEncounter;
+            if (pending != null)
+            {
+                RealmType         = pending.Realm;
+                MapSize           = pending.MapSize;
+                EnemyPackStrength = pending.TargetStrength;
+                EnemyLevel        = pending.EnemyLevel;
+            }
 
             GenerateMap();
         }
@@ -97,7 +113,7 @@ namespace BaaroForce.Map
             _deploymentManager.Initialize(_tiles, size, step, originX, originZ);
 
             // Build and place the enemy pack on the far side of the map.
-            List<Npc> enemyPack = EnemyPackBuilder.Build(EnemyPackStrength);
+            List<Npc> enemyPack = EnemyPackBuilder.Build(EnemyPackStrength, EnemyLevel);
             _deploymentManager.PlaceEnemyPack(enemyPack);
         }
 

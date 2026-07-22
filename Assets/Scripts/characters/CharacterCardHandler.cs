@@ -17,7 +17,7 @@ namespace BaaroForce.Characters
         IPointerExitHandler,
         IPointerClickHandler
     {
-        private const string MapSceneName = "MapScene";
+        private const string ActMapSceneName = "ActMapScene";
 
         // The hovered scale relative to base (10% larger).
         private const float HoverScale = 1.1f;
@@ -55,7 +55,10 @@ namespace BaaroForce.Characters
             if (eventData.button != PointerEventData.InputButton.Left) return;
 
             PartyManager.Instance.AddMember(Character);
-            SceneManager.LoadScene(MapSceneName);
+            // This card resolves whichever CharacterSelect node the Act Map is currently on
+            // (node 0, 2, or 12) — the map decides what comes next.
+            PartyManager.Instance.ActRun.CompleteCurrentNode();
+            SceneManager.LoadScene(ActMapSceneName);
         }
 
         // ------------------------------------------------------------------ //
