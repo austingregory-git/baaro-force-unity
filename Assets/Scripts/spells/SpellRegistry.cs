@@ -26,6 +26,16 @@ namespace BaaroForce.Spells
                 { "Arcane Beam",    new ArcaneBeam()   },
                 { "Bind",           new Bind()         },
                 { "Arcane Explosion", new ArcaneExplosion() },
+                { "Aim",            new Aim()          },
+                { "Craft Arrows",   new CraftArrows()  },
+                { "Double Shot",    new DoubleShot()   },
+                { "Piercing Shot",  new PiercingShot() },
+                { "Volley",         new Volley()       },
+                { "Heal",           new Heal()         },
+                { "Poison",         new Poison()       },
+                { "Rejuvenate",     new Rejuvenate()   },
+                { "Vine Lash",      new VineLash()     },
+                { "Empower",        new Empower()      },
             };
 
         // ── Class-based spell pool ─────────────────────────────────────────
@@ -43,6 +53,12 @@ namespace BaaroForce.Spells
                 { "Mage", new List<Func<ClassSpell>> {
                     () => new Meditate(), () => new MagicDart(), () => new ArcaneBeam(), () => new Bind(),
                     () => new ArcaneExplosion() } },
+                { "Archer", new List<Func<ClassSpell>> {
+                    () => new Aim(), () => new CraftArrows(), () => new DoubleShot(),
+                    () => new PiercingShot(), () => new Volley() } },
+                { "Mystic", new List<Func<ClassSpell>> {
+                    () => new Heal(), () => new Poison(), () => new Rejuvenate(),
+                    () => new VineLash(), () => new Empower() } },
             };
 
         // ------------------------------------------------------------------ //

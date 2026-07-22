@@ -6,6 +6,7 @@ using BaaroForce.Animations;
 using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Spells;
+using BaaroForce.Statuses;
 using BaaroForce.UI;
 using System;
 using UnityEngine.SceneManagement;
@@ -240,7 +241,14 @@ namespace BaaroForce.Map
             {
                 foreach (var passive in c.CharacterPassiveAbilities)
                 {
-                    if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.StartOfCombat)
+                    if (passive == null) continue;
+
+                    // Reset per-combat state for every passive, regardless of its trigger —
+                    // e.g. Spiritual Protector's "already healed this fight" flag, even
+                    // though its own AbilityType is OnAllyDamaged, not StartOfCombat.
+                    passive.OnCombatStart();
+
+                    if (passive.AbilityType == PassiveAbility.PassiveAbilityType.StartOfCombat)
                     {
                         Debug.Log($"[TurnManager] Executing start-of-combat passive '{passive.Name}' for character '{c.CharacterName}'.");
                         passive.Execute(new PassiveOnTurnContext(character: c, characterLevel: c.Level, characterTile: c.CharacterCurrentTile, allTiles: _tiles, gridSize: _gridSize));
@@ -766,17 +774,26 @@ namespace BaaroForce.Map
             }
         }
 
-        /// <summary>Attack range in Manhattan-distance _tiles based on class specialty.</summary>
+        /// <summary>Attack range in Manhattan-distance _tiles based on class specialty,
+        /// plus any range bonus from the character's passives (e.g. Hans's Long Bow).</summary>
         private int GetAttackRange(Character character)
         {
-            if (character.CharacterClass == null) return 1;
-            switch (character.CharacterClass.Specialty)
+            int baseRange;
+            if (character.CharacterClass == null)
             {
-                case CharacterClass.ClassSpecialty.Melee:  return 1;
-                case CharacterClass.ClassSpecialty.Magic:  return 2;
-                case CharacterClass.ClassSpecialty.Ranged: return 3;
-                default:                                   return 1;
+                baseRange = 1;
             }
+            else
+            {
+                switch (character.CharacterClass.Specialty)
+                {
+                    case CharacterClass.ClassSpecialty.Melee:  baseRange = 1; break;
+                    case CharacterClass.ClassSpecialty.Magic:  baseRange = 2; break;
+                    case CharacterClass.ClassSpecialty.Ranged: baseRange = 3; break;
+                    default:                                   baseRange = 1; break;
+                }
+            }
+            return baseRange + character.RangeBonus;
         }
 
         // ------------------------------------------------------------------ //
@@ -825,12 +842,20 @@ namespace BaaroForce.Map
             Color color = GetSpellHighlightColor(spell);
             int ox = origin.GridX, oz = origin.GridZ;
 
+            // Self counts as an Ally, so Ally/Both spells (e.g. Heal) may target the
+            // caster's own tile (dist 0); only Enemy spells require dist >= 1, since a
+            // caster can never be its own enemy target.
+            int minDist = spell.TargetType == SpellTargetType.Enemy ? 1 : 0;
+            // Include the caster's passive range bonus (e.g. Hans's Long Bow) alongside
+            // the spell's own range.
+            int effectiveRange = spell.Range + (_selectedCharacter?.RangeBonus ?? 0);
+
             for (int x = 0; x < _gridSize; x++)
             {
                 for (int z = 0; z < _gridSize; z++)
                 {
                     int dist = Mathf.Abs(x - ox) + Mathf.Abs(z - oz);
-                    if (dist <= 0 || dist > spell.Range) continue;
+                    if (dist < minDist || dist > effectiveRange) continue;
 
                     MapTile tile = _tiles[x, z];
 
@@ -851,7 +876,10 @@ namespace BaaroForce.Map
                 Mathf.Abs(_hoveredTile.GridX - _selectedTile.GridX) +
                 Mathf.Abs(_hoveredTile.GridZ - _selectedTile.GridZ);
 
-            if (distance == 0 || distance > _selectedSpell.Range)
+            // Include the caster's passive range bonus (e.g. Hans's Long Bow), same as
+            // ShowSpellRange, so the preview never rejects a tile the highlight allowed.
+            int effectiveRange = _selectedSpell.Range + (_selectedCharacter?.RangeBonus ?? 0);
+            if (distance == 0 || distance > effectiveRange)
                 return;
 
             // Dispatches on the spell's own AreaType (HorizontalLine, Cone, ...) so the preview
@@ -1446,18 +1474,44 @@ namespace BaaroForce.Map
 
             int damage = Mathf.Max(0, attacker.CharacterStats.TotalAttack);
 
+            // Aim (Archer) multiplies the damage of the attacker's next basic attack —
+            // consumed here the instant it's used, same pattern as Dodge/Bubble Shield.
+            int aimMultiplier = attacker.TryConsumeAim();
+            if (aimMultiplier != 1)
+            {
+                damage *= aimMultiplier;
+                Debug.Log($"[TurnManager] '{attacker.CharacterName}' consumes Aim, multiplying attack damage by {aimMultiplier}.");
+            }
+
             // Magic-specialty basic attacks (e.g. a Mage's wand hit) deal magical damage —
             // routed through TakeDamage so Dodge (a physical-evasion mechanic) doesn't apply,
             // same as every other magic-typed spell in the game.
             bool isMagic = attacker.CharacterClass != null &&
                            attacker.CharacterClass.Specialty == CharacterClass.ClassSpecialty.Magic;
-            int dealt = isMagic ? target.TakeDamage(damage) : target.TakePhysicalDamage(damage);
-            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, isMagic ? SpellType.Magical : SpellType.Physical);
+            SpellType damageType = isMagic ? SpellType.Magical : SpellType.Physical;
+
+            // Empower (Mystic) multiplies the attacker's next basic attack and swaps its
+            // damage type for a pre-rolled element — consumed here the instant it's used,
+            // same pattern as Aim. An empowered hit always bypasses Dodge, same reasoning
+            // as magic-specialty basic attacks above.
+            EmpowerStatus empower = attacker.TryConsumeEmpower();
+            bool empowered = empower != null;
+            if (empowered)
+            {
+                damage *= empower.Multiplier;
+                damageType = empower.DamageType;
+                Debug.Log($"[TurnManager] '{attacker.CharacterName}' consumes Empower, multiplying attack damage by {empower.Multiplier} and dealing {empower.DamageType} damage.");
+            }
+
+            int dealt = (isMagic || empowered) ? target.TakeDamage(damage) : target.TakePhysicalDamage(damage);
+            FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, damageType);
 
             Debug.Log($"[TurnManager] '{attacker.CharacterName}' attacks '{target.CharacterName}' "
                     + $"for {damage} damage ({dealt} after shield).  "
                     + $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}"
                     + $"/{target.CharacterStats.MaxHealthPoints}");
+
+            CheckAndHandleAllyDamagedPassives(target, targetTile);
 
             if (target.CharacterStats.HealthPoints <= 0)
             {
@@ -1480,6 +1534,67 @@ namespace BaaroForce.Map
                         receivingCharacterTile: target.CharacterCurrentTile,
                         allTiles: _tiles,
                         gridSize: _gridSize));
+                }
+            }
+        }
+
+        /// <summary>
+        /// After basic-attack damage lands on <paramref name="damagedAlly"/>, lets every
+        /// unit on their side (including themselves — Self is an Ally) react via an
+        /// OnAllyDamaged passive (e.g. Buggles' Spiritual Protector) — each passive is
+        /// responsible for its own range/health-threshold/once-per-combat checks, same as
+        /// every other passive owning its own effect logic. Runs even if the hit was
+        /// lethal, since this is called before the defeat check below, giving a reactive
+        /// heal a chance to save them first.
+        /// </summary>
+        private void CheckAndHandleAllyDamagedPassives(Character damagedAlly, MapTile damagedAllyTile)
+        {
+            if (damagedAlly == null || damagedAllyTile == null) return;
+
+            // No early-return on damagedAlly's HP here, even if this hit was lethal (<= 0) —
+            // this runs before the defeat check/removal below, so a reactive heal (e.g.
+            // Spiritual Protector saving a unit one-shot from over 50%) still has a chance
+            // to bring them back above 0 before they're finalised as defeated.
+            List<Character> allies = new List<Character>();
+            if (damagedAlly is Npc)
+            {
+                for (int x = 0; x < _gridSize; x++)
+                    for (int z = 0; z < _gridSize; z++)
+                    {
+                        Npc npc = _tiles[x, z]?.OccupyingNpc;
+                        if (npc != null) allies.Add(npc);
+                    }
+            }
+            else
+            {
+                var members = PartyManager.Instance?.Party?.Members;
+                if (members != null) allies.AddRange(members);
+            }
+
+            foreach (Character owner in allies)
+            {
+                // Self counts as an Ally — a character can trigger its own OnAllyDamaged
+                // passive (e.g. Buggles' Spiritual Protector healing himself, potentially
+                // saving himself from a lethal hit). Self is exempt from the "must be
+                // alive" check for the same reason damagedAlly is above: when owner is
+                // the one who was just one-shot, their HP is already <= 0 pending the
+                // passive's chance to heal them back. Other allies must still be alive to react.
+                bool isSelf = owner == damagedAlly;
+                if ((!isSelf && owner.CharacterStats.HealthPoints <= 0) || owner.CharacterCurrentTile == null)
+                    continue;
+
+                foreach (var passive in owner.CharacterPassiveAbilities)
+                {
+                    if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.OnAllyDamaged)
+                    {
+                        passive.Execute(new PassiveOnAllyDamagedContext(
+                            owner: owner,
+                            ownerTile: owner.CharacterCurrentTile,
+                            damagedAlly: damagedAlly,
+                            damagedAllyTile: damagedAllyTile,
+                            allTiles: _tiles,
+                            gridSize: _gridSize));
+                    }
                 }
             }
         }

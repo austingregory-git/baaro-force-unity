@@ -43,6 +43,8 @@ namespace BaaroForce.Spells
                 case SpellAreaType.Circle:
                     // Always centred on the caster — no tile is aimed.
                     return GetTrueCircleAreaTiles(casterTile, spell.Range, spell.Area, allTiles, gridSize, spell.IncludeOriginTile);
+                case SpellAreaType.Cross:
+                    return GetCrossTiles(casterTile, targetTile, spell.Range, spell.Area, allTiles, gridSize);
                 default:
                     // Unimplemented area types fall back to single-tile targeting.
                     return new List<MapTile> { targetTile };
@@ -282,6 +284,61 @@ namespace BaaroForce.Spells
                     if (x >= 0 && x < gridSize && z >= 0 && z < gridSize)
                         result.Add(allTiles[x, z]);
                 }
+            }
+
+            return result;
+        }
+
+        // ------------------------------------------------------------------ //
+        // Cross                                                               //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Returns a plus/cross-shaped area centred on <paramref name="targetTile"/>: the
+        /// target's own row extended <paramref name="area"/> tiles east/west, plus its own
+        /// column extended <paramref name="area"/> tiles north/south. Unlike
+        /// <see cref="GetConeTiles"/>/<see cref="GetVerticalLineTiles"/> the shape doesn't
+        /// depend on the caster's direction to the target — only where the target tile is.
+        /// <paramref name="casterTile"/>/<paramref name="range"/> are unused (kept for
+        /// signature parity with the other Get*Tiles helpers, which are all called
+        /// uniformly from <see cref="GetAreaTiles"/>); the caster-to-target range is
+        /// enforced separately during targeting.
+        ///
+        /// Example (area = 1) — target at (4,1), caster at (1,1):
+        /// <code>
+        ///   . . . . X .
+        ///   . C . X X X
+        ///   . . . . X .
+        /// </code>
+        /// </summary>
+        public static List<MapTile> GetCrossTiles(
+            MapTile casterTile,
+            MapTile targetTile,
+            int range,
+            int area,
+            MapTile[,] allTiles, int gridSize)
+        {
+            var result = new List<MapTile>();
+            if (targetTile == null) return result;
+
+            int tx = targetTile.GridX;
+            int tz = targetTile.GridZ;
+
+            // Horizontal arm — target's row, including the target tile itself.
+            for (int dx = -area; dx <= area; dx++)
+            {
+                int x = tx + dx;
+                if (x >= 0 && x < gridSize && tz >= 0 && tz < gridSize)
+                    result.Add(allTiles[x, tz]);
+            }
+
+            // Vertical arm — target's column, excluding dz == 0 (already added above).
+            for (int dz = -area; dz <= area; dz++)
+            {
+                if (dz == 0) continue;
+                int z = tz + dz;
+                if (tx >= 0 && tx < gridSize && z >= 0 && z < gridSize)
+                    result.Add(allTiles[tx, z]);
             }
 
             return result;

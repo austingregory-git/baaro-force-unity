@@ -9,7 +9,7 @@ namespace BaaroForce.Statuses
     /// </summary>
     public class RegenStatus : StatusEffect
     {
-        private readonly int _healAmount;
+        private int _healAmount;
 
         /// <param name="durationTurns">How many of the target's turns the effect lasts.</param>
         /// <param name="healAmount">How much health to regenerate each turn.</param>
@@ -37,6 +37,18 @@ namespace BaaroForce.Statuses
         public override void OnRemove(CharacterStats stats)
         {
             // No effect on remove
+        }
+
+        /// <summary>Re-applying Regen adds the new cast's heal-per-turn onto the existing
+        /// tick amount, rather than replacing it.</summary>
+        public override void Stack(StatusEffect incoming, CharacterStats stats)
+        {
+            base.Stack(incoming, stats);
+            if (incoming is RegenStatus regen)
+            {
+                _healAmount += regen._healAmount;
+                Description = $"Regenerates {_healAmount} health for {RemainingTurns} turns.";
+            }
         }
     }
 }

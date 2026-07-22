@@ -490,9 +490,10 @@ namespace BaaroForce.UI
 
             foreach (StatusEffect effect in character.ActiveEffects)
             {
+                string label = effect.Stacks > 1 ? $"{effect.Name} x{effect.Stacks}" : effect.Name;
                 var chip = new Label(effect.RemainingTurns >= 0
-                    ? $"{effect.Name} ({effect.RemainingTurns})"
-                    : effect.Name);
+                    ? $"{label} ({effect.RemainingTurns})"
+                    : label);
                 chip.AddToClassList("status-chip");
                 chip.AddToClassList(effect.EffectType switch
                 {

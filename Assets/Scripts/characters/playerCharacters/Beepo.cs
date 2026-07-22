@@ -7,7 +7,6 @@ namespace BaaroForce.Characters
 {
     public class Beepo : Character
     {
-        static readonly CharacterStats BeepoBaseStats = new CharacterStats(maxHealthPoints: 8, baseAttack: 2, maxMana: 4, movement: 3);
         static readonly string BeepoProfilePicPath = "beepo_profile_pic_128x128";
 
         static readonly SpriteKit BeepoSpriteKit = new SpriteKit(
@@ -24,7 +23,7 @@ namespace BaaroForce.Characters
             : base(
                 characterClass: ClassRegistry.Get("Warrior"),
                 characterName: "Beepo",
-                characterStats: BeepoBaseStats, 
+                characterStats: new CharacterStats(maxHealthPoints: 8, baseAttack: 2, maxMana: 4, movement: 3),
                 characterRealms: new List<Realm> { Realm.Fire }, 
                 characterPassiveAbilities: new List<PassiveAbility>()
                 {

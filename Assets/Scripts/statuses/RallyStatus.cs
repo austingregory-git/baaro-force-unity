@@ -9,7 +9,7 @@ namespace BaaroForce.Statuses
     /// </summary>
     public class RallyStatus : StatusEffect
     {
-        private readonly int _attackBoost;
+        private int _attackBoost;
 
         /// <param name="durationTurns">How many of the target's turns the effect lasts.</param>
         /// <param name="attackBoost">How much to increase attack by.</param>
@@ -38,6 +38,20 @@ namespace BaaroForce.Statuses
         {
             stats.AttackBonus -= _attackBoost;   // restore what OnApply added
             Debug.Log($"[RallyStatus] Removed. Attack decreased by {_attackBoost}. New attack: {stats.TotalAttack}");
+        }
+
+        /// <summary>Re-applying Rally adds the new cast's attack boost onto the existing
+        /// one, rather than replacing it.</summary>
+        public override void Stack(StatusEffect incoming, CharacterStats stats)
+        {
+            base.Stack(incoming, stats);
+            if (incoming is RallyStatus rally)
+            {
+                _attackBoost += rally._attackBoost;
+                stats.AttackBonus += rally._attackBoost;
+                Description = $"Increases attack by {_attackBoost} for {RemainingTurns} turns.";
+                Debug.Log($"[RallyStatus] Stacked. Attack increased by {rally._attackBoost} (total {_attackBoost}). New attack: {stats.TotalAttack}");
+            }
         }
     }
 }

@@ -42,8 +42,20 @@ namespace BaaroForce.Passives
             OnTargetedBySpell,
             OnCastingSpell,
             OnLevelUp,
+            /// <summary>A nearby ally (not this passive's owner) has just taken damage and
+            /// survived — see <see cref="PassiveOnAllyDamagedContext"/> and SpiritualProtector.</summary>
+            OnAllyDamaged,
             Custom
         }
+
+        /// <summary>
+        /// Called once at the start of every combat for every passive the character has,
+        /// regardless of <see cref="AbilityType"/> — separate from the StartOfCombat-gated
+        /// <see cref="Execute(PassiveOnTurnContext)"/> dispatch. Override to reset internal
+        /// per-combat state (e.g. a "used this fight already" flag) on passives whose actual
+        /// trigger is something else, like Spiritual Protector's OnAllyDamaged reaction.
+        /// </summary>
+        public virtual void OnCombatStart() { }
 
         /// <summary>
         /// Executes this passive ability's effects given the context.
@@ -61,6 +73,17 @@ namespace BaaroForce.Passives
             Debug.LogWarning($"[PassiveAbility] '{_name}' has no Execute implementation.");
             return false;
         }
+
+        public virtual bool Execute(PassiveOnAllyDamagedContext context)
+        {
+            Debug.LogWarning($"[PassiveAbility] '{_name}' has no Execute implementation.");
+            return false;
+        }
+
+        /// <summary>Bonus range (in tiles) this passive grants to its owner's basic attacks
+        /// and spells — e.g. Long Bow's +1. Additive across all of a character's passives;
+        /// most passives don't affect range and leave this at 0.</summary>
+        public virtual int RangeBonus => 0;
 
         /// <summary>
         /// Computes this passive's scaling numbers for <paramref name="owner"/> (the

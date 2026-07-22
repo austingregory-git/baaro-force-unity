@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet --version)",
+      "Bash(python3 -c \"import uuid; print\\(uuid.uuid4\\(\\).hex\\); print\\(uuid.uuid4\\(\\).hex\\)\")",
+      "Bash(powershell -NoProfile -Command \"[guid]::NewGuid\\(\\).ToString\\('N'\\); [guid]::NewGuid\\(\\).ToString\\('N'\\)\")",
+      "Bash(powershell -NoProfile -Command \"\\([guid]::NewGuid\\(\\).ToString\\('N'\\)\\).Length\")",
+      "Bash(powershell -NoProfile -Command \"[guid]::NewGuid\\(\\).ToString\\('N'\\)\")",
+      "PowerShell($g1 = [guid]::NewGuid\\(\\).ToString\\('N'\\); $g2 = [guid]::NewGuid\\(\\).ToString\\('N'\\); \"$g1 \\($\\($g1.Length\\)\\)\"; \"$g2 \\($\\($g2.Length\\)\\)\")",
+      "Bash(git check-ignore *)",
+      "Bash(python3 -c \"import uuid; print\\(uuid.uuid4\\(\\).hex\\)\")",
+      "Bash(openssl rand *)"
+    ]
+  }
+}

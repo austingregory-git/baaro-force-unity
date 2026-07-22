@@ -3,6 +3,7 @@ using UnityEngine;
 using BaaroForce.Characters;
 using BaaroForce.Formulas;
 using BaaroForce.Map;
+using BaaroForce.Statuses;
 using BaaroForce.UI;
 
 namespace BaaroForce.Spells
@@ -129,6 +130,29 @@ namespace BaaroForce.Spells
             }
 
             return dealt;
+        }
+
+        /// <summary>
+        /// Applies <paramref name="amount"/> healing to <paramref name="target"/> (clamped to
+        /// its max HP by <see cref="CharacterStats.Heal"/>) and shows the floating combat-text
+        /// number. The healing counterpart to <see cref="DealDamage"/> — every healing spell
+        /// should route through this instead of touching <c>HealthPoints</c> directly.
+        /// </summary>
+        /// <returns>The amount actually restored, after clamping to MaxHealthPoints.</returns>
+        protected static int ApplyHealing(Character target, MapTile targetTile, int amount, string logTag)
+        {
+            int healed = target.CharacterStats.Heal(amount);
+            FloatingCombatTextSystem.Instance?.ShowHeal(target, healed);
+            return healed;
+        }
+
+        /// <summary>
+        /// Applies a <see cref="PoisonStatus"/> dealing <paramref name="poisonAmount"/> damage
+        /// to <paramref name="target"/> at the start of each of its turns.
+        /// </summary>
+        protected static void ApplyPoison(Character target, MapTile targetTile, int poisonAmount, string logTag)
+        {
+            target.ApplyStatus(new PoisonStatus(poisonAmount));
         }
 
         /// <summary>

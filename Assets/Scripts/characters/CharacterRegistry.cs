@@ -16,6 +16,7 @@ namespace BaaroForce.Characters
             () => new Beepo(),
             () => new Shopu(),
             () => new Guppy(),
+            () => new Buggles(),
         };
 
         /// <summary>Returns the full list of character factory functions.</summary>

@@ -54,9 +54,26 @@ namespace BaaroForce.Characters
         /// <summary>True while a Root effect prevents this character from moving.</summary>
         public bool IsRooted => ActiveEffects.Exists(e => e.Name == "Root");
 
+        /// <summary>Bonus range (in tiles) added to this character's basic attacks and
+        /// spells by its passive abilities — see <see cref="PassiveAbility.RangeBonus"/>
+        /// (e.g. Long Bow).</summary>
+        public int RangeBonus
+        {
+            get
+            {
+                int bonus = 0;
+                foreach (PassiveAbility passive in CharacterPassiveAbilities)
+                    bonus += passive.RangeBonus;
+                return bonus;
+            }
+        }
+
         /// <summary>
         /// Applies a status effect to this character, calling its OnApply hook immediately.
-        /// If an effect of the same type is already active it is removed first.
+        /// If an effect of the same name is already active, the two are merged via
+        /// <see cref="StatusEffect.Stack"/> instead — see that method for how each status
+        /// folds a re-application into its existing instance (stacked magnitude, refreshed
+        /// duration, an extra banked charge, ...).
         /// </summary>
         public void ApplyStatus(StatusEffect effect)
         {
@@ -64,8 +81,12 @@ namespace BaaroForce.Characters
             {
                 if (ActiveEffects[i].Name == effect.Name)
                 {
-                    ActiveEffects[i].OnRemove(CharacterStats);
-                    ActiveEffects.RemoveAt(i);
+                    StatusEffect existing = ActiveEffects[i];
+                    existing.Stack(effect, CharacterStats);
+                    FloatingCombatTextSystem.Instance?.ShowStatus(this, effect.Name, effect.EffectType);
+                    Debug.Log($"[{GetType().Name}] '{CharacterName}' stacks {effect.Name} (now {existing.Stacks} stack(s), {existing.RemainingTurns} turn(s)).");
+                    SyncInvisibilityVisual();
+                    return;
                 }
             }
             effect.OnApply(CharacterStats);
@@ -143,6 +164,27 @@ namespace BaaroForce.Characters
             return dealt;
         }
 
+        /// <summary>
+        /// Removes a single banked charge from a stacked charge-based effect at
+        /// <paramref name="index"/> in <see cref="ActiveEffects"/> — if more than one stack
+        /// remains only the charge counter is decremented (see StatusEffect.ConsumeStack),
+        /// otherwise the effect is fully removed via OnRemove, same as expiry. Shared by
+        /// every "consume the next X" status: Dodge, Bubble Shield, Aim, Empower.
+        /// </summary>
+        private void ConsumeOneCharge(int index)
+        {
+            StatusEffect effect = ActiveEffects[index];
+            if (effect.Stacks > 1)
+            {
+                effect.ConsumeStack();
+            }
+            else
+            {
+                effect.OnRemove(CharacterStats);
+                ActiveEffects.RemoveAt(index);
+            }
+        }
+
         /// <summary>Removes this character's active Dodge status (if any) and returns true if one was consumed.</summary>
         public bool TryConsumeDodge()
         {
@@ -150,12 +192,41 @@ namespace BaaroForce.Characters
             {
                 if (ActiveEffects[i].Name == "Dodge")
                 {
-                    ActiveEffects[i].OnRemove(CharacterStats);
-                    ActiveEffects.RemoveAt(i);
+                    ConsumeOneCharge(i);
                     return true;
                 }
             }
             return false;
+        }
+
+        /// <summary>Removes this character's active Aim status (if any) and returns its damage
+        /// multiplier — 1 (no change) if none was active. Consumed by TurnManager.ResolveBasicAttack.</summary>
+        public int TryConsumeAim()
+        {
+            for (int i = ActiveEffects.Count - 1; i >= 0; i--)
+            {
+                if (ActiveEffects[i] is AimStatus aim)
+                {
+                    ConsumeOneCharge(i);
+                    return aim.Multiplier;
+                }
+            }
+            return 1;
+        }
+
+        /// <summary>Removes this character's active Empower status (if any) and returns it —
+        /// null if none was active. Consumed by TurnManager.ResolveBasicAttack.</summary>
+        public EmpowerStatus TryConsumeEmpower()
+        {
+            for (int i = ActiveEffects.Count - 1; i >= 0; i--)
+            {
+                if (ActiveEffects[i] is EmpowerStatus empower)
+                {
+                    ConsumeOneCharge(i);
+                    return empower;
+                }
+            }
+            return null;
         }
 
         /// <summary>Removes this character's active Bubble Shield status (if any) and returns true if one was consumed.</summary>
@@ -165,8 +236,7 @@ namespace BaaroForce.Characters
             {
                 if (ActiveEffects[i].Name == "Bubble Shield")
                 {
-                    ActiveEffects[i].OnRemove(CharacterStats);
-                    ActiveEffects.RemoveAt(i);
+                    ConsumeOneCharge(i);
                     return true;
                 }
             }
