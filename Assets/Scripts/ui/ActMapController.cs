@@ -46,8 +46,11 @@ namespace BaaroForce.UI
         private Label _goldLabel;
 
         private VisualElement _modalOverlay;
+        private VisualElement _modalChassis;
         private VisualElement _modalContent;
         private Label _modalTitle;
+
+        private InventoryPanel _inventoryPanel;
 
         private void Awake()
         {
@@ -101,6 +104,30 @@ namespace BaaroForce.UI
             _scroll.Add(_mapPath);
 
             BuildModalShell();
+
+            _inventoryPanel = new InventoryPanel(_modalContent, OpenModal, CloseModal);
+            mapRoot.Add(MakeInventoryButton(() => _inventoryPanel.Open()));
+        }
+
+        /// <summary>Small square corner button that opens the Inventory — built from plain
+        /// VisualElements (a flap + body rectangle) rather than text, since the project has
+        /// no icon sprite assets yet. Swap in a real backpack sprite later the same way
+        /// .crest/.portrait document doing so: set backgroundImage on the returned element.</summary>
+        private static VisualElement MakeInventoryButton(Action onClick)
+        {
+            var button = new VisualElement();
+            button.AddToClassList("act-inventory-btn");
+            button.RegisterCallback<ClickEvent>(_ => onClick());
+
+            var flap = new VisualElement();
+            flap.AddToClassList("bag-icon-flap");
+            button.Add(flap);
+
+            var body = new VisualElement();
+            body.AddToClassList("bag-icon-body");
+            button.Add(body);
+
+            return button;
         }
 
         private void BuildModalShell()
@@ -110,24 +137,24 @@ namespace BaaroForce.UI
             _modalOverlay.style.display = DisplayStyle.None;
             _root.Add(_modalOverlay);
 
-            var chassis = new VisualElement();
-            chassis.AddToClassList("chassis");
-            chassis.AddToClassList("fight-result-chassis");
-            chassis.AddToClassList("act-modal-wide");
-            _modalOverlay.Add(chassis);
+            _modalChassis = new VisualElement();
+            _modalChassis.AddToClassList("chassis");
+            _modalChassis.AddToClassList("fight-result-chassis");
+            _modalChassis.AddToClassList("act-modal-wide");
+            _modalOverlay.Add(_modalChassis);
 
-            chassis.Add(MakeRivet("rivet-tl"));
-            chassis.Add(MakeRivet("rivet-tr"));
-            chassis.Add(MakeRivet("rivet-bl"));
-            chassis.Add(MakeRivet("rivet-br"));
+            _modalChassis.Add(MakeRivet("rivet-tl"));
+            _modalChassis.Add(MakeRivet("rivet-tr"));
+            _modalChassis.Add(MakeRivet("rivet-bl"));
+            _modalChassis.Add(MakeRivet("rivet-br"));
 
             _modalTitle = new Label();
             _modalTitle.AddToClassList("fight-result-title");
             _modalTitle.AddToClassList("fight-result-title-win");
-            chassis.Add(_modalTitle);
+            _modalChassis.Add(_modalTitle);
 
             _modalContent = new VisualElement();
-            chassis.Add(_modalContent);
+            _modalChassis.Add(_modalContent);
         }
 
         private static VisualElement MakeRivet(string variantClass)
@@ -148,10 +175,11 @@ namespace BaaroForce.UI
 
         private void RefreshGold() => _goldLabel.text = $"{PartyManager.Instance.Party.Gold} Gold";
 
-        private void OpenModal(string title)
+        private void OpenModal(string title, bool wide = false)
         {
             _modalTitle.text = title;
             _modalContent.Clear();
+            _modalChassis.EnableInClassList("act-modal-inventory", wide);
             _modalOverlay.style.display = DisplayStyle.Flex;
         }
 
@@ -428,8 +456,8 @@ namespace BaaroForce.UI
                     CompleteAndRefresh();
                     break;
                 case RoyalDecreeOptionType.TwoCommonEquipment:
-                    ActChoiceEffects.GrantEquipmentToRandomMember(PartyManager.Instance, Rarity.Common);
-                    ActChoiceEffects.GrantEquipmentToRandomMember(PartyManager.Instance, Rarity.Common);
+                    ActChoiceEffects.GrantEquipment(PartyManager.Instance, Rarity.Common);
+                    ActChoiceEffects.GrantEquipment(PartyManager.Instance, Rarity.Common);
                     CompleteAndRefresh();
                     break;
                 case RoyalDecreeOptionType.ChooseWeapon:
@@ -448,7 +476,7 @@ namespace BaaroForce.UI
                 OpenModal("Choose a Weapon");
                 for (int i = 0; i < 3; i++)
                 {
-                    Equipment weapon = EquipmentRegistry.GetRandomOfSlot(Rarity.Common, EquipmentSlotType.Weapon);
+                    Equipment weapon = EquipmentRegistry.GetRandomOfSlot(Rarity.Common, EquipmentSlotType.MainHand);
                     var row = new VisualElement();
                     row.AddToClassList("act-choice-row");
                     var label = new Label(weapon.Name);
@@ -459,7 +487,8 @@ namespace BaaroForce.UI
                     row.Add(sub);
                     row.RegisterCallback<ClickEvent>(_ =>
                     {
-                        member.AddEquipment(weapon);
+                        Equipment previous = member.Equip(weapon);
+                        if (previous != null) PartyManager.Instance.Party.TryAddEquipment(previous);
                         CompleteAndRefresh();
                     });
                     _modalContent.Add(row);
@@ -609,12 +638,13 @@ namespace BaaroForce.UI
             else if (roll < rareChance + uncommonChance) rarity = Rarity.Uncommon;
 
             Equipment reward = EquipmentRegistry.GetRandom(rarity);
-            List<Character> members = PartyManager.Instance.Party.Members;
-            if (members.Count > 0)
-                members[UnityEngine.Random.Range(0, members.Count)].AddEquipment(reward);
+            bool added = PartyManager.Instance.Party.TryAddEquipment(reward);
 
             OpenModal("Treasure");
-            var label = new Label($"You found: {reward.Name} ({reward.Rarity})");
+            string message = added
+                ? $"You found: {reward.Name} ({reward.Rarity})"
+                : $"You found: {reward.Name} ({reward.Rarity}) — but your inventory is full. The treasure is lost.";
+            var label = new Label(message);
             label.AddToClassList("act-modal-description");
             _modalContent.Add(label);
             _modalContent.Add(MakeActionButton("Continue", CompleteAndRefresh));
@@ -669,9 +699,9 @@ namespace BaaroForce.UI
             body.Add(desc);
 
             AddShopEntry(body, "Common Equipment", 30,
-                () => ActChoiceEffects.GrantEquipmentToRandomMember(PartyManager.Instance, Rarity.Common));
+                () => ActChoiceEffects.GrantEquipment(PartyManager.Instance, Rarity.Common));
             AddShopEntry(body, "Uncommon Equipment", 60,
-                () => ActChoiceEffects.GrantEquipmentToRandomMember(PartyManager.Instance, Rarity.Uncommon));
+                () => ActChoiceEffects.GrantEquipment(PartyManager.Instance, Rarity.Uncommon));
             AddShopEntry(body, "Common Potion", 20,
                 () => ActChoiceEffects.GrantPotion(PartyManager.Instance, Rarity.Common));
             AddShopEntry(body, "Uncommon Potion", 40,
@@ -680,17 +710,25 @@ namespace BaaroForce.UI
 
         private void AddShopEntry(VisualElement body, string label, int cost, Action grant)
         {
+            bool hasSpace = PartyManager.Instance.Party.HasInventorySpace();
+
             var row = new VisualElement();
             row.AddToClassList("act-choice-row");
-            var l = new Label($"{label} — {cost} Gold");
+            if (!hasSpace) row.AddToClassList("act-choice-row-disabled");
+            var l = new Label($"{label} — {cost} Gold" + (hasSpace ? "" : "  (Inventory Full)"));
             l.AddToClassList("act-choice-label");
             row.Add(l);
-            row.RegisterCallback<ClickEvent>(_ =>
+
+            if (hasSpace)
             {
-                if (!PartyManager.Instance.Party.SpendGold(cost)) return;
-                grant();
-                RefreshGold();
-            });
+                row.RegisterCallback<ClickEvent>(_ =>
+                {
+                    if (!PartyManager.Instance.Party.SpendGold(cost)) return;
+                    grant();
+                    RefreshGold();
+                    RenderShop(body);
+                });
+            }
             body.Add(row);
         }
 

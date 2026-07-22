@@ -82,6 +82,10 @@ namespace BaaroForce.Map
                 for (int z = startZ; z < startZ + DeployHeight; z++)
                 {
                     MapTile tile = _tiles[x, z];
+                    // Skip impassable terrain (Mountain/Water/Ocean) — the deployment block is a
+                    // fixed rectangle with no terrain awareness, so without this a Water/Mountain
+                    // roll here would offer a deployment tile nobody could actually stand on.
+                    if (!TerrainInfoRegistry.IsPassable(tile.TerrainType, null)) continue;
                     tile.SetDeploymentZone(true);
                     _deploymentTiles.Add(tile);
                 }
@@ -111,8 +115,11 @@ namespace BaaroForce.Map
             var candidateTiles = new List<MapTile>();
             for (int x = 0; x < _gridSize; x++)
                 for (int z = _gridSize / 2; z < _gridSize; z++)
-                    if (!_tiles[x, z].IsOccupied)
-                        candidateTiles.Add(_tiles[x, z]);
+                {
+                    MapTile tile = _tiles[x, z];
+                    if (!tile.IsOccupied && TerrainInfoRegistry.IsPassable(tile.TerrainType, null))
+                        candidateTiles.Add(tile);
+                }
 
             // Fisher-Yates shuffle so selections are uniformly random.
             for (int i = candidateTiles.Count - 1; i > 0; i--)

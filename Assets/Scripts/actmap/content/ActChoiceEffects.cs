@@ -20,13 +20,12 @@ namespace BaaroForce.ActMap.Content
             manager.Relics.Add(RelicRegistry.GetRandom(rarity));
 
         public static void GrantPotion(PartyManager manager, Rarity rarity) =>
-            manager.Party.Potions.Add(PotionRegistry.GetRandom(rarity));
+            manager.Party.TryAddPotion(PotionRegistry.GetRandom(rarity));
 
-        public static void GrantEquipmentToRandomMember(PartyManager manager, Rarity rarity)
-        {
-            if (manager.Party.Members.Count == 0) return;
-            var member = manager.Party.Members[UnityEngine.Random.Range(0, manager.Party.Members.Count)];
-            member.AddEquipment(EquipmentRegistry.GetRandom(rarity));
-        }
+        /// <summary>Adds a random equipment roll to the party's shared inventory bag (see
+        /// <see cref="BaaroForce.Party.Party.TryAddEquipment"/>) rather than force-equipping a
+        /// random member — the player equips it themselves from the Inventory screen.</summary>
+        public static void GrantEquipment(PartyManager manager, Rarity rarity) =>
+            manager.Party.TryAddEquipment(EquipmentRegistry.GetRandom(rarity));
     }
 }

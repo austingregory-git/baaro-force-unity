@@ -37,7 +37,7 @@ namespace BaaroForce.ActMap.Content
                     new ActChoiceOption("Take the coin purse", "Grateful, the fisherfolk pay in full.",
                         m => { GrantGold(m, Gold); GrantPartyExperience(m, Xp); }),
                     new ActChoiceOption("Ask for gear instead", "They offer up a piece of equipment from their stores instead.",
-                        m => { GrantGold(m, Gold / 2); GrantPartyExperience(m, Xp); GrantEquipmentToRandomMember(m, Rarity.Common); }),
+                        m => { GrantGold(m, Gold / 2); GrantPartyExperience(m, Xp); GrantEquipment(m, Rarity.Common); }),
                 }) } },
 
             { Realm.Earth, new List<ActSideQuest> { new ActSideQuest(
@@ -59,7 +59,7 @@ namespace BaaroForce.ActMap.Content
                     new ActChoiceOption("Take the coin purse", "The trader is relieved and pays generously.",
                         m => { GrantGold(m, Gold); GrantPartyExperience(m, Xp); }),
                     new ActChoiceOption("Ask for gear instead", "The trader offers a piece of equipment salvaged from the cargo.",
-                        m => { GrantGold(m, Gold / 2); GrantPartyExperience(m, Xp); GrantEquipmentToRandomMember(m, Rarity.Common); }),
+                        m => { GrantGold(m, Gold / 2); GrantPartyExperience(m, Xp); GrantEquipment(m, Rarity.Common); }),
                 }) } },
 
             { Realm.Light, new List<ActSideQuest> { new ActSideQuest(

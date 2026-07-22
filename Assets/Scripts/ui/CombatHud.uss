@@ -718,3 +718,79 @@
     background-color: rgb(227, 91, 107);
     border-radius: 2px;
 }
+
+/* ---------------- Tile info panel (terrain + unit details on tile select) - */
+/* Bottom-right — the one corner the rest of the Combat HUD doesn't already
+   use (action panel + combat log hug bottom-left, warning toast sits
+   bottom-center, party frames run down each side). */
+
+.tile-info-panel {
+    position: absolute;
+    right: 2%;
+    bottom: 1.5%;
+    width: 260px;
+}
+
+.tile-info-chassis {
+    padding: 14px 14px 12px 14px;
+}
+
+.tile-info-name {
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+    margin-bottom: 2px;
+}
+
+.tile-info-desc {
+    font-size: 11px;
+    color: rgba(243, 230, 200, 0.7);
+    white-space: normal;
+    margin-bottom: 8px;
+}
+
+.tile-info-chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.tile-info-divider {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.12);
+    margin: 10px 0 8px 0;
+}
+
+.tile-info-unit-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.tile-info-unit-name {
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+    margin-right: 6px;
+}
+
+.tile-info-unit-tag {
+    font-size: 10px;
+    color: rgba(243, 230, 200, 0.6);
+}
+
+.tile-info-hp-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.tile-info-hp-bar.seg-bar {
+    width: 150px;
+    height: 11px;
+    margin-right: 8px;
+}
+
+.tile-info-hp-num {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+}

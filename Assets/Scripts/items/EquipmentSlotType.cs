@@ -1,11 +1,14 @@
 namespace BaaroForce.Items
 {
-    /// <summary>Which equipment slot an <see cref="Equipment"/> occupies. Weapons are a
-    /// subset of equipment rather than a separate concept, per the Act 1 design doc.</summary>
+    /// <summary>Which equipment slot an <see cref="Equipment"/> occupies. MainHand/OffHand
+    /// items may additionally be flagged as weapons via <see cref="Equipment.IsWeapon"/> —
+    /// OffHand covers non-weapon offhands too (shields, tomes).</summary>
     public enum EquipmentSlotType
     {
-        Weapon,
-        Armor,
-        Accessory
+        Helmet,
+        Chest,
+        Legs,
+        MainHand,
+        OffHand
     }
 }

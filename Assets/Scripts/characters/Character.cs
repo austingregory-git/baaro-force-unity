@@ -21,7 +21,26 @@ namespace BaaroForce.Characters
         public List<Realm> CharacterRealms { get; set; }
         public List<PassiveAbility> CharacterPassiveAbilities { get; set; }
         public List<Spell> CharacterSpells { get; set; }
-        public List<Equipment> CharacterEquipment { get; } = new List<Equipment>();
+        private readonly Dictionary<EquipmentSlotType, Equipment> _equippedSlots = new Dictionary<EquipmentSlotType, Equipment>();
+
+        private static readonly EquipmentSlotType[] AllEquipmentSlots =
+        {
+            EquipmentSlotType.Helmet, EquipmentSlotType.Chest, EquipmentSlotType.Legs,
+            EquipmentSlotType.MainHand, EquipmentSlotType.OffHand
+        };
+
+        /// <summary>Currently equipped items, one per slot, in a fixed Helmet/Chest/Legs/
+        /// MainHand/OffHand order. Read-only view over <see cref="_equippedSlots"/> — use
+        /// <see cref="Equip"/>/<see cref="Unequip"/> to change what's equipped.</summary>
+        public IEnumerable<Equipment> CharacterEquipment
+        {
+            get
+            {
+                foreach (EquipmentSlotType slot in AllEquipmentSlots)
+                    if (_equippedSlots.TryGetValue(slot, out Equipment equipped))
+                        yield return equipped;
+            }
+        }
         /// <summary>Resources-relative path to this character's profile picture sprite,
         /// used by CharacterSelectionManager to render its card portrait.</summary>
         public string CharacterProfilePicPath { get; set; }
@@ -329,33 +348,56 @@ namespace BaaroForce.Characters
         // Equipment                                                            //
         // ------------------------------------------------------------------ //
 
+        /// <summary>Returns whatever is currently equipped in <paramref name="slot"/>, or null
+        /// if that slot is empty.</summary>
+        public Equipment GetEquipped(EquipmentSlotType slot) =>
+            _equippedSlots.TryGetValue(slot, out Equipment equipped) ? equipped : null;
+
         /// <summary>
-        /// Grants a piece of equipment and immediately applies its stat bonuses — there is no
-        /// separate loadout/unequip step yet, so being granted an item is equivalent to
-        /// equipping it.
+        /// Equips <paramref name="equipment"/> into its slot, auto-swapping out whatever was
+        /// already there — the previous occupant's bonuses are removed first, the new item's
+        /// bonuses are applied, and the displaced item (or null if the slot was empty) is
+        /// returned so the caller can return it to the party's shared inventory bag.
         /// </summary>
-        public void AddEquipment(Equipment equipment)
+        public Equipment Equip(Equipment equipment)
         {
-            if (equipment == null) return;
-            CharacterEquipment.Add(equipment);
+            if (equipment == null) return null;
+
+            _equippedSlots.TryGetValue(equipment.SlotType, out Equipment previous);
+            if (previous != null) RemoveEquipmentBonuses(previous);
+
+            _equippedSlots[equipment.SlotType] = equipment;
             ApplyEquipmentBonuses(equipment);
+            return previous;
+        }
+
+        /// <summary>Removes and returns whatever is equipped in <paramref name="slot"/>, or
+        /// null if that slot was already empty.</summary>
+        public Equipment Unequip(EquipmentSlotType slot)
+        {
+            if (!_equippedSlots.TryGetValue(slot, out Equipment current)) return null;
+
+            RemoveEquipmentBonuses(current);
+            _equippedSlots.Remove(slot);
+            return current;
         }
 
         /// <summary>
-        /// Upgrades an already-held piece of equipment to its "+" variant (see
+        /// Upgrades an already-equipped piece of equipment to its "+" variant (see
         /// <see cref="Equipment.Upgrade"/>) in place — removes the original's stat bonuses,
-        /// replaces it with the upgraded copy in <see cref="CharacterEquipment"/>, and applies
-        /// the upgraded bonuses. Returns the upgraded item, or null if this character doesn't
-        /// hold <paramref name="equipment"/>.
+        /// replaces it with the upgraded copy in its slot, and applies the upgraded bonuses.
+        /// Returns the upgraded item, or null if this character doesn't currently have
+        /// <paramref name="equipment"/> equipped.
         /// </summary>
         public Equipment UpgradeEquipment(Equipment equipment)
         {
-            int index = CharacterEquipment.IndexOf(equipment);
-            if (index < 0) return null;
+            if (equipment == null) return null;
+            if (!_equippedSlots.TryGetValue(equipment.SlotType, out Equipment current) || current != equipment)
+                return null;
 
             RemoveEquipmentBonuses(equipment);
             Equipment upgraded = equipment.Upgrade();
-            CharacterEquipment[index] = upgraded;
+            _equippedSlots[equipment.SlotType] = upgraded;
             ApplyEquipmentBonuses(upgraded);
             return upgraded;
         }

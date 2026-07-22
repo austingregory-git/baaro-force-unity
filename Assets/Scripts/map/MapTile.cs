@@ -45,14 +45,19 @@ namespace BaaroForce.Map
         private GameObject _moveHighlightOverlay;
         private GameObject _attackHighlightOverlay;
         private GameObject _spellHighlightOverlay;
-        private GameObject _zoneOfControlOverlay;
-        private GameObject _hoverHighlightOverlay;
+        private GameObject _zoneOfControlOutline;
+        private GameObject _hoverOutline;
+        private GameObject _selectionOutline;
 
         private static readonly Color OverlayColor         = new Color(0.3f, 0.6f, 1f, 0.92f);
         private static readonly Color MoveHighlightColor    = new Color(0.3f, 0.6f, 1f, 0.92f);
         private static readonly Color AttackHighlightColor  = new Color(0.9f, 0.15f, 0.1f, 0.55f);
-        private static readonly Color ZoneOfControlColor    = new Color(1f, 0.65f, 0.1f, 0.35f);
+        private static readonly Color ZoneOfControlColor    = new Color(1f, 0.65f, 0.1f, 0.85f);
         private static readonly Color HoverHighlightColor   = new Color(0.79f, 0.64f, 0.35f, 0.8f);
+        // rgb(243,230,200) — the Combat HUD's own cream "important text" tone (see
+        // CombatHud.uss .unit-name/.stat-num). Reads as "selected" without colliding with
+        // any other tile color already in use (blue=move, red=attack, amber=ZoC, gold=hover).
+        private static readonly Color SelectionOutlineColor = new Color(0.953f, 0.902f, 0.784f, 0.95f);
 
         // ------------------------------------------------------------------ //
         // Lifecycle                                                           //
@@ -71,13 +76,115 @@ namespace BaaroForce.Map
             GridZ = z;
         }
 
-        /// <summary>Assigns the terrain colour to the cube's MeshRenderer material.</summary>
+        /// <summary>Assigns the terrain texture to the cube's MeshRenderer material and spawns
+        /// any terrain props (trees, mountain peak) on top of it.</summary>
         public void Initialize(TerrainTile.TerrainType type)
         {
             TerrainType = type;
             var mat = new Material(Shader.Find("Standard"));
-            mat.color = GetTerrainColor(type);
+            mat.mainTexture = TerrainTextureRegistry.GetTexture(type);
             GetComponent<MeshRenderer>().material = mat;
+
+            SpawnTerrainProps(type);
+        }
+
+        // ------------------------------------------------------------------ //
+        // Terrain props (trees, mountain peak)                                //
+        // ------------------------------------------------------------------ //
+
+        private static readonly Color TrunkColor    = new Color(0.36f, 0.24f, 0.14f);
+        private static readonly Color CanopyColor    = new Color(0.10f, 0.32f, 0.11f);
+        private static readonly Color PeakRockColor  = new Color(0.45f, 0.43f, 0.40f);
+        private static readonly Color PeakCapColor   = new Color(0.88f, 0.90f, 0.92f);
+
+        private void SpawnTerrainProps(TerrainTile.TerrainType type)
+        {
+            switch (type)
+            {
+                case TerrainTile.TerrainType.Forest:   SpawnForestProps();  break;
+                case TerrainTile.TerrainType.Mountain: SpawnMountainProp(); break;
+            }
+        }
+
+        /// <summary>2-3 small trees scattered around the tile. Parented to transform.parent
+        /// (the grid root), same trick PlaceUnit uses below — this tile's own transform has
+        /// non-uniform scale (TileSize, TileHeight, TileSize), so a prop parented directly to
+        /// it would have its height squashed by TileHeight (0.25 by default).</summary>
+        private void SpawnForestProps()
+        {
+            float tileWorldSize = transform.lossyScale.x;
+            float halfTileH     = transform.lossyScale.y * 0.5f;
+            Vector3 basePos     = transform.position + Vector3.up * halfTileH;
+
+            int treeCount = Random.Range(2, 4);
+            for (int i = 0; i < treeCount; i++)
+            {
+                Vector3 jitter = new Vector3(
+                    Random.Range(-0.28f, 0.28f), 0f, Random.Range(-0.28f, 0.28f)) * tileWorldSize;
+                BuildTree(basePos + jitter, tileWorldSize);
+            }
+        }
+
+        private void BuildTree(Vector3 worldPos, float tileWorldSize)
+        {
+            var root = new GameObject("Tree");
+            root.transform.SetParent(transform.parent, false);
+            root.transform.position = worldPos;
+
+            float trunkHeight = tileWorldSize * 0.22f;
+            GameObject trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            trunk.name = "Trunk";
+            Destroy(trunk.GetComponent<Collider>());
+            trunk.transform.SetParent(root.transform, false);
+            trunk.transform.localPosition = new Vector3(0f, trunkHeight * 0.5f, 0f);
+            trunk.transform.localScale    = new Vector3(tileWorldSize * 0.045f, trunkHeight * 0.5f, tileWorldSize * 0.045f);
+            trunk.GetComponent<MeshRenderer>().material = SolidMaterial(TrunkColor);
+
+            var canopy = new GameObject("Canopy");
+            canopy.transform.SetParent(root.transform, false);
+            canopy.transform.localPosition = new Vector3(0f, trunkHeight * 0.85f, 0f);
+            var canopyFilter   = canopy.AddComponent<MeshFilter>();
+            canopyFilter.mesh  = ProceduralMeshFactory.CreateCone(tileWorldSize * 0.16f, tileWorldSize * 0.32f, 8);
+            var canopyRenderer = canopy.AddComponent<MeshRenderer>();
+            canopyRenderer.material = SolidMaterial(CanopyColor);
+        }
+
+        /// <summary>One two-tone peak (grey rock base, pale cap overlapping its upper third)
+        /// centred on the tile. Same grid-root parenting as SpawnForestProps, for the same
+        /// non-uniform-scale reason.</summary>
+        private void SpawnMountainProp()
+        {
+            float tileWorldSize = transform.lossyScale.x;
+            float halfTileH     = transform.lossyScale.y * 0.5f;
+            Vector3 basePos     = transform.position + Vector3.up * halfTileH;
+
+            var root = new GameObject("MountainPeak");
+            root.transform.SetParent(transform.parent, false);
+            root.transform.position = basePos;
+
+            float baseRadius = tileWorldSize * 0.40f;
+            float baseHeight = tileWorldSize * 0.60f;
+            var baseCone = new GameObject("PeakBase");
+            baseCone.transform.SetParent(root.transform, false);
+            var baseFilter = baseCone.AddComponent<MeshFilter>();
+            baseFilter.mesh = ProceduralMeshFactory.CreateCone(baseRadius, baseHeight, 10);
+            baseCone.AddComponent<MeshRenderer>().material = SolidMaterial(PeakRockColor);
+
+            float capRadius = baseRadius * 0.42f;
+            float capHeight = baseHeight * 0.40f;
+            var capCone = new GameObject("PeakCap");
+            capCone.transform.SetParent(root.transform, false);
+            capCone.transform.localPosition = new Vector3(0f, baseHeight * 0.66f, 0f);
+            var capFilter = capCone.AddComponent<MeshFilter>();
+            capFilter.mesh = ProceduralMeshFactory.CreateCone(capRadius, capHeight, 10);
+            capCone.AddComponent<MeshRenderer>().material = SolidMaterial(PeakCapColor);
+        }
+
+        private static Material SolidMaterial(Color color)
+        {
+            var mat = new Material(Shader.Find("Standard"));
+            mat.color = color;
+            return mat;
         }
 
         // ------------------------------------------------------------------ //
@@ -194,40 +301,16 @@ namespace BaaroForce.Map
         }
 
         /// <summary>
-        /// Shows or hides a translucent amber warning overlay marking this tile as inside an
-        /// enemy's Zone of Control while it is NOT currently in the selected character's
-        /// movable range — i.e. there is no <see cref="SetMoveHighlight"/> overlay here to
-        /// recolor instead, so a separate low-alpha overlay is used to avoid ever stacking
-        /// two highlight quads on the same tile.
+        /// Shows or hides a thin amber line around this tile's top-face edges, marking it as
+        /// inside an enemy's Zone of Control while it is NOT currently in the selected
+        /// character's movable range — i.e. there is no <see cref="SetMoveHighlight"/> overlay
+        /// here to recolor instead. An outline rather than a filled overlay so the warning
+        /// reads clearly without covering the terrain underneath — less imposing than the
+        /// original translucent quad, in keeping with the outline being the norm for tile
+        /// highlighting now (see SetHoverHighlight/SetSelectionOutline).
         /// </summary>
-        public void SetZoneOfControlHighlight(bool active)
-        {
-            if (active)
-            {
-                if (_zoneOfControlOverlay != null) return;
-
-                _zoneOfControlOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                _zoneOfControlOverlay.name = "ZoneOfControlHighlight";
-                Destroy(_zoneOfControlOverlay.GetComponent<Collider>());
-
-                _zoneOfControlOverlay.transform.SetParent(transform, false);
-                _zoneOfControlOverlay.transform.localPosition = new Vector3(0f, 0.545f, 0f);
-                _zoneOfControlOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                _zoneOfControlOverlay.transform.localScale    = Vector3.one;
-
-                var mat = new Material(Shader.Find("Standard"));
-                ApplyTransparency(mat, ZoneOfControlColor);
-                _zoneOfControlOverlay.GetComponent<MeshRenderer>().material = mat;
-            }
-            else
-            {
-                if (_zoneOfControlOverlay != null)
-                {
-                    Destroy(_zoneOfControlOverlay);
-                    _zoneOfControlOverlay = null;
-                }
-            }
-        }
+        public void SetZoneOfControlHighlight(bool active) =>
+            SetOutline(ref _zoneOfControlOutline, active, ZoneOfControlColor, 0.545f);
 
         /// <summary>
         /// Shows or hides a coloured spell-range overlay on this tile.
@@ -264,38 +347,58 @@ namespace BaaroForce.Map
         }
 
         /// <summary>
-        /// Shows or hides a gold outline-style overlay marking this tile's occupant as the
-        /// currently hovered/targeted unit — driven by TurnManager regardless of whether the
-        /// hover came from the mouse over the 3D tile or a party-frame status bar (see
-        /// TurnManager.SetHoveredTarget). Sits above every other overlay (0.56) so it stays
-        /// visible even while a move/attack/spell/zone-of-control highlight is also active.
+        /// Shows or hides a thin gold line around this tile's top-face edges, marking its
+        /// occupant as the currently hovered/targeted unit — driven by TurnManager regardless
+        /// of whether the hover came from the mouse over the 3D tile or a party-frame status
+        /// bar (see TurnManager.SetHoveredTarget). Sits above every filled overlay (0.56) so
+        /// it stays visible even while a move/attack/spell/zone-of-control highlight is also
+        /// active, but below the selection outline (0.58).
         /// </summary>
-        public void SetHoverHighlight(bool active)
+        public void SetHoverHighlight(bool active) =>
+            SetOutline(ref _hoverOutline, active, HoverHighlightColor, 0.56f);
+
+        /// <summary>
+        /// Shows or hides a thin cream line around this tile's top-face edges, marking it as
+        /// the tile currently selected for inspection (see TurnManager.SetInspectedTile).
+        /// The "norm" for tile highlighting going forward — thin edge outline rather than a
+        /// filled overlay — so it can sit on top of every other highlight (0.58) without
+        /// obscuring the terrain texture or whatever's underneath it.
+        /// </summary>
+        public void SetSelectionOutline(bool active) =>
+            SetOutline(ref _selectionOutline, active, SelectionOutlineColor, 0.58f);
+
+        /// <summary>Shared implementation for the hover/selection edge-outline highlights — a
+        /// closed 4-point LineRenderer loop around the tile's top-face perimeter, parented the
+        /// same way the filled overlays are so it inherits the tile's world-space footprint.</summary>
+        private void SetOutline(ref GameObject outlineObj, bool active, Color color, float yOffset)
         {
             if (active)
             {
-                if (_hoverHighlightOverlay != null) return;
+                if (outlineObj != null) return;
 
-                _hoverHighlightOverlay = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                _hoverHighlightOverlay.name = "HoverHighlight";
-                Destroy(_hoverHighlightOverlay.GetComponent<Collider>());
+                outlineObj = new GameObject("TileOutline");
+                outlineObj.transform.SetParent(transform, false);
+                outlineObj.transform.localPosition = new Vector3(0f, yOffset, 0f);
 
-                _hoverHighlightOverlay.transform.SetParent(transform, false);
-                _hoverHighlightOverlay.transform.localPosition = new Vector3(0f, 0.56f, 0f);
-                _hoverHighlightOverlay.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                _hoverHighlightOverlay.transform.localScale    = Vector3.one;
-
-                var mat = new Material(Shader.Find("Standard"));
-                ApplyTransparency(mat, HoverHighlightColor);
-                _hoverHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
-            }
-            else
-            {
-                if (_hoverHighlightOverlay != null)
+                var lr = outlineObj.AddComponent<LineRenderer>();
+                lr.useWorldSpace  = false;
+                lr.loop           = true;
+                lr.positionCount  = 4;
+                lr.SetPositions(new[]
                 {
-                    Destroy(_hoverHighlightOverlay);
-                    _hoverHighlightOverlay = null;
-                }
+                    new Vector3(-0.5f, 0f, -0.5f),
+                    new Vector3( 0.5f, 0f, -0.5f),
+                    new Vector3( 0.5f, 0f,  0.5f),
+                    new Vector3(-0.5f, 0f,  0.5f),
+                });
+                lr.widthMultiplier = 0.045f;
+                lr.material         = new Material(Shader.Find("Sprites/Default"));
+                lr.startColor       = lr.endColor = color;
+            }
+            else if (outlineObj != null)
+            {
+                Destroy(outlineObj);
+                outlineObj = null;
             }
         }
 
@@ -397,30 +500,6 @@ namespace BaaroForce.Map
             mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
             mat.renderQueue = 3000;
             mat.color = color;
-        }
-
-        private static Color GetTerrainColor(TerrainTile.TerrainType type)
-        {
-            switch (type)
-            {
-                case TerrainTile.TerrainType.Grass:    return new Color(0.27f, 0.65f, 0.16f);
-                case TerrainTile.TerrainType.Forest:   return new Color(0.07f, 0.35f, 0.07f);
-                case TerrainTile.TerrainType.Mountain: return new Color(0.55f, 0.52f, 0.47f);
-                case TerrainTile.TerrainType.Water:    return new Color(0.12f, 0.46f, 0.78f);
-                case TerrainTile.TerrainType.Desert:   return new Color(0.93f, 0.84f, 0.45f);
-                case TerrainTile.TerrainType.Swamp:    return new Color(0.28f, 0.33f, 0.13f);
-                case TerrainTile.TerrainType.Volcano:  return new Color(0.72f, 0.16f, 0.05f);
-                case TerrainTile.TerrainType.Snow:     return new Color(0.92f, 0.96f, 1.00f);
-                case TerrainTile.TerrainType.Plains:   return new Color(0.70f, 0.84f, 0.40f);
-                case TerrainTile.TerrainType.Void:     return new Color(0.10f, 0.03f, 0.18f);
-                case TerrainTile.TerrainType.Ash:      return new Color(0.50f, 0.50f, 0.50f);
-                case TerrainTile.TerrainType.Lava:     return new Color(0.80f, 0.20f, 0.00f);
-                case TerrainTile.TerrainType.Tundra:   return new Color(0.85f, 0.90f, 0.95f);
-                case TerrainTile.TerrainType.Creek:    return new Color(0.15f, 0.40f, 0.70f);
-                case TerrainTile.TerrainType.Ocean:    return new Color(0.05f, 0.25f, 0.50f);
-                case TerrainTile.TerrainType.Meadow:   return new Color(0.30f, 0.70f, 0.20f);
-                default:                               return Color.white;
-            }
         }
     }
 }

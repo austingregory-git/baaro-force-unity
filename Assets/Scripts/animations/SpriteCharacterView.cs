@@ -17,7 +17,17 @@ namespace BaaroForce.Animations
         private SpriteRenderer _renderer;
         private Sprite _frontLeft, _frontRight, _backLeft, _backRight;
 
-        private void Awake() => _renderer = GetComponent<SpriteRenderer>();
+        // Terrain props (tree canopies, mountain peaks) are opaque 3D geometry that writes
+        // to the depth buffer — with the default sprite shader's normal ZTest, a prop
+        // standing between the camera and a unit would incorrectly occlude it. This shader
+        // is identical to Sprites/Default except it always draws on top (see
+        // Assets/Resources/SpriteAlwaysOnTop.shader) so units stay visible regardless of
+        // what terrain geometry is nearby.
+        private void Awake()
+        {
+            _renderer = GetComponent<SpriteRenderer>();
+            _renderer.material = new Material(Shader.Find("Custom/SpriteAlwaysOnTop"));
+        }
 
         /// <summary>Loads the kit's four directional sprites and orients this GameObject to face the (static) main camera.
         /// Enemies spawn facing the opposite iso direction from allies (BackLeft vs. FrontRight) so the two

@@ -105,16 +105,21 @@ namespace BaaroForce.Map
         private readonly List<MapTile> _spellPreviewTiles = new List<MapTile>();
 
         private Spell         _selectedSpell;
-        private ActionPanelUI  _actionPanel;
-        private SpellPanelUI   _spellPanel;
-        private WarningToastUI _warningToast;
-        private FightResultUI  _fightResultUI;
-        private LevelUpUI      _levelUpUI;
+        private ActionPanelUI   _actionPanel;
+        private SpellPanelUI    _spellPanel;
+        private WarningToastUI  _warningToast;
+        private FightResultUI   _fightResultUI;
+        private LevelUpUI       _levelUpUI;
+        private TileInfoPanelUI _tileInfoPanel;
         private bool           _isMoving;
         private bool           _fightEnded;
         private MapTile _hoveredTile;
         private Npc     _hoveredTarget;
         private MapTile _hoverHighlightTile;
+
+        /// <summary>The tile currently selected for inspection (see SetInspectedTile) —
+        /// distinct from _selectedTile, which is the acting character's tile for movement.</summary>
+        private MapTile _inspectedTile;
 
 
         private const float MoveSpeed = 5f;   // world-units per second
@@ -164,6 +169,8 @@ namespace BaaroForce.Map
 
             _warningToast = gameObject.AddComponent<WarningToastUI>();
 
+            _tileInfoPanel = gameObject.AddComponent<TileInfoPanelUI>();
+
             gameObject.AddComponent<CombatLogUI>();
 
             _fightResultUI = gameObject.AddComponent<FightResultUI>();
@@ -195,7 +202,7 @@ namespace BaaroForce.Map
             _fightResultUI.OnLootClaimed = ClaimLoot;
         }
 
-        private static void ClaimLoot(LootEntry entry)
+        private void ClaimLoot(LootEntry entry)
         {
             if (entry.Type == LootType.Gold)
             {
@@ -205,13 +212,13 @@ namespace BaaroForce.Map
 
             if (entry.Equipment != null)
             {
-                var members = PartyManager.Instance.Party.Members;
-                if (members.Count > 0)
-                    members[UnityEngine.Random.Range(0, members.Count)].AddEquipment(entry.Equipment);
+                if (!PartyManager.Instance.Party.TryAddEquipment(entry.Equipment))
+                    _warningToast?.Show($"Inventory full — '{entry.Equipment.Name}' was lost.");
             }
             else if (entry.Potion != null)
             {
-                PartyManager.Instance.Party.Potions.Add(entry.Potion);
+                if (!PartyManager.Instance.Party.TryAddPotion(entry.Potion))
+                    _warningToast?.Show($"Inventory full — '{entry.Potion.Name}' was lost.");
             }
         }
 
@@ -295,6 +302,8 @@ namespace BaaroForce.Map
         {
             foreach (Character c in members)
             {
+                ApplyTerrainEffects(c, c.CharacterCurrentTile);
+
                 foreach (var passive in c.CharacterPassiveAbilities)
                 {
                     Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{c.CharacterName}' at start of turn.");
@@ -396,6 +405,41 @@ namespace BaaroForce.Map
             if (_hoverHighlightTile != null) _hoverHighlightTile.SetHoverHighlight(true);
         }
 
+        // ------------------------------------------------------------------ //
+        // Tile inspection (selection outline + info panel)                    //
+        // ------------------------------------------------------------------ //
+
+        /// <summary>
+        /// Marks <paramref name="tile"/> as the tile currently selected for inspection —
+        /// moves the cream selection outline (see MapTile.SetSelectionOutline) onto it and
+        /// shows its terrain/unit info in the TileInfoPanelUI. Clicking the already-inspected
+        /// tile again toggles inspection off instead. Independent of _selectedTile (the
+        /// acting character's tile for movement) — inspecting a tile never affects, and is
+        /// never affected by, character selection or the current input mode.
+        /// </summary>
+        private void SetInspectedTile(MapTile tile)
+        {
+            if (_inspectedTile == tile)
+            {
+                ClearInspectedTile();
+                return;
+            }
+
+            if (_inspectedTile != null) _inspectedTile.SetSelectionOutline(false);
+            _inspectedTile = tile;
+            _inspectedTile.SetSelectionOutline(true);
+            _tileInfoPanel?.Show(tile);
+        }
+
+        /// <summary>Clears the current tile inspection, if any (outline + info panel).</summary>
+        private void ClearInspectedTile()
+        {
+            if (_inspectedTile == null) return;
+            _inspectedTile.SetSelectionOutline(false);
+            _inspectedTile = null;
+            _tileInfoPanel?.Hide();
+        }
+
         private bool TryGetTileUnderMouse(out MapTile tile)
         {
             tile = null;
@@ -477,6 +521,7 @@ namespace BaaroForce.Map
                     break;
 
                 default:
+                    SetInspectedTile(clicked);
                     if (clicked.OccupyingCharacter != null)
                         SelectCharacter(clicked.OccupyingCharacter, clicked);
                     else
@@ -579,6 +624,7 @@ namespace BaaroForce.Map
             {
                 SetMode(InputMode.None);
                 ShowActionPanel();
+                ClearInspectedTile();
                 return;
             }
 
@@ -1452,6 +1498,8 @@ namespace BaaroForce.Map
                 MapTile currentTile = FindNpcTile(npc);
                 if (currentTile == null) continue;
 
+                ApplyTerrainEffects(npc, currentTile);
+
                 var context = new NpcTurnContext(
                     npc:               npc,
                     currentTile:       currentTile,
@@ -1763,15 +1811,18 @@ namespace BaaroForce.Map
 
         /// <summary>
         /// Movement cost of a single cardinal step from <paramref name="from"/> to
-        /// <paramref name="to"/> for <paramref name="mover"/>. Costs 2 (instead of 1) if
-        /// <paramref name="from"/> lies within an enemy's Zone of Control (the 8 tiles
-        /// surrounding that enemy) and <paramref name="to"/> lies outside that same enemy's
-        /// zone — i.e. the step leaves the zone. Checking all enemies adjacent to
-        /// <paramref name="from"/> with an early-exit means overlapping enemy zones still
-        /// only double the cost once, never stack.
+        /// <paramref name="to"/> for <paramref name="mover"/>. Base cost is <paramref
+        /// name="to"/>'s terrain (see TerrainInfoRegistry — 2 for difficult terrain like
+        /// Forest/Swamp/Mountain/Snow, 1 otherwise), +1 more if <paramref name="from"/> lies
+        /// within an enemy's Zone of Control (the 8 tiles surrounding that enemy) and
+        /// <paramref name="to"/> lies outside that same enemy's zone — i.e. the step leaves
+        /// the zone. Checking all enemies adjacent to <paramref name="from"/> with an
+        /// early-exit means overlapping enemy zones still only add the +1 once, never stack.
         /// </summary>
         private int StepCost(MapTile from, MapTile to, Character mover)
         {
+            int cost = TerrainInfoRegistry.Get(to.TerrainType).MovementCost;
+
             foreach (MapTile t in SpellAreaUtils.GetCircleAroundTiles(from, 1, _tiles, _gridSize))
             {
                 Character occupant = t.OccupyingUnit;
@@ -1779,9 +1830,25 @@ namespace BaaroForce.Map
 
                 int dx = Mathf.Abs(to.GridX - t.GridX);
                 int dz = Mathf.Abs(to.GridZ - t.GridZ);
-                if (Mathf.Max(dx, dz) > 1) return 2;
+                if (Mathf.Max(dx, dz) > 1) { cost += 1; break; }
             }
-            return 1;
+            return cost;
+        }
+
+        /// <summary>Applies <paramref name="tile"/>'s terrain effects (see TerrainInfoRegistry)
+        /// to <paramref name="c"/> at the start of its turn — currently just RegenPerTurn, a
+        /// direct heal rather than a RegenStatus (re-applying that status every turn via
+        /// ApplyStatus would stack its heal-per-turn amount forever, see RegenStatus.Stack,
+        /// which is wrong for an ambient per-tile effect that shouldn't compound the longer
+        /// you stand still). Single entry point for whatever other per-tile effects
+        /// TerrainInfo grows later (damage, buffs, etc.) so callers don't need updating.</summary>
+        private void ApplyTerrainEffects(Character c, MapTile tile)
+        {
+            if (tile == null) return;
+            int regen = TerrainInfoRegistry.Get(tile.TerrainType).RegenPerTurn;
+            if (regen <= 0) return;
+            c.CharacterStats.HealthPoints = Mathf.Min(
+                c.CharacterStats.HealthPoints + regen, c.CharacterStats.MaxHealthPoints);
         }
 
         /// <summary>Total Zone-of-Control-aware movement cost of an already-found
@@ -1837,6 +1904,7 @@ namespace BaaroForce.Map
 
                 foreach (MapTile nb in Neighbors(cur))
                 {
+                    if (!TerrainInfoRegistry.IsPassable(nb.TerrainType, mover)) continue;
                     if (nb.IsOccupied || settled.Contains(nb)) continue;
 
                     int nd = best + StepCost(cur, nb, mover);
@@ -1879,6 +1947,7 @@ namespace BaaroForce.Map
 
                 foreach (MapTile nb in Neighbors(cur))
                 {
+                    if (!TerrainInfoRegistry.IsPassable(nb.TerrainType, mover)) continue;
                     if (nb.IsOccupied && nb != dest) continue;
                     if (settled.Contains(nb)) continue;
 

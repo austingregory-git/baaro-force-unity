@@ -179,3 +179,113 @@
     background-color: rgba(201, 163, 90, 0.35);
     color: rgb(232, 194, 94);
 }
+
+/* ---------------- Inventory ---------------------------------------------- */
+
+/* Small square corner trigger, bottom-right — deliberately opposite corner
+   from .act-map-gold (top-right) so the two never compete for space. */
+.act-inventory-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 24px;
+    width: 52px;
+    height: 52px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: rgba(24, 17, 27, 0.9);
+    border-width: 2px;
+    border-color: rgb(201, 163, 90);
+}
+.act-inventory-btn:hover { background-color: rgba(40, 30, 44, 0.95); }
+
+/* A plain geometric bag glyph (flap + body) — the project has no icon sprite
+   assets yet. Swap for a real sprite the same way .crest/.portrait document:
+   set backgroundImage on .act-inventory-btn instead of these two children. */
+.bag-icon-flap {
+    width: 16px;
+    height: 7px;
+    background-color: rgb(201, 163, 90);
+    border-radius: 3px 3px 0 0;
+    margin-bottom: -2px;
+}
+
+.bag-icon-body {
+    width: 26px;
+    height: 20px;
+    background-color: rgb(201, 163, 90);
+    border-radius: 4px;
+}
+
+/* Wide modal variant for Inventory — sized to fit an 8-wide slot grid.
+   overflow: hidden guards against any future content ever overflowing this
+   fixed width, instead of visibly spilling past the chassis into the map. */
+.act-modal-inventory {
+    width: 560px;
+    overflow: hidden;
+}
+
+.inv-header-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 14px;
+}
+
+/* Fixed-size squares laid out with flex-wrap, not flex-grow — unlike text
+   buttons, a fixed pixel width can never refuse to shrink below its content
+   size, which is what let the old tab row overflow past the chassis. */
+.inv-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.inv-slot {
+    width: 56px;
+    height: 56px;
+    margin: 0 6px 6px 0;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.06);
+    border-width: 2px;
+    border-color: rgba(255, 255, 255, 0.15);
+    align-items: center;
+    justify-content: center;
+}
+.inv-slot:hover { background-color: rgba(255, 255, 255, 0.14); }
+
+.inv-slot-empty { opacity: 0.45; }
+
+.inv-slot-rarity-common   { border-color: rgb(200, 200, 200); }
+.inv-slot-rarity-uncommon { border-color: rgb(60, 200, 90); }
+.inv-slot-rarity-rare     { border-color: rgb(80, 150, 235); }
+
+.inv-slot-glyph {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+}
+
+.inv-picker-split {
+    flex-direction: row;
+    width: 100%;
+}
+
+.inv-picker-list {
+    flex-grow: 1;
+    margin-right: 12px;
+}
+
+.inv-picker-preview {
+    width: 220px;
+    background-color: rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.act-choice-row-disabled {
+    opacity: 0.4;
+}

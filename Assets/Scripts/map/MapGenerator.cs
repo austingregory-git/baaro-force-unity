@@ -60,6 +60,7 @@ namespace BaaroForce.Map
         private MapTile[,] _tiles;
         private DeploymentManager _deploymentManager;
         private TurnManager       _turnManager;
+        private MapCameraZoom     _cameraZoom;
 
         private void Start()
         {
@@ -284,7 +285,9 @@ namespace BaaroForce.Map
         /// <summary>
         /// Positions the main camera for a classic isometric view centred on the grid.
         /// Placing the camera at (d, d, d) and looking at the origin gives the standard
-        /// 45° azimuth / 35.26° elevation isometric projection.
+        /// 45° azimuth / 35.26° elevation isometric projection. The actual starting/zoomed-out
+        /// orthographic size is handed off to MapCameraZoom (see Initialize below) so bigger
+        /// maps can start more zoomed in and scroll-wheel zoom has a size-appropriate range.
         /// </summary>
         private void FitCameraToMap(int size, float step)
         {
@@ -302,8 +305,11 @@ namespace BaaroForce.Map
             // "up" after LookAt shifts the orthographic view window without re-aiming it.
             cam.transform.position += cam.transform.up * (gridWorldSize * CameraVerticalOffsetFactor);
 
-            cam.orthographic     = true;
-            cam.orthographicSize = gridWorldSize * 0.75f;
+            cam.orthographic = true;
+
+            if (_cameraZoom == null)
+                _cameraZoom = gameObject.AddComponent<MapCameraZoom>();
+            _cameraZoom.Initialize(size, gridWorldSize * 0.75f);
         }
     }
 }

@@ -1,8 +1,12 @@
+using System.Collections.Generic;
+using BaaroForce.Passives;
+using BaaroForce.Spells;
+
 namespace BaaroForce.Items
 {
     /// <summary>
-    /// A single piece of equipment (weapon, armor, or accessory) that can be granted to a
-    /// character via <see cref="BaaroForce.Characters.Character.AddEquipment"/>. Plain C#
+    /// A single piece of equipment (helmet, chest, legs, main-hand, or off-hand) that can be
+    /// granted to a character via <see cref="BaaroForce.Characters.Character.Equip"/>. Plain C#
     /// class, matching the rest of the data model (Character, Spell, CharacterClass) rather
     /// than a MonoBehaviour/ScriptableObject.
     /// </summary>
@@ -16,15 +20,23 @@ namespace BaaroForce.Items
         /// <summary>True once this item has been upgraded at an Anvil/Smith (its "+" variant).</summary>
         public bool IsUpgraded { get; set; }
 
+        /// <summary>True for weapons — always true for MainHand items in practice, sometimes
+        /// true for OffHand items (a second blade), false for OffHand shields/tomes and every
+        /// other slot.</summary>
+        public bool IsWeapon { get; set; }
+
         public int HealthBonus { get; set; }
         public int AttackBonus { get; set; }
         public int SpellPowerBonus { get; set; }
         public int ManaBonus { get; set; }
         public int MovementBonus { get; set; }
 
+        public List<Spell> GrantedSpells { get; set; } = new List<Spell>();
+        public List<PassiveAbility> GrantedPassives { get; set; } = new List<PassiveAbility>();
+
         public Equipment(string name, string description, Rarity rarity, EquipmentSlotType slotType,
             int healthBonus = 0, int attackBonus = 0, int spellPowerBonus = 0,
-            int manaBonus = 0, int movementBonus = 0)
+            int manaBonus = 0, int movementBonus = 0, bool isWeapon = false)
         {
             Name = name;
             Description = description;
@@ -35,6 +47,7 @@ namespace BaaroForce.Items
             SpellPowerBonus = spellPowerBonus;
             ManaBonus = manaBonus;
             MovementBonus = movementBonus;
+            IsWeapon = isWeapon;
         }
 
         /// <summary>
@@ -54,7 +67,8 @@ namespace BaaroForce.Items
                 attackBonus: Bump(AttackBonus),
                 spellPowerBonus: Bump(SpellPowerBonus),
                 manaBonus: Bump(ManaBonus),
-                movementBonus: Bump(MovementBonus))
+                movementBonus: Bump(MovementBonus),
+                isWeapon: IsWeapon)
             { IsUpgraded = true };
         }
 
