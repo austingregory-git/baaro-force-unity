@@ -13,7 +13,7 @@ namespace BaaroForce.Statuses
 
         /// <param name="durationTurns">How many of the target's turns the effect lasts.</param>
         /// <param name="healAmount">How much health to regenerate each turn.</param>
-        public RegenStatus(int durationTurns, int healAmount = 2)
+        public RegenStatus(int durationTurns, int healAmount)
             : base(
                 name:        "Regen",
                 description: $"Regenerates {healAmount} health for {durationTurns} turns.",

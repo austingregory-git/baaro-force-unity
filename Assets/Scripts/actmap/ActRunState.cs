@@ -43,15 +43,21 @@ namespace BaaroForce.ActMap
         }
 
         /// <summary>Marks the current node resolved and advances to the next slot. No-ops if
-        /// the current slot is an unresolved fork (call <see cref="ChooseForkOption"/> first).</summary>
+        /// the current slot is an unresolved fork (call <see cref="ChooseForkOption"/> first).
+        /// If the new current slot is a fork continuation, it isn't a fresh player choice — it
+        /// automatically inherits the branch just chosen at the slot before it.</summary>
         public void CompleteCurrentNode()
         {
             ActMapNode node = CurrentNode;
             if (node == null) return;
 
+            int justResolvedIndex = CurrentSlotIndex;
             node.Visited = true;
             CurrentSlot.Resolved = true;
             CurrentSlotIndex++;
+
+            if (CurrentSlot != null && CurrentSlot.IsForkContinuation)
+                CurrentSlot.ChosenOptionIndex = Map.Slots[justResolvedIndex].ChosenOptionIndex;
         }
     }
 }

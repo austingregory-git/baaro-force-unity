@@ -50,28 +50,30 @@
     flex-grow: 1;
 }
 
-.act-map-column {
-    flex-direction: column-reverse;
-    align-items: center;
-    padding: 24px 0;
-}
-
-.act-map-row {
+/* Left-to-right: earliest node first, current/future nodes reached by scrolling right. */
+.act-map-path {
     flex-direction: row;
     align-items: center;
+    padding: 0 24px;
+}
+
+/* One slot: a single node, or (mid-fork) two branch options stacked top/bottom. */
+.act-map-slot {
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    margin-bottom: 8px;
+    margin-right: 8px;
 }
 
 .act-map-connector {
-    width: 4px;
-    height: 26px;
+    width: 26px;
+    height: 4px;
     background-color: rgba(201, 163, 90, 0.35);
-    margin-bottom: 8px;
+    margin-right: 8px;
 }
 
 .act-fork-gap {
-    width: 28px;
+    height: 20px;
     font-size: 11px;
     color: rgba(243, 230, 200, 0.5);
     -unity-text-align: middle-center;

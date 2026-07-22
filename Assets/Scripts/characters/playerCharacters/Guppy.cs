@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BaaroForce.Animations;
 using BaaroForce.Classes;
 using BaaroForce.Passives;
 using BaaroForce.Spells;
@@ -7,7 +8,18 @@ namespace BaaroForce.Characters
 {
     public class Guppy : Character
     {
-        static readonly string GuppyProfilePicPath = "winston_profile_pic_128x128";
+        static readonly string GuppyProfilePicPath = "guppy_profile_pic_128x128";
+
+        static readonly SpriteKit GuppySpriteKit = new SpriteKit(
+            backLeftSpritePath: "guppy_back_left_128x128",
+            backRightSpritePath: "guppy_back_right_128x128",
+            frontLeftSpritePath: "guppy_front_left_128x128",
+            frontRightSpritePath: "guppy_front_right_128x128",
+            idleSpritePaths: null,
+            walkSpritePaths: null,
+            attackSpritePaths: null,
+            deathSpritePaths: null);
+
         public Guppy()
             : base(
                 characterClass: ClassRegistry.Get("Mage"),
@@ -22,7 +34,8 @@ namespace BaaroForce.Characters
                 {
                     new BubbleBlast(),
                 },
-                characterProfilePicPath: GuppyProfilePicPath)
+                characterProfilePicPath: GuppyProfilePicPath,
+                characterSpriteKit: GuppySpriteKit)
         {
         }
     }

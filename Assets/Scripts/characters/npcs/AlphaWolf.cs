@@ -5,15 +5,15 @@ using BaaroForce.Spells;
 
 namespace BaaroForce.Characters
 {
-    public class Wolf : Npc
+    public class AlphaWolf : Npc
     {
-        static readonly string WolfProfilePicPath = "winston_profile_pic_128x128";
+        static readonly string AlphaWolfProfilePicPath = "winston_profile_pic_128x128";
 
-        public Wolf()
+        public AlphaWolf()
             : base(
                 //ClassRegistry.Get("Beast"), 
-                characterName: "Wolf", 
-                characterStats: new CharacterStats(maxHealthPoints: 4, baseAttack: 2, maxMana: 2, movement: 4),
+                characterName: "Alpha Wolf", 
+                characterStats: new CharacterStats(maxHealthPoints: 6, baseAttack: 3, maxMana: 2, movement: 5),
                 characterRealms: new List<Realm> { Realm.Earth },
                 characterPassiveAbilities: new List<PassiveAbility>
                 {
@@ -23,7 +23,7 @@ namespace BaaroForce.Characters
                 {
                     
                 },
-                characterProfilePicPath: WolfProfilePicPath,
+                characterProfilePicPath: AlphaWolfProfilePicPath,
                 specialty: NpcSpecialty.Melee)
         {
             AI = new AggressiveNpcAI();

@@ -109,6 +109,7 @@ namespace BaaroForce.Map
         private SpellPanelUI   _spellPanel;
         private WarningToastUI _warningToast;
         private FightResultUI  _fightResultUI;
+        private LevelUpUI      _levelUpUI;
         private bool           _isMoving;
         private bool           _fightEnded;
         private MapTile _hoveredTile;
@@ -166,6 +167,7 @@ namespace BaaroForce.Map
             gameObject.AddComponent<CombatLogUI>();
 
             _fightResultUI = gameObject.AddComponent<FightResultUI>();
+            _levelUpUI     = gameObject.AddComponent<LevelUpUI>();
             _fightResultUI.OnReturnToMainMenu = () =>
             {
                 PartyManager.Instance.ResetForNewRun();
@@ -173,9 +175,22 @@ namespace BaaroForce.Map
             };
             _fightResultUI.OnMoveOn = () =>
             {
-                PartyManager.Instance.ActRun.PendingEncounter = null;
-                PartyManager.Instance.ActRun.CompleteCurrentNode();
-                SceneManager.LoadScene("ActMapScene");
+                // Restore everyone to their pre-combat baseline (full HP/mana, no leftover
+                // shield or status effects) before the level-up reveal builds its cards, so a
+                // character who simply took damage or was buffed mid-fight doesn't show a
+                // half-empty bar or stale bonus for reasons unrelated to leveling up.
+                foreach (Character member in PartyManager.Instance.Party.Members)
+                    member.ResetPostCombatState();
+
+                // Swap to the level-up reveal screen first if anyone leveled up this fight —
+                // it no-ops straight through to the Act Map when nobody did.
+                _fightResultUI.Hide();
+                _levelUpUI.Show(PartyManager.Instance.Party.Members, () =>
+                {
+                    PartyManager.Instance.ActRun.PendingEncounter = null;
+                    PartyManager.Instance.ActRun.CompleteCurrentNode();
+                    SceneManager.LoadScene("ActMapScene");
+                });
             };
             _fightResultUI.OnLootClaimed = ClaimLoot;
         }
@@ -298,6 +313,13 @@ namespace BaaroForce.Map
 
         private void Update()
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // Dev-only cheat, stripped from release builds by the compiler directive above.
+            // Works in any phase (even mid-enemy-turn) so it can bail out a fight instantly.
+            if (!_fightEnded && Input.GetKeyDown(KeyCode.F1))
+                DevDamageAllEnemies(100);
+#endif
+
             if (_fightEnded) return;
             if (CurrentPhase != TurnPhase.PlayerTurn) return;
             if (_isMoving) return;
@@ -498,6 +520,38 @@ namespace BaaroForce.Map
                         yield return npc;
                 }
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>F1 dev cheat: deals <paramref name="amount"/> damage to every living
+        /// enemy on the grid — a quick way to finish or skip past a fight while testing.
+        /// Mirrors the damage/defeat handling in ResolveBasicAttack (TakeDamage, floating
+        /// text, RemoveUnit on death) before checking whether that just won the fight.</summary>
+        private void DevDamageAllEnemies(int amount)
+        {
+            for (int x = 0; x < _gridSize; x++)
+            {
+                for (int z = 0; z < _gridSize; z++)
+                {
+                    MapTile tile = _tiles[x, z];
+                    if (tile == null) continue;
+                    Npc npc = tile.OccupyingNpc;
+                    if (npc == null || npc.CharacterStats.HealthPoints <= 0) continue;
+
+                    int dealt = npc.TakeDamage(amount);
+                    FloatingCombatTextSystem.Instance?.ShowDamage(npc, dealt, SpellType.Physical);
+                    Debug.Log($"[TurnManager] [DEV] Dealt {dealt} damage to '{npc.CharacterName}'.");
+
+                    if (npc.CharacterStats.HealthPoints <= 0)
+                    {
+                        Debug.Log($"[TurnManager] [DEV] '{npc.CharacterName}' has been defeated!");
+                        tile.RemoveUnit();
+                    }
+                }
+            }
+
+            CheckFightOutcome();
+        }
+#endif
 
         private bool TryGetClickedTile(out MapTile tile)
         {

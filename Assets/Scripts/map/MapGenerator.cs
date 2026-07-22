@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -25,12 +26,20 @@ namespace BaaroForce.Map
         public Realm   RealmType = Realm.Earth;
 
         [Header("Enemy Pack")]
-        [Tooltip("Cumulative Npc strength index to spawn on this map.")]
-        [FormerlySerializedAs("enemyPackStrength")]
-        public int EnemyPackStrength = 2;
-
         [Tooltip("Level applied to every spawned Npc.")]
         public int EnemyLevel = 1;
+
+        // Explicit roster for this fight — set from PendingEncounter.Enemies when arriving via
+        // the Act Map (see Start()); falls back to a small default pack for testing MapScene
+        // standalone. Not Inspector-serializable (Func<Npc> factories aren't a Unity-friendly
+        // type), same as every other factory-based registry in this project.
+        private List<Func<Npc>> _enemies = DefaultTestEnemies;
+
+        private static List<Func<Npc>> DefaultTestEnemies => new List<Func<Npc>>
+        {
+            () => new Wolf(),
+            () => new Wolf(),
+        };
 
         [Header("Tile Appearance")]
         [Tooltip("World-unit side length of each cube tile.")]
@@ -65,10 +74,10 @@ namespace BaaroForce.Map
             PendingEncounter pending = PartyManager.Instance.ActRun?.PendingEncounter;
             if (pending != null)
             {
-                RealmType         = pending.Realm;
-                MapSize           = pending.MapSize;
-                EnemyPackStrength = pending.TargetStrength;
-                EnemyLevel        = pending.EnemyLevel;
+                RealmType  = pending.Realm;
+                MapSize    = pending.MapSize;
+                EnemyLevel = pending.EnemyLevel;
+                _enemies   = pending.Enemies;
             }
 
             GenerateMap();
@@ -93,7 +102,7 @@ namespace BaaroForce.Map
             {
                 for (int z = 0; z < size; z++)
                 {
-                    TerrainTile.TerrainType terrain = pool[Random.Range(0, pool.Count)];
+                    TerrainTile.TerrainType terrain = pool[UnityEngine.Random.Range(0, pool.Count)];
                     _tiles[x, z] = SpawnTile(x, z, terrain, originX + x * step, originZ + z * step);
                 }
             }
@@ -113,8 +122,36 @@ namespace BaaroForce.Map
             _deploymentManager.Initialize(_tiles, size, step, originX, originZ);
 
             // Build and place the enemy pack on the far side of the map.
-            List<Npc> enemyPack = EnemyPackBuilder.Build(EnemyPackStrength, EnemyLevel);
+            List<Npc> enemyPack = SpawnEnemies();
             _deploymentManager.PlaceEnemyPack(enemyPack);
+        }
+
+        /// <summary>Instantiates this fight's explicit roster (<see cref="_enemies"/>), each
+        /// leveled up to <see cref="EnemyLevel"/> — see <see cref="ApplyLevel"/>.</summary>
+        private List<Npc> SpawnEnemies()
+        {
+            var pack = new List<Npc>();
+            foreach (Func<Npc> factory in _enemies)
+            {
+                Npc npc = factory();
+                ApplyLevel(npc, EnemyLevel);
+                pack.Add(npc);
+            }
+            return pack;
+        }
+
+        /// <summary>Sets an Npc's level and applies a light per-level stat bump (+2 max HP, +1
+        /// attack per level above 1) — no general Npc stat-scaling formula exists yet, so this
+        /// is a minimal foundation for the Act Map's level-pacing table.</summary>
+        private static void ApplyLevel(Npc npc, int level)
+        {
+            npc.Level = Mathf.Max(1, level);
+            int bonusLevels = npc.Level - 1;
+            if (bonusLevels <= 0) return;
+
+            npc.CharacterStats.MaxHealthPoints += bonusLevels * 2;
+            npc.CharacterStats.HealthPoints    += bonusLevels * 2;
+            npc.CharacterStats.BaseAttack      += bonusLevels;
         }
 
         // ------------------------------------------------------------------ //

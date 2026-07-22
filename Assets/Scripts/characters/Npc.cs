@@ -10,15 +10,6 @@ namespace BaaroForce.Characters
     {
         public NpcSpecialty Specialty { get; set; }
 
-        /// <summary>
-        /// Base perceived difficulty of this Npc type (independent of level).
-        /// Override in each concrete Npc subclass.
-        /// </summary>
-        public virtual int BaseStrengthIndex => 1;
-
-        /// <summary>Effective strength used when building an enemy pack: BaseStrengthIndex × Level.</summary>
-        public int StrengthIndex => BaseStrengthIndex * Level;
-
         /// <summary>The AI strategy that drives this Npc's decisions during the enemy turn.
         /// Set in each concrete subclass constructor.  Npcs with a null AI are skipped
         /// during the enemy turn.</summary>

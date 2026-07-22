@@ -8,8 +8,6 @@ namespace BaaroForce.Characters
 {
     public class MozeemArcher : Npc
     {
-        public override int BaseStrengthIndex => 1;
-
         static readonly string MozeemArcherProfilePicPath = "winston_profile_pic_128x128";
 
         public MozeemArcher()

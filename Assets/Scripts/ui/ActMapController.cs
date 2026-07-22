@@ -17,7 +17,7 @@ using BaaroForce.Utils;
 namespace BaaroForce.UI
 {
     /// <summary>
-    /// Drives the Act 1 map screen: renders the 13-slot path from <c>PartyManager.ActRun</c>,
+    /// Drives the Act 1 map screen: renders the 16-slot path from <c>PartyManager.ActRun</c>,
     /// lets the player click the current node (or pick a fork option), and resolves whichever
     /// node type that is — either by loading another scene (character select, a fight) or by
     /// showing an in-place modal (Royal Decree, Event, SideQuest, Anvil, Treasure, Village).
@@ -41,8 +41,8 @@ namespace BaaroForce.UI
         private ActRunState _run;
         private VisualElement _root;
         private ScrollView _scroll;
-        private VisualElement _mapColumn;
-        private VisualElement _currentRowElement;
+        private VisualElement _mapPath;
+        private VisualElement _currentSlotElement;
         private Label _goldLabel;
 
         private VisualElement _modalOverlay;
@@ -91,13 +91,14 @@ namespace BaaroForce.UI
             _goldLabel.AddToClassList("act-map-gold");
             mapRoot.Add(_goldLabel);
 
-            _scroll = new ScrollView(ScrollViewMode.Vertical);
+            // Horizontal: the path reads left-to-right, earliest node first.
+            _scroll = new ScrollView(ScrollViewMode.Horizontal);
             _scroll.AddToClassList("act-map-scroll");
             mapRoot.Add(_scroll);
 
-            _mapColumn = new VisualElement();
-            _mapColumn.AddToClassList("act-map-column");
-            _scroll.Add(_mapColumn);
+            _mapPath = new VisualElement();
+            _mapPath.AddToClassList("act-map-path");
+            _scroll.Add(_mapPath);
 
             BuildModalShell();
         }
@@ -191,47 +192,50 @@ namespace BaaroForce.UI
 
         private void RenderMap()
         {
-            _mapColumn.Clear();
-            _currentRowElement = null;
+            _mapPath.Clear();
+            _currentSlotElement = null;
 
             for (int i = 0; i < _run.Map.Slots.Count; i++)
             {
-                _mapColumn.Add(BuildSlotRow(i));
+                _mapPath.Add(BuildSlotColumn(i));
                 if (i < _run.Map.Slots.Count - 1)
                 {
                     var connector = new VisualElement();
                     connector.AddToClassList("act-map-connector");
-                    _mapColumn.Add(connector);
+                    _mapPath.Add(connector);
                 }
             }
 
-            _mapColumn.schedule.Execute(() =>
+            _mapPath.schedule.Execute(() =>
             {
-                if (_currentRowElement != null) _scroll.ScrollTo(_currentRowElement);
+                if (_currentSlotElement != null) _scroll.ScrollTo(_currentSlotElement);
             }).ExecuteLater(30);
         }
 
-        private VisualElement BuildSlotRow(int slotIndex)
+        private VisualElement BuildSlotColumn(int slotIndex)
         {
             ActMapSlot slot = _run.Map.Slots[slotIndex];
-            var row = new VisualElement();
-            row.AddToClassList("act-map-row");
+            var column = new VisualElement();
+            column.AddToClassList("act-map-slot");
 
+            // A fork always shows both branch options stacked (top/bottom) — the map keeps
+            // its shape even after a choice is made; BuildNodeWrap is what stops the
+            // unchosen option from being clickable once the fork is decided.
             if (slot.IsFork)
             {
-                row.Add(BuildNodeWrap(slot, slotIndex, 0));
+                column.Add(BuildNodeWrap(slot, slotIndex, 0));
                 var gap = new Label("OR");
                 gap.AddToClassList("act-fork-gap");
-                row.Add(gap);
-                row.Add(BuildNodeWrap(slot, slotIndex, 1));
+                column.Add(gap);
+                column.Add(BuildNodeWrap(slot, slotIndex, 1));
             }
             else
             {
-                row.Add(BuildNodeWrap(slot, slotIndex, 0));
+                column.Add(BuildNodeWrap(slot, slotIndex, 0));
             }
 
-            if (slotIndex == _run.CurrentSlotIndex) _currentRowElement = row;
-            return row;
+            if (slotIndex == _run.CurrentSlotIndex) _currentSlotElement = column;
+            return column;
         }
 
         private VisualElement BuildNodeWrap(ActMapSlot slot, int slotIndex, int optionIndex)
@@ -249,22 +253,32 @@ namespace BaaroForce.UI
             Sprite icon = Resources.Load<Sprite>(IconFor(node.Type));
             if (icon != null) badge.style.backgroundImage = new StyleBackground(icon);
 
-            bool isChosenOrOnly = !slot.IsFork || slot.ChosenOptionIndex == optionIndex;
+            // isTheChosenOption: true for a non-fork slot's only option, or the specific
+            // fork option that was (or already auto-was) chosen. False for -1 (undecided).
+            bool isTheChosenOption = !slot.IsFork || slot.ChosenOptionIndex == optionIndex;
+            // isOpenForkChoice: a genuine still-undecided fork — every option is live.
+            bool isOpenForkChoice = slot.IsFork && slot.ChosenOptionIndex == -1;
             bool isPast = slotIndex < _run.CurrentSlotIndex;
             bool isCurrentSlot = slotIndex == _run.CurrentSlotIndex;
 
             if (isPast)
             {
-                badge.AddToClassList(isChosenOrOnly ? "act-node-completed" : "act-node-locked");
+                badge.AddToClassList(isTheChosenOption ? "act-node-completed" : "act-node-locked");
             }
-            else if (isCurrentSlot)
+            else if (isCurrentSlot && (isOpenForkChoice || isTheChosenOption))
             {
+                // Either a genuine open fork choice (both options are live) or this specific
+                // option is the branch already locked in (a fork continuation auto-resolves
+                // its branch before this ever renders — see ActRunState.CompleteCurrentNode).
+                // Either way this is a node the player can act on right now.
                 badge.AddToClassList("act-node-current");
                 int capturedOption = optionIndex;
                 badge.RegisterCallback<ClickEvent>(_ => OnNodeClicked(slotIndex, capturedOption));
             }
             else
             {
+                // Current slot, but this option isn't the branch already locked in — show
+                // it locked rather than current so the player can't click into the road not taken.
                 badge.AddToClassList("act-node-locked");
             }
 
@@ -370,7 +384,7 @@ namespace BaaroForce.UI
                 Tier = tier,
                 MapSize = encounter.GridSize,
                 EnemyLevel = node.EnemyLevel,
-                TargetStrength = encounter.TargetStrength,
+                Enemies = encounter.Enemies,
             };
             SceneManager.LoadScene(FightScene);
         }

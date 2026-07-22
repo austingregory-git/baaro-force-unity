@@ -95,6 +95,13 @@ namespace BaaroForce.UI
             _overlay.style.display = DisplayStyle.Flex;
         }
 
+        /// <summary>Hides this screen without tearing it down, e.g. to swap in LevelUpUI
+        /// before actually proceeding past a won fight.</summary>
+        public void Hide()
+        {
+            if (_overlay != null) _overlay.style.display = DisplayStyle.None;
+        }
+
         /// <summary>Shows the "Fight Won!" screen with a claimable loot list — all enemies defeated.</summary>
         public void ShowFightWon(List<LootEntry> loot)
         {

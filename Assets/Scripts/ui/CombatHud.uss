@@ -600,6 +600,115 @@
     opacity: 0.55;
 }
 
+/* ---------------- Level-up reveal screen -------------------------------- */
+/* Shown after a won fight, before returning to the Act Map, whenever any
+   party member has queued level-up events (see LevelUpUI). Reuses the
+   fight-result-overlay/chassis/rivet shell plus the existing seg-bar/
+   portrait/lv vocabulary — this section only adds the card layout. */
+
+.level-up-chassis {
+    width: 880px;
+    max-width: 92%;
+    padding: 26px 24px 20px 24px;
+    align-items: center;
+    border-color: rgb(201, 163, 90);
+}
+
+.level-up-cards-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 18px;
+}
+
+.level-up-card {
+    width: 190px;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.12);
+    padding: 14px 10px 12px 10px;
+    margin: 6px;
+    /* .seg-fill-mana and .portrait's border read --glow-color, normally supplied by a
+       zone-theme class — this screen isn't zone-themed, so give it a fixed default like
+       .party-frame-row already does. */
+    --glow-color: rgb(201, 163, 90);
+}
+
+.level-up-portrait.portrait {
+    width: 64px;
+    height: 64px;
+    margin-right: 0;
+    margin-bottom: 8px;
+}
+
+.level-up-name {
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+    -unity-text-align: middle-center;
+    margin-bottom: 2px;
+    white-space: normal;
+}
+
+.level-up-level {
+    margin-bottom: 10px;
+}
+
+.level-up-stat-row {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.level-up-stat-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.level-up-bar.seg-bar {
+    width: 118px;
+    height: 12px;
+    margin-right: 6px;
+}
+
+.level-up-stat-num {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+    min-width: 20px;
+    -unity-text-align: middle-right;
+}
+
+/* Pill background behind the Attack number — transparent at rest (no background-color
+   rule), filled in by LevelUpUI's breathing animation so a stat with no bar to grow still
+   reads as clearly "just changed" as an HP/Mana segment lighting up. */
+.level-up-stat-badge {
+    border-radius: 8px;
+    padding: 1px 6px;
+    align-items: center;
+    justify-content: center;
+}
+
+.level-up-talent {
+    margin-top: 6px;
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(232, 194, 94);
+    white-space: normal;
+    -unity-text-align: middle-center;
+    opacity: 0;
+}
+
+.level-up-talent-visible {
+    opacity: 1;
+}
+
 /* ---------------- Action arrow (selected panel -> hovered/target panel) - */
 /* Shared by the shaft and both chevron-head wings — all three are just thin
    rotated bars (see ActionArrowIndicator); thickness/length/position are set

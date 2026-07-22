@@ -44,6 +44,11 @@ namespace BaaroForce.Characters
         /// promotion choice (see <see cref="Promote"/>) — surfaced by ActMapController.</summary>
         public bool HasPendingPromotion { get; private set; }
 
+        /// <summary>Level-ups reached since the last time <c>LevelUpUI</c> showed and cleared
+        /// them — stat gains are already applied to <see cref="CharacterStats"/> by the time
+        /// an event lands here; this is purely a replay log for the reveal screen.</summary>
+        public List<LevelUpEvent> PendingLevelUpEvents { get; } = new List<LevelUpEvent>();
+
         private const int ExperiencePerLevel = 10;
 
         /// <summary>Grid direction (dx,dz) this unit is currently facing, updated whenever it
@@ -255,6 +260,27 @@ namespace BaaroForce.Characters
         }
 
         /// <summary>
+        /// Clears every temporary combat effect and restores HP/Mana/Shield to their
+        /// pre-combat baseline — called once a fight is won, before the level-up reveal
+        /// screen builds its cards, so a character who took damage or was buffed/debuffed
+        /// mid-fight doesn't show a half-empty bar or a stale bonus for reasons that have
+        /// nothing to do with leveling up. Equipment-derived bonuses (CharacterStats.AttackBonus
+        /// etc. from AddEquipment) are untouched — those are permanent, not "temporary."
+        /// </summary>
+        public void ResetPostCombatState()
+        {
+            for (int i = ActiveEffects.Count - 1; i >= 0; i--)
+                ActiveEffects[i].OnRemove(CharacterStats);
+            ActiveEffects.Clear();
+
+            CharacterStats.ShieldPoints = 0;
+            CharacterStats.HealthPoints = CharacterStats.MaxHealthPoints;
+            CharacterStats.Mana         = CharacterStats.MaxMana;
+
+            SyncInvisibilityVisual();
+        }
+
+        /// <summary>
         /// Ticks all active effects at the start of this character's turn.
         /// Expired effects are removed and their OnRemove hooks are called.
         /// </summary>
@@ -381,8 +407,10 @@ namespace BaaroForce.Characters
         private void LevelUp()
         {
             Level++;
-            if (CharacterClass != null)
-                LevelUtils.LevelUp(CharacterStats, CharacterClass.ClassGrowthWeights, 1);
+            List<StatPointGain> gains = CharacterClass != null
+                ? LevelUtils.RollAndApply(CharacterStats, CharacterClass.ClassGrowthWeights)
+                : new List<StatPointGain>();
+            var levelEvent = new LevelUpEvent(Level, gains);
             Debug.Log($"[{GetType().Name}] '{CharacterName}' reached level {Level}.");
 
             if (Level == 3)
@@ -391,6 +419,7 @@ namespace BaaroForce.Characters
                 if (talent != null)
                 {
                     CharacterPassiveAbilities.Add(talent);
+                    levelEvent.TalentGained = talent.Name;
                     Debug.Log($"[{GetType().Name}] '{CharacterName}' learned the talent '{talent.Name}'.");
                 }
             }
@@ -398,6 +427,8 @@ namespace BaaroForce.Characters
             {
                 HasPendingPromotion = true;
             }
+
+            PendingLevelUpEvents.Add(levelEvent);
         }
 
         /// <summary>
