@@ -23,6 +23,20 @@
 .hud-panel--left  { right: 52%; }
 .hud-panel--right { left: 52%; }
 
+/* Capped (not fixed) height so the panel stays its normal compact size in the
+   common case — no shield, no/one status effect — and only clips instead of
+   growing further if a big stack of effects would otherwise push it down into
+   the map. Scoped to just the two character-readout panels via the
+   --left/--right modifier classes: .action-panel also carries the base
+   .hud-panel class (for the shared position:absolute/width rules above), and
+   an earlier version of this rule matched its .chassis too, ballooning the
+   action menu to the same size for no reason. */
+.hud-panel--left .chassis,
+.hud-panel--right .chassis {
+    max-height: 300px;
+    overflow: hidden;
+}
+
 /* ---------------- Zone theme tokens (mirror the web kit's palette) --- */
 
 .zone-fire  { --glow-color: rgb(227, 91, 45);  --glow-soft: rgba(227, 91, 45, 0.35); }
@@ -159,16 +173,18 @@
     background-color: rgb(20, 16, 24);
     border-radius: 5px;
     padding: 2px;
+    /* gap (not margin-right on .seg) so there's no gap after the last segment —
+       UI Toolkit doesn't support the :last-child pseudo-class CSS would normally
+       use to zero that out. */
+    gap: 2px;
     margin-right: 10px;
 }
 
 .seg {
     flex-grow: 1;
-    margin-right: 2px;
     border-radius: 2px;
     background-color: rgba(255, 255, 255, 0.06);
 }
-.seg:last-child { margin-right: 0; }
 
 .seg-fill-hp   { background-color: rgb(227, 91, 107); }
 .seg-fill-mana { background-color: var(--glow-color); }
@@ -722,12 +738,19 @@
 /* ---------------- Tile info panel (terrain + unit details on tile select) - */
 /* Bottom-right — the one corner the rest of the Combat HUD doesn't already
    use (action panel + combat log hug bottom-left, warning toast sits
-   bottom-center, party frames run down each side). */
-
+   bottom-center, party frames run down each side). Raised well clear of
+   CombatCornerMenu's Inventory/Map buttons (ActMap.uss .act-inventory-btn /
+   .act-map-btn), which sit fixed at bottom: 20px, right: 24px-138px, height
+   52px, in that same corner — a bottom: 1.5% panel bottom-anchored right
+   next to them at typical resolutions sat low enough to run underneath
+   both buttons. 84px clears their 20+52=72px top edge with an 12px gap
+   regardless of resolution (fixed px, not %, to match the buttons' own
+   fixed-px anchoring instead of drifting apart from them at other
+   resolutions). */
 .tile-info-panel {
     position: absolute;
     right: 2%;
-    bottom: 1.5%;
+    bottom: 84px;
     width: 260px;
 }
 

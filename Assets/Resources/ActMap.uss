@@ -3,7 +3,9 @@
    Act Map node-spine layout, layered on top of CombatHud.uss's chassis/
    rivet/action-btn/fight-result-* language so modals (Decree, Event,
    Village, ...) reuse that dark/gold vocabulary instead of inventing a
-   parallel one.
+   parallel one. Loaded from Resources at runtime (see ActMapView /
+   CombatCornerMenu) as well as assigned directly on ActMapController,
+   so it has to live under a Resources folder.
    ===================================================================== */
 
 .act-map-root {
@@ -50,33 +52,39 @@
     flex-grow: 1;
 }
 
-/* Left-to-right: earliest node first, current/future nodes reached by scrolling right. */
+/* Bottom-to-top: earliest node first at the bottom, current/future nodes
+   reached by scrolling up (mouse wheel — the scrollbar is hidden, see
+   ActMapView/CombatCornerMenu's ScrollView setup). */
 .act-map-path {
+    flex-direction: column-reverse;
+    align-items: center;
+    padding: 24px 0;
+    position: relative;
+}
+
+/* One slot: a single node, or (mid-fork) two branch options side by side. */
+.act-map-slot {
     flex-direction: row;
     align-items: center;
-    padding: 0 24px;
-}
-
-/* One slot: a single node, or (mid-fork) two branch options stacked top/bottom. */
-.act-map-slot {
-    flex-direction: column;
-    align-items: center;
     justify-content: center;
-    margin-right: 8px;
-}
-
-.act-map-connector {
-    width: 26px;
-    height: 4px;
-    background-color: rgba(201, 163, 90, 0.35);
-    margin-right: 8px;
+    margin: 17px 0;
 }
 
 .act-fork-gap {
-    height: 20px;
+    width: 28px;
     font-size: 11px;
     color: rgba(243, 230, 200, 0.5);
     -unity-text-align: middle-center;
+}
+
+/* Draws the lines connecting node badges to each other (including the
+   diverging/converging fork lines) — a single absolutely-positioned
+   layer behind the node badges, see ActMapConnectorField. Sized to
+   exactly cover .act-map-path so line-endpoint math can stay in that
+   element's local space regardless of scroll position. */
+.act-map-connector-field {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
 }
 
 /* ---------------- Node badges ------------------------------------------ */
@@ -117,12 +125,40 @@
 
 .act-node-completed {
     border-color: rgb(120, 140, 110);
-    opacity: 0.55;
+    opacity: 0.7;
+}
+
+/* Crossed-off marker for a completed node: a dark scrim plus a checkmark,
+   layered over the icon so a visited node reads as "done" at a glance
+   rather than just dimmer than the rest. */
+.act-node-check {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 36px;
+    background-color: rgba(10, 8, 10, 0.45);
+    align-items: center;
+    justify-content: center;
+}
+
+.act-node-check-mark {
+    font-size: 32px;
+    -unity-font-style: bold;
+    color: rgb(150, 225, 140);
 }
 
 .act-node-locked {
     border-color: rgb(60, 52, 58);
-    opacity: 0.35;
+    opacity: 0.4;
+}
+
+/* Grayscale-style tint for a branch that's no longer reachable (the fork
+   path not taken) — UI Toolkit has no CSS grayscale filter, so this is a
+   flat gray scrim over the icon instead. */
+.act-node-lock-tint {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 36px;
+    background-color: rgba(110, 108, 112, 0.55);
 }
 
 .act-node-elite  { border-color: rgb(199, 100, 90); }
@@ -155,6 +191,7 @@
     font-size: 14px;
     -unity-font-style: bold;
     color: rgb(243, 230, 200);
+    white-space: normal;
 }
 
 .act-choice-sub {
@@ -180,7 +217,7 @@
     color: rgb(232, 194, 94);
 }
 
-/* ---------------- Inventory ---------------------------------------------- */
+/* ---------------- Corner icons (Inventory / Map) ------------------------- */
 
 /* Small square corner trigger, bottom-right — deliberately opposite corner
    from .act-map-gold (top-right) so the two never compete for space. */
@@ -216,6 +253,52 @@
     height: 20px;
     background-color: rgb(201, 163, 90);
     border-radius: 4px;
+}
+
+/* Map icon — same corner-button chassis as .act-inventory-btn, offset one
+   button-width further left so the two sit side by side, combat scene only
+   (see CombatCornerMenu). Glyph is a plain geometric mini node-path (again,
+   no sprite assets yet) — two "nodes" joined by a line. */
+.act-map-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 86px;
+    width: 52px;
+    height: 52px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: rgba(24, 17, 27, 0.9);
+    border-width: 2px;
+    border-color: rgb(201, 163, 90);
+}
+.act-map-btn:hover { background-color: rgba(40, 30, 44, 0.95); }
+
+.map-icon-wrap {
+    width: 26px;
+    height: 26px;
+}
+
+.map-icon-node {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: rgb(201, 163, 90);
+}
+
+.map-icon-node-a { left: 0; bottom: 0; }
+.map-icon-node-b { right: 0; top: 0; }
+
+.map-icon-line {
+    position: absolute;
+    width: 22px;
+    height: 3px;
+    background-color: rgb(201, 163, 90);
+    left: 2px;
+    top: 12px;
+    rotate: -38deg;
 }
 
 /* Wide modal variant for Inventory — sized to fit an 8-wide slot grid.
@@ -288,4 +371,20 @@
 
 .act-choice-row-disabled {
     opacity: 0.4;
+}
+
+/* ---------------- Combat read-only map overlay --------------------------- */
+
+/* Sits above CombatHud's panels (added last in the hierarchy, see
+   CombatCornerMenu) as a full-screen non-interactive glance at the Act Map —
+   reuses .act-map-root's exact dark backdrop look. */
+.combat-map-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+}
+
+.combat-map-hint {
+    font-size: 11px;
+    color: rgba(243, 230, 200, 0.5);
+    margin-top: 2px;
 }

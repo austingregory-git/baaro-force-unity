@@ -27,7 +27,7 @@ namespace BaaroForce.Spells
                 area:        0,
                 cooldown:    2,
                 targetType:  SpellTargetType.Enemy,
-                type:        SpellType.Physical)
+                type:        SpellType.Earth)
         {
         }
 
@@ -54,10 +54,10 @@ namespace BaaroForce.Spells
             }
 
             int damage = ComputeValues(context.Caster)[0].Total;
-            DealDamage(target, context.TargetTile, damage, SpellType.Physical, "StarShot");
+            DealDamage(target, context.TargetTile, damage, SpellType.Earth, "StarShot");
 
             Debug.Log($"[StarShot] '{context.Caster.CharacterName}' fires a star shot at " +
-                      $"'{target.CharacterName}' for {damage} physical damage.  " +
+                      $"'{target.CharacterName}' for {damage} [Earth] damage.  " +
                       $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}" +
                       $"/{target.CharacterStats.MaxHealthPoints}");
 

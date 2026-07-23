@@ -25,6 +25,7 @@ namespace BaaroForce.UI
         public static TooltipSystem Instance { get; private set; }
 
         private RectTransform      _panelRect;
+        private RectTransform      _borderRect;
         private TextMeshProUGUI    _titleText;
         private TextMeshProUGUI    _bodyText;
 
@@ -43,6 +44,10 @@ namespace BaaroForce.UI
         private const float TitleSize    = 15f;
         private const float BodySize     = 12f;
         private const float CursorOffset = 14f;
+        // Gold frame thickness — same border-color language as .chassis in
+        // CombatHud.uss (rgb(201,163,90)), drawn as a slightly larger Image behind
+        // the panel rather than a USS border since this is plain uGUI.
+        private const float BorderWidth  = 2f;
 
         // ------------------------------------------------------------------ //
         // Lifecycle                                                            //
@@ -91,6 +96,7 @@ namespace BaaroForce.UI
             RefreshBodyText();
 
             _panelRect.gameObject.SetActive(true);
+            _borderRect.gameObject.SetActive(true);
 
             // Force the layout to compute so ContentSizeFitter resizes the panel
             // before we position it.
@@ -104,6 +110,8 @@ namespace BaaroForce.UI
         {
             if (_panelRect != null)
                 _panelRect.gameObject.SetActive(false);
+            if (_borderRect != null)
+                _borderRect.gameObject.SetActive(false);
         }
 
         // ------------------------------------------------------------------ //
@@ -158,12 +166,25 @@ namespace BaaroForce.UI
             // No CanvasScaler — positions map 1:1 to screen pixels.
             // No GraphicRaycaster — tooltip is display-only.
 
+            // ── Gold border frame (sits behind the panel, peeking out by
+            // BorderWidth on every side) ──────────────────────────────────────
+            var borderGo = new GameObject("TooltipBorder");
+            borderGo.transform.SetParent(canvasGo.transform, false);
+            var borderImg = borderGo.AddComponent<Image>();
+            borderImg.color = new Color(201f / 255f, 163f / 255f, 90f / 255f, 0.95f);
+            _borderRect           = borderGo.GetComponent<RectTransform>();
+            _borderRect.anchorMin = Vector2.zero;
+            _borderRect.anchorMax = Vector2.zero;
+            _borderRect.pivot     = Vector2.zero;
+
             // ── Panel ──────────────────────────────────────────────────────────
             var panelGo = new GameObject("TooltipPanel");
             panelGo.transform.SetParent(canvasGo.transform, false);
 
+            // Same dark chassis fill CombatHud.uss uses for .chassis (rgb(24,17,27)),
+            // just with a little transparency since this floats over arbitrary content.
             var bg    = panelGo.AddComponent<Image>();
-            bg.color  = new Color(0.08f, 0.08f, 0.10f, 0.92f);
+            bg.color  = new Color(24f / 255f, 17f / 255f, 27f / 255f, 0.94f);
 
             // Pass-through: tooltip never captures pointer events from cards below.
             var cg               = panelGo.AddComponent<CanvasGroup>();
@@ -192,13 +213,16 @@ namespace BaaroForce.UI
             _panelRect.sizeDelta  = new Vector2(PanelWidth, 60f);
 
             // ── Text children ──────────────────────────────────────────────────
+            // Gold title / cream body — same pairing as .unit-name + .act-map-title
+            // in CombatHud.uss / ActMap.uss.
             _titleText = AddTextChild(panelGo.transform, "TooltipTitle",
-                TitleSize, bold: true,  color: Color.white);
+                TitleSize, bold: true,  color: new Color(232f / 255f, 194f / 255f, 94f / 255f));
 
             _bodyText  = AddTextChild(panelGo.transform, "TooltipBody",
-                BodySize,  bold: false, color: new Color(0.85f, 0.85f, 0.85f));
+                BodySize,  bold: false, color: new Color(243f / 255f, 230f / 255f, 200f / 255f, 0.85f));
 
             panelGo.SetActive(false);
+            borderGo.SetActive(false);
         }
 
         /// <summary>Creates a TextMeshProUGUI child that grows vertically with its content.</summary>
@@ -246,6 +270,12 @@ namespace BaaroForce.UI
             y = Mathf.Clamp(y, 0f, screenH - size.y);
 
             _panelRect.anchoredPosition = new Vector2(x, y);
+
+            // Border tracks the panel's live (ContentSizeFitter-driven) size/position
+            // every frame, peeking out by BorderWidth on all four sides.
+            var borderInset = new Vector2(BorderWidth, BorderWidth);
+            _borderRect.sizeDelta        = size + borderInset * 2f;
+            _borderRect.anchoredPosition = new Vector2(x, y) - borderInset;
         }
     }
 }

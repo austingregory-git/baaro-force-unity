@@ -10,11 +10,11 @@ namespace BaaroForce.UI
     /// <summary>
     /// Party-wide Inventory modal — a single WoW-style 32-slot bag grid mixing Equipment and
     /// Potions together (they already share one capacity, see <see cref="BaaroForce.Party.Party"/>),
-    /// plus a Gold readout. Opened via the small backpack button ActMapController adds to its
-    /// header — Act Map only, never shown in combat. Renders into ActMapController's existing
-    /// modal chassis (via the openModal/closeModal delegates and modalContent element passed
-    /// into the constructor) instead of building its own overlay, matching how every other
-    /// Act Map modal (Decree, Village, Anvil, Treasure, ...) is built.
+    /// plus a Gold readout. Opened via the small backpack button both ActMapController (Act
+    /// Map screen) and CombatCornerMenu (combat scene) add to their bottom-right corner.
+    /// Renders into the owner's modal chassis (via the openModal/closeModal delegates and
+    /// modalContent element passed into the constructor) instead of building its own overlay,
+    /// matching how every other Act Map modal (Decree, Village, Anvil, Treasure, ...) is built.
     ///
     /// Not a MonoBehaviour — a plain UI builder object, same "data classes stay plain C#"
     /// convention as the rest of the model, just split into its own file because the grid

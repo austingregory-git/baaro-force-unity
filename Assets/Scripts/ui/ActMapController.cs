@@ -42,7 +42,7 @@ namespace BaaroForce.UI
         private VisualElement _root;
         private ScrollView _scroll;
         private VisualElement _mapPath;
-        private VisualElement _currentSlotElement;
+        private ActMapView _mapView;
         private Label _goldLabel;
 
         private VisualElement _modalOverlay;
@@ -94,14 +94,20 @@ namespace BaaroForce.UI
             _goldLabel.AddToClassList("act-map-gold");
             mapRoot.Add(_goldLabel);
 
-            // Horizontal: the path reads left-to-right, earliest node first.
-            _scroll = new ScrollView(ScrollViewMode.Horizontal);
+            // Vertical, bottom-to-top: earliest node first at the bottom, later nodes
+            // reached by scrolling up. No scrollbar — mouse wheel only (the ScrollView
+            // still handles wheel input itself with the scroller hidden).
+            _scroll = new ScrollView(ScrollViewMode.Vertical);
             _scroll.AddToClassList("act-map-scroll");
+            _scroll.verticalScrollerVisibility = ScrollerVisibility.Hidden;
+            _scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
             mapRoot.Add(_scroll);
 
             _mapPath = new VisualElement();
             _mapPath.AddToClassList("act-map-path");
             _scroll.Add(_mapPath);
+
+            _mapView = new ActMapView(_mapPath, _run, OnNodeClicked);
 
             BuildModalShell();
 
@@ -220,139 +226,8 @@ namespace BaaroForce.UI
 
         private void RenderMap()
         {
-            _mapPath.Clear();
-            _currentSlotElement = null;
-
-            for (int i = 0; i < _run.Map.Slots.Count; i++)
-            {
-                _mapPath.Add(BuildSlotColumn(i));
-                if (i < _run.Map.Slots.Count - 1)
-                {
-                    var connector = new VisualElement();
-                    connector.AddToClassList("act-map-connector");
-                    _mapPath.Add(connector);
-                }
-            }
-
-            _mapPath.schedule.Execute(() =>
-            {
-                if (_currentSlotElement != null) _scroll.ScrollTo(_currentSlotElement);
-            }).ExecuteLater(30);
-        }
-
-        private VisualElement BuildSlotColumn(int slotIndex)
-        {
-            ActMapSlot slot = _run.Map.Slots[slotIndex];
-            var column = new VisualElement();
-            column.AddToClassList("act-map-slot");
-
-            // A fork always shows both branch options stacked (top/bottom) — the map keeps
-            // its shape even after a choice is made; BuildNodeWrap is what stops the
-            // unchosen option from being clickable once the fork is decided.
-            if (slot.IsFork)
-            {
-                column.Add(BuildNodeWrap(slot, slotIndex, 0));
-                var gap = new Label("OR");
-                gap.AddToClassList("act-fork-gap");
-                column.Add(gap);
-                column.Add(BuildNodeWrap(slot, slotIndex, 1));
-            }
-            else
-            {
-                column.Add(BuildNodeWrap(slot, slotIndex, 0));
-            }
-
-            if (slotIndex == _run.CurrentSlotIndex) _currentSlotElement = column;
-            return column;
-        }
-
-        private VisualElement BuildNodeWrap(ActMapSlot slot, int slotIndex, int optionIndex)
-        {
-            ActMapNode node = slot.Options[optionIndex];
-
-            var wrap = new VisualElement();
-            wrap.AddToClassList("act-node-wrap");
-
-            var badge = new VisualElement();
-            badge.AddToClassList("act-node");
-            if (node.Type == ActNodeType.Elite) badge.AddToClassList("act-node-elite");
-            if (node.Type == ActNodeType.Boss) badge.AddToClassList("act-node-boss");
-
-            Sprite icon = Resources.Load<Sprite>(IconFor(node.Type));
-            if (icon != null) badge.style.backgroundImage = new StyleBackground(icon);
-
-            // isTheChosenOption: true for a non-fork slot's only option, or the specific
-            // fork option that was (or already auto-was) chosen. False for -1 (undecided).
-            bool isTheChosenOption = !slot.IsFork || slot.ChosenOptionIndex == optionIndex;
-            // isOpenForkChoice: a genuine still-undecided fork — every option is live.
-            bool isOpenForkChoice = slot.IsFork && slot.ChosenOptionIndex == -1;
-            bool isPast = slotIndex < _run.CurrentSlotIndex;
-            bool isCurrentSlot = slotIndex == _run.CurrentSlotIndex;
-
-            if (isPast)
-            {
-                badge.AddToClassList(isTheChosenOption ? "act-node-completed" : "act-node-locked");
-            }
-            else if (isCurrentSlot && (isOpenForkChoice || isTheChosenOption))
-            {
-                // Either a genuine open fork choice (both options are live) or this specific
-                // option is the branch already locked in (a fork continuation auto-resolves
-                // its branch before this ever renders — see ActRunState.CompleteCurrentNode).
-                // Either way this is a node the player can act on right now.
-                badge.AddToClassList("act-node-current");
-                int capturedOption = optionIndex;
-                badge.RegisterCallback<ClickEvent>(_ => OnNodeClicked(slotIndex, capturedOption));
-            }
-            else
-            {
-                // Current slot, but this option isn't the branch already locked in — show
-                // it locked rather than current so the player can't click into the road not taken.
-                badge.AddToClassList("act-node-locked");
-            }
-
-            wrap.Add(badge);
-
-            var label = new Label(LabelFor(node.Type));
-            label.AddToClassList("act-node-label");
-            wrap.Add(label);
-
-            return wrap;
-        }
-
-        private static string LabelFor(ActNodeType type)
-        {
-            switch (type)
-            {
-                case ActNodeType.CharacterSelect: return "Recruit";
-                case ActNodeType.RoyalDecree:      return "Royal Decree";
-                case ActNodeType.Fight:            return "Fight";
-                case ActNodeType.Elite:            return "Elite Fight";
-                case ActNodeType.Boss:             return "Boss Fight";
-                case ActNodeType.Event:            return "Event";
-                case ActNodeType.SideQuest:        return "Side Quest";
-                case ActNodeType.Anvil:            return "Anvil";
-                case ActNodeType.Treasure:         return "Treasure";
-                case ActNodeType.Village:          return "Village";
-                default:                           return type.ToString();
-            }
-        }
-
-        private static string IconFor(ActNodeType type)
-        {
-            switch (type)
-            {
-                case ActNodeType.CharacterSelect: return "node_characterselect_128x128";
-                case ActNodeType.RoyalDecree:      return "node_decree_128x128";
-                case ActNodeType.Fight:            return "node_fight_128x128";
-                case ActNodeType.Elite:            return "node_elite_128x128";
-                case ActNodeType.Boss:             return "node_boss_128x128";
-                case ActNodeType.Event:            return "node_event_128x128";
-                case ActNodeType.SideQuest:        return "node_sidequest_128x128";
-                case ActNodeType.Anvil:            return "node_anvil_128x128";
-                case ActNodeType.Treasure:         return "node_treasure_128x128";
-                case ActNodeType.Village:          return "node_village_128x128";
-                default:                           return "node_fight_128x128";
-            }
+            _mapView.Render();
+            _mapView.ScrollToCurrentWhenReady(_scroll);
         }
 
         // ================================================================ //
@@ -471,29 +346,28 @@ namespace BaaroForce.UI
 
         private void ShowWeaponChoice()
         {
-            ShowMemberPicker("Choose who receives a weapon", member =>
+            // Goes straight to the party's shared inventory (see ActChoiceEffects.GrantEquipment's
+            // TryAddEquipment pattern for the other decree options) rather than equipping it on a
+            // chosen member — no need for the extra "who receives it" step this used to have.
+            OpenModal("Choose a Weapon");
+            for (int i = 0; i < 3; i++)
             {
-                OpenModal("Choose a Weapon");
-                for (int i = 0; i < 3; i++)
+                Equipment weapon = EquipmentRegistry.GetRandomOfSlot(Rarity.Common, EquipmentSlotType.MainHand);
+                var row = new VisualElement();
+                row.AddToClassList("act-choice-row");
+                var label = new Label(weapon.Name);
+                label.AddToClassList("act-choice-label");
+                row.Add(label);
+                var sub = new Label(weapon.Description);
+                sub.AddToClassList("act-choice-sub");
+                row.Add(sub);
+                row.RegisterCallback<ClickEvent>(_ =>
                 {
-                    Equipment weapon = EquipmentRegistry.GetRandomOfSlot(Rarity.Common, EquipmentSlotType.MainHand);
-                    var row = new VisualElement();
-                    row.AddToClassList("act-choice-row");
-                    var label = new Label(weapon.Name);
-                    label.AddToClassList("act-choice-label");
-                    row.Add(label);
-                    var sub = new Label(weapon.Description);
-                    sub.AddToClassList("act-choice-sub");
-                    row.Add(sub);
-                    row.RegisterCallback<ClickEvent>(_ =>
-                    {
-                        Equipment previous = member.Equip(weapon);
-                        if (previous != null) PartyManager.Instance.Party.TryAddEquipment(previous);
-                        CompleteAndRefresh();
-                    });
-                    _modalContent.Add(row);
-                }
-            });
+                    PartyManager.Instance.Party.TryAddEquipment(weapon);
+                    CompleteAndRefresh();
+                });
+                _modalContent.Add(row);
+            }
         }
 
         private void ShowSpellChoiceFor(Character member)

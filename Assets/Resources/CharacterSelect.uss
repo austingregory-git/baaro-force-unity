@@ -1,0 +1,175 @@
+/* =====================================================================
+   CharacterSelect.uss
+   Character-select screen. Reuses CombatHud.uss's chassis/rivet/crest/
+   stat-badge/seg-bar/pip vocabulary (the same look CharacterHudController
+   uses for the in-combat "selected character" panel) and ActMap.uss's dark
+   backdrop/header (the very next screen the player sees after picking),
+   then layers on the trading-card layout and a bit of extra hover "zest"
+   appropriate for a pick-your-hero moment rather than a live combat readout.
+   ===================================================================== */
+
+.select-card-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+    padding: 12px 24px 40px 24px;
+}
+
+/* .chassis gives the dark fill / gold-or-zone border / rounded corners /
+   padding; everything below just resizes and re-lays-out that same panel
+   for a taller, centered, portrait-forward card instead of the combat
+   HUD's compact left-aligned readout. min-height only (no max-height/
+   overflow:hidden) — portrait + name + 4 stat rows + 3 ability sections
+   actually needs ~530-550px, which a 480px cap was silently clipping the
+   bottom-most section into the card's border. Letting the card size to
+   its content means cards in the row can differ by a few px (e.g. a name
+   wrapping to 2 lines), which is fine since .select-card-row already
+   top-aligns them (align-items: flex-start) instead of stretching them
+   to match. The crest (see CombatHud.uss's .crest) is a direct child of
+   this element, same as it's a sibling of .chassis in the combat HUD
+   panel, so it can keep poking out past the top-right corner instead of
+   being clipped by the content area below. */
+.select-card {
+    width: 300px;
+    min-height: 420px;
+    align-items: center;
+    margin: 14px 18px;
+    padding: 22px 18px 18px 18px;
+    transition-property: scale, border-width;
+    transition-duration: 0.18s;
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.select-card:hover {
+    scale: 1.06 1.06;
+    border-width: 3px;
+}
+
+/* Everything except the crest/rivets lives in here. */
+.select-card-content {
+    width: 100%;
+    flex-grow: 1;
+    align-items: center;
+}
+
+/* Frame is exactly the profile pics' native 128x128 so the art is never
+   upscaled past its source resolution (soft/blurry), and padding insets the
+   actual image within that frame — same padding + scale-to-fit inset pattern
+   CombatHud.uss already uses for .stat-badge / .crest icons — so the
+   character reads as "zoomed out" with a bit of dark matting around it
+   instead of filling the frame edge-to-edge. */
+.select-card-portrait.portrait {
+    width: 128px;
+    height: 128px;
+    padding: 10px;
+    -unity-background-scale-mode: scale-to-fit;
+    border-radius: 20px;
+    border-width: 3px;
+    margin-right: 0;
+    margin-bottom: 10px;
+}
+
+.select-card-who {
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.select-card-name {
+    font-size: 18px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.select-card-class {
+    font-size: 12px;
+    color: rgba(243, 230, 200, 0.65);
+    margin-bottom: 8px;
+    -unity-text-align: middle-center;
+}
+
+.select-card-stats {
+    width: 100%;
+    align-items: center;
+    margin-top: 2px;
+    margin-bottom: 6px;
+}
+/* .stat-row normally just hugs its own content (badge + bar/pips + number)
+   with no surrounding width to justify-content within — fine in the combat
+   HUD's left-aligned panel, but here it left each row's number sitting at
+   a different x depending on what's between the badge and it (a 130px bar
+   vs. movement pips vs. nothing at all for the Attack row). Giving the row
+   the card's full width and auto-margining the number to the end pins every
+   row's number to the same right edge regardless of what's in the middle. */
+.select-card-stats .stat-row { width: 100%; margin-bottom: 6px; }
+.select-card-stats .stat-num { margin-left: auto; }
+
+/* One labeled group per ability category (Passive / Spells / Class Spell) —
+   only added to the card when it has at least one entry. */
+.select-card-ability-section {
+    width: 100%;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.select-card-ability-heading {
+    font-size: 10px;
+    -unity-font-style: bold;
+    color: rgba(201, 163, 90, 0.9);
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+    -unity-text-align: middle-center;
+}
+
+.select-card-abilities {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+}
+
+/* Pill shape/colour lives on this wrapper; .ability-chip-label (a plain,
+   undecorated child Label) just supplies the text. Splitting them avoids a
+   Label auto-sizing to fit text it then renders wider than the size it
+   measured for itself — see BuildAbilityChip in CharacterSelectionManager.cs. */
+.ability-chip {
+    align-items: center;
+    justify-content: center;
+    color: rgb(232, 194, 94);
+    background-color: rgba(201, 163, 90, 0.15);
+    border-width: 1px;
+    border-color: rgba(201, 163, 90, 0.5);
+    border-radius: 10px;
+    padding: 4px 14px;
+    margin: 0 5px 5px 0;
+}
+.ability-chip:hover {
+    background-color: rgba(201, 163, 90, 0.30);
+}
+
+.ability-chip-label {
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* Character Spell vs Class Spell get a slightly different tint from Passive
+   so the three categories still read apart from each other even without
+   re-reading the heading above them. */
+.ability-chip-spell {
+    color: rgb(150, 200, 230);
+    background-color: rgba(46, 127, 174, 0.18);
+    border-color: rgba(80, 150, 235, 0.5);
+}
+.ability-chip-spell:hover {
+    background-color: rgba(46, 127, 174, 0.32);
+}
+
+.ability-chip-class-spell {
+    color: rgb(180, 160, 230);
+    background-color: rgba(107, 78, 158, 0.22);
+    border-color: rgba(150, 120, 220, 0.5);
+}
+.ability-chip-class-spell:hover {
+    background-color: rgba(107, 78, 158, 0.36);
+}

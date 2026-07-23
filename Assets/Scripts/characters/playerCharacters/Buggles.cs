@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BaaroForce.Animations;
 using BaaroForce.Classes;
 using BaaroForce.Passives;
 using BaaroForce.Spells;
@@ -7,12 +8,22 @@ namespace BaaroForce.Characters
 {
     public class Buggles : Character
     {
-        static readonly string BugglesProfilePicPath = "winston_profile_pic_128x128";
+        static readonly string BugglesProfilePicPath = "buggles_profile_pic_128x128";
+
+        static readonly SpriteKit BugglesSpriteKit = new SpriteKit(
+            backLeftSpritePath: "buggles_back_left_128x128",
+            backRightSpritePath: "buggles_back_right_128x128",
+            frontLeftSpritePath: "buggles_front_left_128x128",
+            frontRightSpritePath: "buggles_front_right_128x128",
+            idleSpritePaths: null,
+            walkSpritePaths: null,
+            attackSpritePaths: null,
+            deathSpritePaths: null);
         public Buggles()
             : base(
                 characterClass: ClassRegistry.Get("Mystic"),
                 characterName: "Buggles", 
-                characterStats: new CharacterStats(maxHealthPoints: 5, baseAttack: 2, maxMana: 9, movement: 2),
+                characterStats: new CharacterStats(maxHealthPoints: 6, baseAttack: 2, maxMana: 9, movement: 2),
                 characterRealms: new List<Realm> { Realm.Water },
                 characterPassiveAbilities: new List<PassiveAbility>
                 {
@@ -26,7 +37,8 @@ namespace BaaroForce.Characters
                     // Song of the Elders is a Cone spell (see AcornSpray.cs for reference) that applies haste to all allies in the area for 2 turns and slows all enemies in the area for 2 turns.
                     // The spell costs 4 mana and has a CD of 3 turns. It has the same range and area as Acorn Spray (range 1, area 3). 
                 },
-                characterProfilePicPath: BugglesProfilePicPath)
+                characterProfilePicPath: BugglesProfilePicPath,
+                characterSpriteKit: BugglesSpriteKit)
         {
         }
     }

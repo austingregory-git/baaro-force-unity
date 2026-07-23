@@ -1,13 +1,14 @@
 using BaaroForce.Characters;
 using BaaroForce.Classes;
 using BaaroForce.Formulas;
+using BaaroForce.Statuses;
 using BaaroForce.UI;
 using UnityEngine;
 
 namespace BaaroForce.Spells
 {
     /// <summary>
-    /// Grit — dig deep and permanently expand maximum health for this battle.
+    /// Grit — dig deep and expand maximum health for the remainder of this battle.
     /// Level scaling: bonus = floor(3 + 0.5 × level)   (3 HP at level 1)
     /// </summary>
     public class Grit : ClassSpell
@@ -42,9 +43,8 @@ namespace BaaroForce.Spells
         public override bool Execute(SpellContext context)
         {
             int bonus = ComputeValues(context.Caster)[0].Total;
-            context.Caster.CharacterStats.MaxHealthPoints += bonus;
-            int healed = context.Caster.CharacterStats.Heal(bonus);
-            FloatingCombatTextSystem.Instance?.ShowHeal(context.Caster, healed);
+            context.Caster.ApplyStatus(new GritStatus(bonus));
+            FloatingCombatTextSystem.Instance?.ShowHeal(context.Caster, bonus);
 
             Debug.Log($"[Grit] '{context.Caster.CharacterName}' gained {bonus} max HP.  " +
                       $"HP: {context.Caster.CharacterStats.HealthPoints}" +

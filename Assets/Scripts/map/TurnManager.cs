@@ -27,10 +27,11 @@ namespace BaaroForce.Map
     /// Flow:  DeploymentManager fires OnDeploymentComplete
     ///        → StartPlayerTurn()
     ///        → player selects a unit by clicking it
-    ///        → W/M = move mode, A = attack, S = spells, D/I = items
+    ///        → W = move mode, A = attack, S = spells, D/I = items
+    ///        (M is reserved for CombatCornerMenu's read-only map overlay)
     ///
     /// Movement:
-    ///   • W/M highlights reachable _tiles (blue, near-opaque) via BFS.
+    ///   • W highlights reachable _tiles (blue, near-opaque) via BFS.
     ///   • Clicking a highlighted tile moves the character along the grid
     ///     at a steady speed, tile by tile, with no diagonal movement.
     ///   • Movement points are deducted by steps taken.
@@ -93,12 +94,16 @@ namespace BaaroForce.Map
 
         private readonly List<MapTile> _highlightedMoveTiles   = new List<MapTile>();
         private readonly List<MapTile> _highlightedAttackTiles = new List<MapTile>();
-        private readonly List<MapTile> _highlightedZoneTiles   = new List<MapTile>();
 
-        /// <summary>Move-highlight color for a reachable tile that also lies within an
-        /// enemy's Zone of Control — same alpha as the normal blue so it reads as a
-        /// single opaque tile color rather than a blend.</summary>
-        private static readonly Color ZoneMoveHighlightColor = new Color(1f, 0.65f, 0.1f, 0.92f);
+        /// <summary>One boundary-outline GameObject per enemy's Zone of Control (see
+        /// DrawZoneOutline) — world-space LineRenderers owned by TurnManager itself rather
+        /// than any single MapTile, since each traces the perimeter of a whole 3x3 zone
+        /// rather than one tile's edges.</summary>
+        private readonly List<GameObject> _zoneOutlines = new List<GameObject>();
+
+        /// <summary>Light red — distinct from the gold hover outline (MapTile.HoverHighlightColor)
+        /// and darker/more saturated than the attack-range red (MapTile.AttackHighlightColor).</summary>
+        private static readonly Color ZoneOfControlColor = new Color(1f, 0.4f, 0.4f, 0.85f);
 
         //_spellTargetTiles
         private readonly List<MapTile> _spellTargetTiles = new List<MapTile>();
@@ -172,6 +177,7 @@ namespace BaaroForce.Map
             _tileInfoPanel = gameObject.AddComponent<TileInfoPanelUI>();
 
             gameObject.AddComponent<CombatLogUI>();
+            gameObject.AddComponent<CombatCornerMenu>();
 
             _fightResultUI = gameObject.AddComponent<FightResultUI>();
             _levelUpUI     = gameObject.AddComponent<LevelUpUI>();
@@ -329,6 +335,7 @@ namespace BaaroForce.Map
                 DevDamageAllEnemies(100);
 #endif
 
+            if (CombatCornerMenu.IsBlockingCombatInput) return;
             if (_fightEnded) return;
             if (CurrentPhase != TurnPhase.PlayerTurn) return;
             if (_isMoving) return;
@@ -636,7 +643,7 @@ namespace BaaroForce.Map
 
             if (_selectedCharacter == null) return;
 
-            if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.M))
+            if (Input.GetKeyDown(KeyCode.W))
                 ToggleMoveMode();
             else if (Input.GetKeyDown(KeyCode.A))
                 ToggleAttackMode();
@@ -750,33 +757,25 @@ namespace BaaroForce.Map
 
         private void ShowMovableRange(MapTile origin, int range)
         {
-            HashSet<MapTile> zoneTiles = GetEnemyZoneOfControlTiles(_selectedCharacter);
             HashSet<MapTile> reachable = BfsReachable(origin, range, _selectedCharacter);
 
             foreach (MapTile tile in reachable)
             {
                 if (tile == origin) continue;
-                bool inZone = zoneTiles.Contains(tile);
-                tile.SetMoveHighlight(true, inZone ? ZoneMoveHighlightColor : (Color?)null);
+                tile.SetMoveHighlight(true);
                 _highlightedMoveTiles.Add(tile);
             }
 
-            // Tiles inside an enemy's zone that the mover can't currently reach get a
-            // separate, lower-alpha warning tint — there's no move-highlight quad there
-            // to recolor instead, so this avoids ever stacking two overlays on one tile.
-            foreach (MapTile tile in zoneTiles)
-            {
-                if (tile == origin || reachable.Contains(tile)) continue;
-                tile.SetZoneOfControlHighlight(true);
-                _highlightedZoneTiles.Add(tile);
-            }
+            DrawEnemyZoneOutlines(_selectedCharacter);
         }
 
-        /// <summary>Every tile within an enemy's Zone of Control (the 8 tiles surrounding
-        /// it), relative to <paramref name="mover"/>.</summary>
-        private HashSet<MapTile> GetEnemyZoneOfControlTiles(Character mover)
+        /// <summary>Draws one Zone-of-Control boundary outline per living enemy (relative to
+        /// <paramref name="mover"/>), regardless of which of its zone tiles are reachable —
+        /// unlike the old per-tile approach, this outline is a thin line layered on top of
+        /// whatever fill (or no fill) is already on those tiles, so it never needs to avoid
+        /// or recolor the move highlight.</summary>
+        private void DrawEnemyZoneOutlines(Character mover)
         {
-            var zone = new HashSet<MapTile>();
             for (int x = 0; x < _gridSize; x++)
                 for (int z = 0; z < _gridSize; z++)
                 {
@@ -784,10 +783,50 @@ namespace BaaroForce.Map
                     Character occupant = t.OccupyingUnit;
                     if (occupant == null || !IsEnemyOf(mover, occupant)) continue;
 
-                    foreach (MapTile zoneTile in SpellAreaUtils.GetCircleAroundTiles(t, 1, _tiles, _gridSize))
-                        zone.Add(zoneTile);
+                    DrawZoneOutline(t);
                 }
-            return zone;
+        }
+
+        /// <summary>
+        /// One big rectangular outline around <paramref name="enemyTile"/>'s whole 3x3 Zone
+        /// of Control (clipped to the grid edge), rather than a separate outline per tile —
+        /// a world-space LineRenderer, not parented to any single MapTile, since it spans
+        /// more than one. Reuses the exact origin/step math TryGetClickedTile etc. already
+        /// use to convert grid coordinates to world space.
+        /// </summary>
+        private void DrawZoneOutline(MapTile enemyTile)
+        {
+            int minX = Mathf.Max(0, enemyTile.GridX - 1);
+            int maxX = Mathf.Min(_gridSize - 1, enemyTile.GridX + 1);
+            int minZ = Mathf.Max(0, enemyTile.GridZ - 1);
+            int maxZ = Mathf.Min(_gridSize - 1, enemyTile.GridZ + 1);
+
+            float halfStep = _step * 0.5f;
+            float xMin = _originX + minX * _step - halfStep;
+            float xMax = _originX + maxX * _step + halfStep;
+            float zMin = _originZ + minZ * _step - halfStep;
+            float zMax = _originZ + maxZ * _step + halfStep;
+            float y    = enemyTile.transform.position.y + enemyTile.transform.lossyScale.y * 0.5f + 0.03f;
+
+            var go = new GameObject("ZoneOfControlOutline");
+            go.transform.SetParent(transform, false);
+
+            var lr = go.AddComponent<LineRenderer>();
+            lr.useWorldSpace = true;
+            lr.loop          = true;
+            lr.positionCount = 4;
+            lr.SetPositions(new[]
+            {
+                new Vector3(xMin, y, zMin),
+                new Vector3(xMax, y, zMin),
+                new Vector3(xMax, y, zMax),
+                new Vector3(xMin, y, zMax),
+            });
+            lr.widthMultiplier = 0.06f;
+            lr.material         = new Material(Shader.Find("Sprites/Default"));
+            lr.startColor       = lr.endColor = ZoneOfControlColor;
+
+            _zoneOutlines.Add(go);
         }
 
         private void ClearMoveHighlights()
@@ -799,9 +838,9 @@ namespace BaaroForce.Map
 
         private void ClearZoneOfControlHighlights()
         {
-            foreach (MapTile t in _highlightedZoneTiles)
-                t.SetZoneOfControlHighlight(false);
-            _highlightedZoneTiles.Clear();
+            foreach (GameObject go in _zoneOutlines)
+                Destroy(go);
+            _zoneOutlines.Clear();
         }
 
         private void CommitMove(MapTile destination)

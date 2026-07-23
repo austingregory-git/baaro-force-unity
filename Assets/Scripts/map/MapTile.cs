@@ -45,14 +45,12 @@ namespace BaaroForce.Map
         private GameObject _moveHighlightOverlay;
         private GameObject _attackHighlightOverlay;
         private GameObject _spellHighlightOverlay;
-        private GameObject _zoneOfControlOutline;
         private GameObject _hoverOutline;
         private GameObject _selectionOutline;
 
         private static readonly Color OverlayColor         = new Color(0.3f, 0.6f, 1f, 0.92f);
         private static readonly Color MoveHighlightColor    = new Color(0.3f, 0.6f, 1f, 0.92f);
         private static readonly Color AttackHighlightColor  = new Color(0.9f, 0.15f, 0.1f, 0.55f);
-        private static readonly Color ZoneOfControlColor    = new Color(1f, 0.65f, 0.1f, 0.85f);
         private static readonly Color HoverHighlightColor   = new Color(0.79f, 0.64f, 0.35f, 0.8f);
         // rgb(243,230,200) — the Combat HUD's own cream "important text" tone (see
         // CombatHud.uss .unit-name/.stat-num). Reads as "selected" without colliding with
@@ -230,14 +228,13 @@ namespace BaaroForce.Map
         // ------------------------------------------------------------------ //
 
         /// <summary>
-        /// Shows or hides the near-opaque overlay used to indicate tiles the selected
-        /// character can move to during the player's turn. Defaults to blue; callers pass
-        /// a distinct color (e.g. amber) for a reachable tile that also lies within an
-        /// enemy's Zone of Control, so leaving it costs extra without needing a second
-        /// stacked overlay (see <see cref="SetZoneOfControlHighlight"/> for unreachable
-        /// zone tiles, where no move overlay exists to color instead).
+        /// Shows or hides the near-opaque blue overlay used to indicate tiles the selected
+        /// character can move to during the player's turn. Reachable tiles that also lie
+        /// within an enemy's Zone of Control still just get this plain overlay — that extra
+        /// cost is communicated separately by TurnManager's zone-of-control boundary outline
+        /// (see TurnManager.DrawZoneOutline), not by recoloring this one.
         /// </summary>
-        public void SetMoveHighlight(bool active, Color? color = null)
+        public void SetMoveHighlight(bool active)
         {
             if (active)
             {
@@ -254,7 +251,7 @@ namespace BaaroForce.Map
                 _moveHighlightOverlay.transform.localScale    = Vector3.one;
 
                 var mat = new Material(Shader.Find("Standard"));
-                ApplyTransparency(mat, color ?? MoveHighlightColor);
+                ApplyTransparency(mat, MoveHighlightColor);
                 _moveHighlightOverlay.GetComponent<MeshRenderer>().material = mat;
             }
             else
@@ -299,18 +296,6 @@ namespace BaaroForce.Map
                 }
             }
         }
-
-        /// <summary>
-        /// Shows or hides a thin amber line around this tile's top-face edges, marking it as
-        /// inside an enemy's Zone of Control while it is NOT currently in the selected
-        /// character's movable range — i.e. there is no <see cref="SetMoveHighlight"/> overlay
-        /// here to recolor instead. An outline rather than a filled overlay so the warning
-        /// reads clearly without covering the terrain underneath — less imposing than the
-        /// original translucent quad, in keeping with the outline being the norm for tile
-        /// highlighting now (see SetHoverHighlight/SetSelectionOutline).
-        /// </summary>
-        public void SetZoneOfControlHighlight(bool active) =>
-            SetOutline(ref _zoneOfControlOutline, active, ZoneOfControlColor, 0.545f);
 
         /// <summary>
         /// Shows or hides a coloured spell-range overlay on this tile.

@@ -4,7 +4,8 @@ namespace BaaroForce.Characters
 {
     public class CharacterStats
     {
-        /// <summary>Maximum health points (set at character creation, never changes).</summary>
+        /// <summary>Maximum health points. Normally fixed at character creation, but can be
+        /// temporarily raised for the duration of a fight by effects like GritStatus.</summary>
         public int MaxHealthPoints;
         /// <summary>Current health points. Character is defeated when this reaches 0.</summary>
         public int HealthPoints;
