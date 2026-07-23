@@ -23,15 +23,17 @@ namespace BaaroForce.Characters
         public List<Spell> CharacterSpells { get; set; }
         private readonly Dictionary<EquipmentSlotType, Equipment> _equippedSlots = new Dictionary<EquipmentSlotType, Equipment>();
 
-        private static readonly EquipmentSlotType[] AllEquipmentSlots =
+        /// <summary>Canonical slot order, shared with any UI that needs to lay out all
+        /// equipment slots (e.g. CharacterInspectUI) rather than hardcoding its own order.</summary>
+        internal static readonly EquipmentSlotType[] AllEquipmentSlots =
         {
             EquipmentSlotType.Helmet, EquipmentSlotType.Chest, EquipmentSlotType.Legs,
-            EquipmentSlotType.MainHand, EquipmentSlotType.OffHand
+            EquipmentSlotType.MainHand, EquipmentSlotType.OffHand, EquipmentSlotType.Trinket
         };
 
         /// <summary>Currently equipped items, one per slot, in a fixed Helmet/Chest/Legs/
-        /// MainHand/OffHand order. Read-only view over <see cref="_equippedSlots"/> — use
-        /// <see cref="Equip"/>/<see cref="Unequip"/> to change what's equipped.</summary>
+        /// MainHand/OffHand/Trinket order. Read-only view over <see cref="_equippedSlots"/> —
+        /// use <see cref="Equip"/>/<see cref="Unequip"/> to change what's equipped.</summary>
         public IEnumerable<Equipment> CharacterEquipment
         {
             get

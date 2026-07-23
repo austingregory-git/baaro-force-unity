@@ -9,6 +9,7 @@ namespace BaaroForce.Items
         Chest,
         Legs,
         MainHand,
-        OffHand
+        OffHand,
+        Trinket
     }
 }

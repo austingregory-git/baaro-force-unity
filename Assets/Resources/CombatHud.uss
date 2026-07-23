@@ -172,16 +172,17 @@
     height: 14px;
     background-color: rgb(20, 16, 24);
     border-radius: 5px;
-    padding: 2px;
-    /* gap (not margin-right on .seg) so there's no gap after the last segment —
-       UI Toolkit doesn't support the :last-child pseudo-class CSS would normally
-       use to zero that out. */
-    gap: 2px;
+    /* Right padding is 0 because .seg already carries a margin-right, which
+       fills that inset after the last segment (see .seg below) — this Unity
+       version's USS doesn't support the "gap" property, and there's no
+       :last-child pseudo-class to zero out a trailing gap the usual CSS way. */
+    padding: 2px 0 2px 2px;
     margin-right: 10px;
 }
 
 .seg {
     flex-grow: 1;
+    margin-right: 2px;
     border-radius: 2px;
     background-color: rgba(255, 255, 255, 0.06);
 }
@@ -264,8 +265,31 @@
     top: 50%;
     translate: 0 -50%;
 }
-.party-frame-list--ally  { left: 1%;  align-items: flex-start; }
 .party-frame-list--enemy { right: 1%; align-items: flex-end; }
+
+/* Ally side wraps its row list + the End Turn button in one column instead of using
+   .party-frame-list directly (like the enemy side does) — the column as a whole is
+   vertically centred, with the button always trailing the rows in normal flex flow, so it
+   sits directly below whatever the current party size renders regardless of how many rows
+   that is. See PartyFrameHudController.BuildLists. */
+.party-frame-ally-column {
+    position: absolute;
+    flex-direction: column;
+    align-items: flex-start;
+    top: 50%;
+    translate: 0 -50%;
+    left: 1%;
+}
+
+.party-frame-ally-rows {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.end-turn-btn {
+    width: 200px;
+    margin-top: 4px;
+}
 
 .party-frame-row {
     flex-direction: row;
@@ -367,7 +391,9 @@
 .action-btn-attack { color: rgb(227, 110, 95); }
 .action-btn-spells { color: rgb(180, 130, 230); }
 .action-btn-items  { color: rgb(140, 200, 130); }
+.action-btn-inspect { color: rgb(150, 200, 210); }
 .action-btn-wait   { color: rgb(201, 163, 90); }
+.action-btn-endturn { color: rgb(201, 163, 90); }
 
 /* ---------------- Spell panel rows -------------------------------------- */
 
@@ -429,6 +455,44 @@
     color: rgb(243, 230, 200);
     -unity-text-align: middle-center;
     white-space: normal;
+}
+
+/* ---------------- End Turn confirm toast -------------------------------- */
+/* Same bottom-centre placement/shape as .warning-toast, but neutral gold
+   (the chassis's own --glow-color) instead of red — this is a decision the
+   player is making, not a rejected-action error. Never auto-hides. */
+.confirm-toast {
+    position: absolute;
+    bottom: 6%;
+    left: 50%;
+    translate: -50% 0;
+    max-width: 420px;
+    background-color: rgb(24, 17, 27);
+    border-width: 2px;
+    border-color: rgb(201, 163, 90);
+    border-radius: 10px;
+    padding: 14px 20px 10px 20px;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-toast-label {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(243, 230, 200);
+    -unity-text-align: middle-center;
+    white-space: normal;
+    margin-bottom: 10px;
+}
+
+.confirm-toast-buttons {
+    flex-direction: row;
+}
+
+.confirm-toast-btn {
+    width: 70px;
+    margin: 0 6px;
+    color: rgb(243, 230, 200);
 }
 
 /* ---------------- Action-outcome preview ("ghost" states) -------------- */
@@ -832,4 +896,143 @@
     font-size: 11px;
     -unity-font-style: bold;
     color: rgb(243, 230, 200);
+}
+
+/* ---------------- Inspect panel (character sheet modal) ------------------ */
+/* Opened via ActionPanelUI's Inspect button. Overlay/chassis/rivets mirror
+   .fight-result-overlay/.fight-result-chassis exactly; everything below just
+   lays out a wider three-column body (equipment / portrait / stats) plus a
+   bottom ability row, reusing .inv-slot (ActMap.uss), .stat-badge/.seg-bar/
+   .pips, and .ability-chip vocabulary directly instead of redefining it. */
+
+.inspect-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(8, 6, 10, 0.72);
+    align-items: center;
+    justify-content: center;
+}
+
+.inspect-chassis {
+    width: 760px;
+    padding: 20px 26px 22px 26px;
+    align-items: center;
+}
+
+/* Sits in the same corner spot a rivet-tr would (see .rivet-tr's top/right: 8px) — this
+   chassis skips that rivet and uses the close button there instead of layering the two. */
+.inspect-close-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    margin: 0;
+    border-radius: 11px;
+    border-width: 1px;
+    border-color: rgb(201, 163, 90);
+    background-color: rgb(24, 17, 27);
+    color: rgb(201, 163, 90);
+    font-size: 12px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+.inspect-close-btn:hover {
+    background-color: rgba(227, 91, 107, 0.35);
+    border-color: rgb(227, 91, 107);
+}
+
+.inspect-header {
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.inspect-name {
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+.inspect-subtitle {
+    font-size: 12px;
+    color: rgba(243, 230, 200, 0.65);
+}
+
+.inspect-body {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.inspect-equip-col {
+    flex-direction: column;
+    width: 190px;
+    margin-right: 18px;
+}
+
+.inspect-equip-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+/* Compound selector so this reliably wins over the base .inv-slot size
+   (56x56, sized for the wider Inventory bag grid) regardless of source
+   order — same convention as .party-frame-portrait.portrait. */
+.inspect-equip-slot.inv-slot {
+    width: 44px;
+    height: 44px;
+    margin-right: 10px;
+}
+
+.inspect-equip-label {
+    font-size: 12px;
+    color: rgba(243, 230, 200, 0.85);
+}
+
+.inspect-portrait-col {
+    align-items: center;
+    width: 190px;
+    margin-right: 18px;
+}
+
+.inspect-portrait.portrait {
+    width: 148px;
+    height: 148px;
+    padding: 10px;
+    border-radius: 22px;
+    border-width: 3px;
+    margin-right: 0;
+    margin-bottom: 10px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.inspect-status-effects {
+    justify-content: center;
+}
+
+.inspect-stats-col {
+    width: 190px;
+}
+
+.inspect-stats-col .stat-row { width: 100%; margin-bottom: 9px; }
+.inspect-stats-col .stat-num { margin-left: auto; }
+
+.inspect-stat-text-label {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgba(243, 230, 200, 0.85);
+}
+
+.inspect-abilities {
+    width: 100%;
+    align-items: center;
+    border-top-width: 1px;
+    border-top-color: rgba(201, 163, 90, 0.25);
+    padding-top: 12px;
 }

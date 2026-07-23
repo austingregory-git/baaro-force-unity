@@ -16,6 +16,7 @@ using BaaroForce.Passives;
 using BaaroForce.GameController;
 using BaaroForce.Relics;
 using BaaroForce.Loot;
+using BaaroForce.Items;
 
 namespace BaaroForce.Map
 {
@@ -48,6 +49,9 @@ namespace BaaroForce.Map
         private float       _step;
         private float       _originX;
         private float       _originZ;
+
+        private GridPathfinder _pathfinder;
+        private ZoneOfControlOutlines _zocOutlines;
 
         // ------------------------------------------------------------------ //
         // Turn state                                                          //
@@ -95,28 +99,20 @@ namespace BaaroForce.Map
         private readonly List<MapTile> _highlightedMoveTiles   = new List<MapTile>();
         private readonly List<MapTile> _highlightedAttackTiles = new List<MapTile>();
 
-        /// <summary>One boundary-outline GameObject per enemy's Zone of Control (see
-        /// DrawZoneOutline) — world-space LineRenderers owned by TurnManager itself rather
-        /// than any single MapTile, since each traces the perimeter of a whole 3x3 zone
-        /// rather than one tile's edges.</summary>
-        private readonly List<GameObject> _zoneOutlines = new List<GameObject>();
-
-        /// <summary>Light red — distinct from the gold hover outline (MapTile.HoverHighlightColor)
-        /// and darker/more saturated than the attack-range red (MapTile.AttackHighlightColor).</summary>
-        private static readonly Color ZoneOfControlColor = new Color(1f, 0.4f, 0.4f, 0.85f);
-
         //_spellTargetTiles
         private readonly List<MapTile> _spellTargetTiles = new List<MapTile>();
         private readonly List<MapTile> _spellPreviewTiles = new List<MapTile>();
 
         private Spell         _selectedSpell;
         private ActionPanelUI   _actionPanel;
+        private CharacterInspectUI _inspectPanel;
         private SpellPanelUI    _spellPanel;
         private WarningToastUI  _warningToast;
         private FightResultUI   _fightResultUI;
         private LevelUpUI       _levelUpUI;
         private TileInfoPanelUI _tileInfoPanel;
         private CombatCornerMenu _cornerMenu;
+        private EndTurnConfirmUI _endTurnConfirm;
         private bool           _isMoving;
         private bool           _fightEnded;
         private MapTile _hoveredTile;
@@ -158,57 +154,83 @@ namespace BaaroForce.Map
             _step     = tileStep;
             _originX  = originWorldX;
             _originZ  = originWorldZ;
+            _pathfinder  = new GridPathfinder(_tiles, _gridSize);
+            _zocOutlines = new ZoneOfControlOutlines(transform, _gridSize, _step, _originX, _originZ);
 
             EnsureMapUI();
+            CreateActionAndSpellPanels();
+            CreateToastAndInfoUI();
+            CreateFightResultUI();
+        }
 
+        private void CreateActionAndSpellPanels()
+        {
             _actionPanel = gameObject.AddComponent<ActionPanelUI>();
             _actionPanel.OnMoveClicked   = ToggleMoveMode;
             _actionPanel.OnAttackClicked = ToggleAttackMode;
             _actionPanel.OnSpellsClicked = ShowSpellPanel;
             _actionPanel.OnItemsClicked  = () => Debug.Log("[TurnManager] Items — not yet implemented.");
+            _actionPanel.OnInspectClicked = () => _inspectPanel.Show(_selectedCharacter);
             _actionPanel.OnWaitClicked   = () => EndCharacterTurn(_selectedCharacter);
+
+            _inspectPanel = gameObject.AddComponent<CharacterInspectUI>();
 
             _spellPanel = gameObject.AddComponent<SpellPanelUI>();
             _spellPanel.OnSpellSelected = ActivateSpell;
             _spellPanel.OnBackClicked   = ShowActionPanel;
             _spellPanel.GetCooldownRemaining = GetCooldownRemaining;
+        }
 
-            _warningToast = gameObject.AddComponent<WarningToastUI>();
-
-            _tileInfoPanel = gameObject.AddComponent<TileInfoPanelUI>();
+        private void CreateToastAndInfoUI()
+        {
+            _warningToast   = gameObject.AddComponent<WarningToastUI>();
+            _endTurnConfirm = gameObject.AddComponent<EndTurnConfirmUI>();
+            _tileInfoPanel  = gameObject.AddComponent<TileInfoPanelUI>();
 
             gameObject.AddComponent<CombatLogUI>();
             _cornerMenu = gameObject.AddComponent<CombatCornerMenu>();
+        }
 
+        private void CreateFightResultUI()
+        {
             _fightResultUI = gameObject.AddComponent<FightResultUI>();
             _fightResultUI.GoldFlightTarget = _cornerMenu.GoldTarget;
             _fightResultUI.ItemFlightTarget = _cornerMenu.InventoryTarget;
-            _levelUpUI     = gameObject.AddComponent<LevelUpUI>();
-            _fightResultUI.OnReturnToMainMenu = () =>
-            {
-                PartyManager.Instance.ResetForNewRun();
-                SceneManager.LoadScene("MainMenu");
-            };
-            _fightResultUI.OnMoveOn = () =>
-            {
-                // Restore everyone to their pre-combat baseline (full HP/mana, no leftover
-                // shield or status effects) before the level-up reveal builds its cards, so a
-                // character who simply took damage or was buffed mid-fight doesn't show a
-                // half-empty bar or stale bonus for reasons unrelated to leveling up.
-                foreach (Character member in PartyManager.Instance.Party.Members)
-                    member.ResetPostCombatState();
+            _levelUpUI = gameObject.AddComponent<LevelUpUI>();
 
-                // Swap to the level-up reveal screen first if anyone leveled up this fight —
-                // it no-ops straight through to the Act Map when nobody did.
-                _fightResultUI.Hide();
-                _levelUpUI.Show(PartyManager.Instance.Party.Members, () =>
-                {
-                    PartyManager.Instance.ActRun.PendingEncounter = null;
-                    PartyManager.Instance.ActRun.CompleteCurrentNode();
-                    SceneManager.LoadScene("ActMapScene");
-                });
-            };
-            _fightResultUI.OnLootClaimed = ClaimLoot;
+            _fightResultUI.OnReturnToMainMenu = ReturnToMainMenu;
+            _fightResultUI.OnMoveOn           = ShowLevelUpThenAdvance;
+            _fightResultUI.OnLootClaimed      = ClaimLoot;
+        }
+
+        private void ReturnToMainMenu()
+        {
+            PartyManager.Instance.ResetForNewRun();
+            SceneManager.LoadScene("MainMenu");
+        }
+
+        /// <summary>
+        /// Restores everyone to their pre-combat baseline (full HP/mana, no leftover shield or
+        /// status effects) before the level-up reveal builds its cards, so a character who
+        /// simply took damage or was buffed mid-fight doesn't show a half-empty bar or stale
+        /// bonus for reasons unrelated to leveling up. Swaps to the level-up reveal screen first
+        /// if anyone leveled up this fight — it no-ops straight through to the Act Map when
+        /// nobody did.
+        /// </summary>
+        private void ShowLevelUpThenAdvance()
+        {
+            foreach (Character member in PartyManager.Instance.Party.Members)
+                member.ResetPostCombatState();
+
+            _fightResultUI.Hide();
+            _levelUpUI.Show(PartyManager.Instance.Party.Members, AdvanceToActMap);
+        }
+
+        private void AdvanceToActMap()
+        {
+            PartyManager.Instance.ActRun.PendingEncounter = null;
+            PartyManager.Instance.ActRun.CompleteCurrentNode();
+            SceneManager.LoadScene("ActMapScene");
         }
 
         private void ClaimLoot(LootEntry entry)
@@ -220,16 +242,20 @@ namespace BaaroForce.Map
                 return;
             }
 
-            if (entry.Equipment != null)
-            {
-                if (!PartyManager.Instance.Party.TryAddEquipment(entry.Equipment))
-                    _warningToast?.Show($"Inventory full — '{entry.Equipment.Name}' was lost.");
-            }
-            else if (entry.Potion != null)
-            {
-                if (!PartyManager.Instance.Party.TryAddPotion(entry.Potion))
-                    _warningToast?.Show($"Inventory full — '{entry.Potion.Name}' was lost.");
-            }
+            if (entry.Equipment != null) ClaimEquipment(entry.Equipment);
+            else if (entry.Potion != null) ClaimPotion(entry.Potion);
+        }
+
+        private void ClaimEquipment(Equipment equipment)
+        {
+            if (!PartyManager.Instance.Party.TryAddEquipment(equipment))
+                _warningToast?.Show($"Inventory full — '{equipment.Name}' was lost.");
+        }
+
+        private void ClaimPotion(Potion potion)
+        {
+            if (!PartyManager.Instance.Party.TryAddPotion(potion))
+                _warningToast?.Show($"Inventory full — '{potion.Name}' was lost.");
         }
 
         // ------------------------------------------------------------------ //
@@ -249,24 +275,24 @@ namespace BaaroForce.Map
             _finishedCharacters.Clear();
 
             var members = PartyManager.Instance?.Party?.Members;
-            if (members != null)
-                foreach (Character c in members)
-                {
-                    _remainingMovement[c] = c.CharacterStats.Movement;
-                    _remainingActions[c]  = c.CharacterStats.MaxActionPoints;
-                }
-
-            var relics = PartyManager.Instance?.Relics;
-            CheckAndHandlePlayerTurnStart(members, relics);
+            ResetTurnResourcesFor(members);
+            CheckAndHandlePlayerTurnStart(members, PartyManager.Instance?.Relics);
 
             Debug.Log("[TurnManager] Player turn started.");
         }
 
+        private void ResetTurnResourcesFor(List<Character> members)
+        {
+            if (members == null) return;
+            foreach (Character c in members)
+            {
+                _remainingMovement[c] = c.CharacterStats.Movement;
+                _remainingActions[c]  = c.CharacterStats.MaxActionPoints;
+            }
+        }
+
         private void CheckAndHandlePlayerTurnStart(List<Character> members, List<Relic> relics)
         {
-            // Implement logic to handle the start of the player's turn.
-            // This could include checking if all characters have finished their turns,
-            // applying relic effects, or other start-of-turn mechanics.
             Debug.Log("[TurnManager] Checking and handling start of player turn.");
 
             // _roundNumber was just incremented in StartPlayerTurn, so 1 means this is the
@@ -289,23 +315,21 @@ namespace BaaroForce.Map
         {
             if (members == null) return;
             foreach (Character c in members)
-            {
                 foreach (var passive in c.CharacterPassiveAbilities)
-                {
-                    if (passive == null) continue;
+                    ExecuteStartOfCombatPassive(passive, c);
+        }
 
-                    // Reset per-combat state for every passive, regardless of its trigger —
-                    // e.g. Spiritual Protector's "already healed this fight" flag, even
-                    // though its own AbilityType is OnAllyDamaged, not StartOfCombat.
-                    passive.OnCombatStart();
+        /// <summary>Resets per-combat state for every passive, regardless of its trigger — e.g.
+        /// Spiritual Protector's "already healed this fight" flag, even though its own
+        /// AbilityType is OnAllyDamaged, not StartOfCombat — then fires it if it is one.</summary>
+        private void ExecuteStartOfCombatPassive(PassiveAbility passive, Character c)
+        {
+            if (passive == null) return;
+            passive.OnCombatStart();
 
-                    if (passive.AbilityType == PassiveAbility.PassiveAbilityType.StartOfCombat)
-                    {
-                        Debug.Log($"[TurnManager] Executing start-of-combat passive '{passive.Name}' for character '{c.CharacterName}'.");
-                        passive.Execute(new PassiveOnTurnContext(character: c, characterLevel: c.Level, characterTile: c.CharacterCurrentTile, allTiles: _tiles, gridSize: _gridSize));
-                    }
-                }
-            }
+            if (passive.AbilityType != PassiveAbility.PassiveAbilityType.StartOfCombat) return;
+            Debug.Log($"[TurnManager] Executing start-of-combat passive '{passive.Name}' for character '{c.CharacterName}'.");
+            passive.Execute(new PassiveOnTurnContext(character: c, characterLevel: c.Level, characterTile: c.CharacterCurrentTile, allTiles: _tiles, gridSize: _gridSize));
         }
 
         private void CheckAndHandlePlayerTurnStartPassives(List<Character> members)
@@ -313,17 +337,18 @@ namespace BaaroForce.Map
             foreach (Character c in members)
             {
                 ApplyTerrainEffects(c, c.CharacterCurrentTile);
-
                 foreach (var passive in c.CharacterPassiveAbilities)
-                {
-                    Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{c.CharacterName}' at start of turn.");
-                    if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.StartOfTurn)
-                    {
-                        Debug.Log($"[TurnManager] Executing passive ability '{passive.Name}' for character '{c.CharacterName}'.");
-                        passive.Execute(new PassiveOnTurnContext(character: c, characterLevel: c.Level, characterTile: c.CharacterCurrentTile, allTiles: _tiles, gridSize: _gridSize));
-                    }
-                }
+                    ExecuteStartOfTurnPassive(passive, c);
             }
+        }
+
+        private void ExecuteStartOfTurnPassive(PassiveAbility passive, Character c)
+        {
+            Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{c.CharacterName}' at start of turn.");
+            if (passive == null || passive.AbilityType != PassiveAbility.PassiveAbilityType.StartOfTurn) return;
+
+            Debug.Log($"[TurnManager] Executing passive ability '{passive.Name}' for character '{c.CharacterName}'.");
+            passive.Execute(new PassiveOnTurnContext(character: c, characterLevel: c.Level, characterTile: c.CharacterCurrentTile, allTiles: _tiles, gridSize: _gridSize));
         }
 
         // ------------------------------------------------------------------ //
@@ -339,23 +364,24 @@ namespace BaaroForce.Map
                 DevDamageAllEnemies(100);
 #endif
 
-            if (CombatCornerMenu.IsBlockingCombatInput) return;
-            if (_fightEnded) return;
-            if (CurrentPhase != TurnPhase.PlayerTurn) return;
-            if (_isMoving) return;
+            if (IsPlayerInputBlocked()) return;
 
             UpdateHoveredTile();
-
-            if (_currentMode == InputMode.Spell &&
-                _selectedSpell != null &&
-                _selectedSpell.TargetType == SpellTargetType.Area)
-            {
-                UpdateSpellPreview();
-            }
+            if (IsAimingAreaSpell()) UpdateSpellPreview();
 
             HandleClick();
             HandleKeys();
         }
+
+        private bool IsPlayerInputBlocked() =>
+            CombatCornerMenu.IsBlockingCombatInput || _fightEnded ||
+            CurrentPhase != TurnPhase.PlayerTurn || _isMoving ||
+            (_inspectPanel != null && _inspectPanel.IsVisible);
+
+        private bool IsAimingAreaSpell() =>
+            _currentMode == InputMode.Spell &&
+            _selectedSpell != null &&
+            _selectedSpell.TargetType == SpellTargetType.Area;
 
         // ------------------------------------------------------------------ //
         // Hovered tile handling                                               //
@@ -500,45 +526,54 @@ namespace BaaroForce.Map
         {
             switch (_currentMode)
             {
-                case InputMode.Move:
-                    if (_highlightedMoveTiles.Contains(clicked))
-                        CommitMove(clicked);
-                    else
-                        SetMode(InputMode.None);
-                    break;
-
-                case InputMode.Attack:
-                    if (_highlightedAttackTiles.Contains(clicked) && clicked.OccupyingNpc != null)
-                        CommitAttack(clicked);
-                    else if (clicked.OccupyingNpc != null)
-                        // Real target, just beyond the attacker's reach — warn instead of
-                        // silently cancelling so the player doesn't lose their targeting mode.
-                        _warningToast?.Show("Target is out of range.");
-                    else
-                        SetMode(InputMode.None);
-                    break;
-
-                case InputMode.Spell:
-                    if (_spellTargetTiles.Contains(clicked))
-                        CommitSpell(clicked);
-                    else if (_selectedSpell != null &&
-                             _selectedSpell.TargetType != SpellTargetType.Self &&
-                             IsValidSpellTarget(_selectedSpell, clicked))
-                        // Same idea as the attack case above: a legal target that's simply
-                        // out of the spell's range shouldn't silently drop out of targeting.
-                        _warningToast?.Show($"'{_selectedSpell.Name}' is out of range.");
-                    else
-                        SetMode(InputMode.None);
-                    break;
-
-                default:
-                    SetInspectedTile(clicked);
-                    if (clicked.OccupyingCharacter != null)
-                        SelectCharacter(clicked.OccupyingCharacter, clicked);
-                    else
-                        Deselect();
-                    break;
+                case InputMode.Move:   HandleMoveModeClick(clicked);       break;
+                case InputMode.Attack: HandleAttackModeClick(clicked);     break;
+                case InputMode.Spell:  HandleSpellModeClick(clicked);      break;
+                default:               HandleInspectOrSelectClick(clicked); break;
             }
+        }
+
+        private void HandleMoveModeClick(MapTile clicked)
+        {
+            if (_highlightedMoveTiles.Contains(clicked))
+                CommitMove(clicked);
+            else
+                SetMode(InputMode.None);
+        }
+
+        private void HandleAttackModeClick(MapTile clicked)
+        {
+            if (_highlightedAttackTiles.Contains(clicked) && clicked.OccupyingNpc != null)
+                CommitAttack(clicked);
+            else if (clicked.OccupyingNpc != null)
+                // Real target, just beyond the attacker's reach — warn instead of
+                // silently cancelling so the player doesn't lose their targeting mode.
+                _warningToast?.Show("Target is out of range.");
+            else
+                SetMode(InputMode.None);
+        }
+
+        private void HandleSpellModeClick(MapTile clicked)
+        {
+            if (_spellTargetTiles.Contains(clicked))
+                CommitSpell(clicked);
+            else if (_selectedSpell != null &&
+                     _selectedSpell.TargetType != SpellTargetType.Self &&
+                     IsValidSpellTarget(_selectedSpell, clicked))
+                // Same idea as the attack case above: a legal target that's simply
+                // out of the spell's range shouldn't silently drop out of targeting.
+                _warningToast?.Show($"'{_selectedSpell.Name}' is out of range.");
+            else
+                SetMode(InputMode.None);
+        }
+
+        private void HandleInspectOrSelectClick(MapTile clicked)
+        {
+            SetInspectedTile(clicked);
+            if (clicked.OccupyingCharacter != null)
+                SelectCharacter(clicked.OccupyingCharacter, clicked);
+            else
+                Deselect();
         }
 
         /// <summary>
@@ -631,22 +666,27 @@ namespace BaaroForce.Map
 
         private void HandleKeys()
         {
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                SetMode(InputMode.None);
-                ShowActionPanel();
-                ClearInspectedTile();
-                return;
-            }
-
-            if (Input.GetKeyDown(KeyCode.E))
-            {
-                if (_selectedCharacter != null) EndCharacterTurn(_selectedCharacter);
-                return;
-            }
-
+            if (Input.GetKeyDown(KeyCode.Escape)) { HandleEscapeKey(); return; }
+            if (Input.GetKeyDown(KeyCode.E))      { HandleEndTurnKey(); return; }
             if (_selectedCharacter == null) return;
 
+            HandleActionModeKeys();
+        }
+
+        private void HandleEscapeKey()
+        {
+            SetMode(InputMode.None);
+            ShowActionPanel();
+            ClearInspectedTile();
+        }
+
+        private void HandleEndTurnKey()
+        {
+            if (_selectedCharacter != null) EndCharacterTurn(_selectedCharacter);
+        }
+
+        private void HandleActionModeKeys()
+        {
             if (Input.GetKeyDown(KeyCode.W))
                 ToggleMoveMode();
             else if (Input.GetKeyDown(KeyCode.A))
@@ -722,7 +762,7 @@ namespace BaaroForce.Map
         private void SetMode(InputMode mode)
         {
             ClearMoveHighlights();
-            ClearZoneOfControlHighlights();
+            _zocOutlines.Clear();
             ClearAttackHighlights();
             ClearSpellHighlights();
             ClearPreviewTiles();
@@ -761,76 +801,19 @@ namespace BaaroForce.Map
 
         private void ShowMovableRange(MapTile origin, int range)
         {
-            HashSet<MapTile> reachable = BfsReachable(origin, range, _selectedCharacter);
+            HashSet<MapTile> reachable = _pathfinder.BfsReachable(origin, range, _selectedCharacter);
+            HighlightMoveTiles(reachable, origin);
+            _zocOutlines.DrawForEnemiesOf(_selectedCharacter, _tiles);
+        }
 
+        private void HighlightMoveTiles(HashSet<MapTile> reachable, MapTile origin)
+        {
             foreach (MapTile tile in reachable)
             {
                 if (tile == origin) continue;
                 tile.SetMoveHighlight(true);
                 _highlightedMoveTiles.Add(tile);
             }
-
-            DrawEnemyZoneOutlines(_selectedCharacter);
-        }
-
-        /// <summary>Draws one Zone-of-Control boundary outline per living enemy (relative to
-        /// <paramref name="mover"/>), regardless of which of its zone tiles are reachable —
-        /// unlike the old per-tile approach, this outline is a thin line layered on top of
-        /// whatever fill (or no fill) is already on those tiles, so it never needs to avoid
-        /// or recolor the move highlight.</summary>
-        private void DrawEnemyZoneOutlines(Character mover)
-        {
-            for (int x = 0; x < _gridSize; x++)
-                for (int z = 0; z < _gridSize; z++)
-                {
-                    MapTile t = _tiles[x, z];
-                    Character occupant = t.OccupyingUnit;
-                    if (occupant == null || !IsEnemyOf(mover, occupant)) continue;
-
-                    DrawZoneOutline(t);
-                }
-        }
-
-        /// <summary>
-        /// One big rectangular outline around <paramref name="enemyTile"/>'s whole 3x3 Zone
-        /// of Control (clipped to the grid edge), rather than a separate outline per tile —
-        /// a world-space LineRenderer, not parented to any single MapTile, since it spans
-        /// more than one. Reuses the exact origin/step math TryGetClickedTile etc. already
-        /// use to convert grid coordinates to world space.
-        /// </summary>
-        private void DrawZoneOutline(MapTile enemyTile)
-        {
-            int minX = Mathf.Max(0, enemyTile.GridX - 1);
-            int maxX = Mathf.Min(_gridSize - 1, enemyTile.GridX + 1);
-            int minZ = Mathf.Max(0, enemyTile.GridZ - 1);
-            int maxZ = Mathf.Min(_gridSize - 1, enemyTile.GridZ + 1);
-
-            float halfStep = _step * 0.5f;
-            float xMin = _originX + minX * _step - halfStep;
-            float xMax = _originX + maxX * _step + halfStep;
-            float zMin = _originZ + minZ * _step - halfStep;
-            float zMax = _originZ + maxZ * _step + halfStep;
-            float y    = enemyTile.transform.position.y + enemyTile.transform.lossyScale.y * 0.5f + 0.03f;
-
-            var go = new GameObject("ZoneOfControlOutline");
-            go.transform.SetParent(transform, false);
-
-            var lr = go.AddComponent<LineRenderer>();
-            lr.useWorldSpace = true;
-            lr.loop          = true;
-            lr.positionCount = 4;
-            lr.SetPositions(new[]
-            {
-                new Vector3(xMin, y, zMin),
-                new Vector3(xMax, y, zMin),
-                new Vector3(xMax, y, zMax),
-                new Vector3(xMin, y, zMax),
-            });
-            lr.widthMultiplier = 0.06f;
-            lr.material         = new Material(Shader.Find("Sprites/Default"));
-            lr.startColor       = lr.endColor = ZoneOfControlColor;
-
-            _zoneOutlines.Add(go);
         }
 
         private void ClearMoveHighlights()
@@ -840,18 +823,11 @@ namespace BaaroForce.Map
             _highlightedMoveTiles.Clear();
         }
 
-        private void ClearZoneOfControlHighlights()
-        {
-            foreach (GameObject go in _zoneOutlines)
-                Destroy(go);
-            _zoneOutlines.Clear();
-        }
-
         private void CommitMove(MapTile destination)
         {
             SetMode(InputMode.None);
-            List<MapTile> path = FindShortestPath(_selectedTile, destination, _selectedCharacter);
-            int manaCost = PathCost(path, _selectedCharacter);
+            List<MapTile> path = _pathfinder.FindShortestPath(_selectedTile, destination, _selectedCharacter);
+            int manaCost = _pathfinder.PathCost(path, _selectedCharacter);
             _remainingMovement[_selectedCharacter] =
                 Mathf.Max(0, RemainingMove(_selectedCharacter) - manaCost);
             OnCharacterSelected?.Invoke(_selectedCharacter);
@@ -908,10 +884,15 @@ namespace BaaroForce.Map
 
             FaceTowardTile(_selectedCharacter, targetTile);
             ResolveBasicAttack(_selectedCharacter, target, targetTile);
-
             _remainingActions[_selectedCharacter] =
                 Mathf.Max(0, RemainingActions(_selectedCharacter) - 1);
 
+            UpdateTargetHudAfterAttack(target);
+            FinishPlayerAction();
+        }
+
+        private void UpdateTargetHudAfterAttack(Npc target)
+        {
             if (target.CharacterStats.HealthPoints <= 0)
             {
                 OnTargetCleared?.Invoke();
@@ -923,7 +904,16 @@ namespace BaaroForce.Map
                 // Push the post-damage stats to the right-side HUD panel.
                 OnTargetHighlighted?.Invoke(target);
             }
+        }
 
+        /// <summary>
+        /// Ends the current player action: checks whether the fight just ended, then — if
+        /// not — auto-ends the acting character's turn once their resources are spent, or
+        /// else refreshes the HUD with their updated AP/HP/mana. Shared tail of every
+        /// player-initiated action (attack, spell) that doesn't reposition the caster first.
+        /// </summary>
+        private void FinishPlayerAction()
+        {
             CheckFightOutcome();
             if (_fightEnded) return;
 
@@ -931,31 +921,29 @@ namespace BaaroForce.Map
             if (_selectedCharacter != null)
             {
                 ShowActionPanel();
-                // Push updated AP/HP/mana to the left-side HUD panel.
                 OnCharacterSelected?.Invoke(_selectedCharacter);
             }
         }
 
-        /// <summary>Attack range in Manhattan-distance _tiles based on class specialty,
+        /// <summary>Attack range in Manhattan-distance tiles based on class specialty,
         /// plus any range bonus from the character's passives (e.g. Hans's Long Bow).</summary>
         private int GetAttackRange(Character character)
         {
-            int baseRange;
-            if (character.CharacterClass == null)
-            {
-                baseRange = 1;
-            }
-            else
-            {
-                switch (character.CharacterClass.Specialty)
-                {
-                    case CharacterClass.ClassSpecialty.Melee:  baseRange = 1; break;
-                    case CharacterClass.ClassSpecialty.Magic:  baseRange = 2; break;
-                    case CharacterClass.ClassSpecialty.Ranged: baseRange = 3; break;
-                    default:                                   baseRange = 1; break;
-                }
-            }
+            int baseRange = character.CharacterClass == null
+                ? 1
+                : BaseAttackRangeFor(character.CharacterClass.Specialty);
             return baseRange + character.RangeBonus;
+        }
+
+        private static int BaseAttackRangeFor(CharacterClass.ClassSpecialty specialty)
+        {
+            switch (specialty)
+            {
+                case CharacterClass.ClassSpecialty.Melee:  return 1;
+                case CharacterClass.ClassSpecialty.Magic:  return 2;
+                case CharacterClass.ClassSpecialty.Ranged: return 3;
+                default:                                   return 1;
+            }
         }
 
         // ------------------------------------------------------------------ //
@@ -986,21 +974,28 @@ namespace BaaroForce.Map
         private void ShowSpellRange(MapTile origin, Spell spell)
         {
             if (spell.TargetType == SpellTargetType.Self)
-            {
-                // No tile is aimed, but the spell still affects a fixed set of tiles around
-                // the caster (just the caster's own tile for a plain self-buff like Grit, or
-                // a wider CircleAround area for something like Rally) — highlight exactly
-                // that area so the player can see who/what will be affected before confirming.
-                List<MapTile> affectedTiles = SpellAreaUtils.GetAreaTiles(spell, origin, origin, _tiles, _gridSize);
-                Color selfColor = GetSpellHighlightColor(spell);
-                foreach (MapTile tile in affectedTiles)
-                {
-                    tile.SetSpellHighlight(true, selfColor);
-                    _spellTargetTiles.Add(tile);
-                }
-                return;
-            }
+                ShowSelfSpellRange(origin, spell);
+            else
+                ShowAimedSpellRange(origin, spell);
+        }
 
+        /// <summary>No tile is aimed, but the spell still affects a fixed set of tiles around
+        /// the caster (just the caster's own tile for a plain self-buff like Grit, or a wider
+        /// CircleAround area for something like Rally) — highlight exactly that area so the
+        /// player can see who/what will be affected before confirming.</summary>
+        private void ShowSelfSpellRange(MapTile origin, Spell spell)
+        {
+            List<MapTile> affectedTiles = SpellAreaUtils.GetAreaTiles(spell, origin, origin, _tiles, _gridSize);
+            Color color = GetSpellHighlightColor(spell);
+            foreach (MapTile tile in affectedTiles)
+            {
+                tile.SetSpellHighlight(true, color);
+                _spellTargetTiles.Add(tile);
+            }
+        }
+
+        private void ShowAimedSpellRange(MapTile origin, Spell spell)
+        {
             Color color = GetSpellHighlightColor(spell);
             int ox = origin.GridX, oz = origin.GridZ;
 
@@ -1013,27 +1008,31 @@ namespace BaaroForce.Map
             int effectiveRange = spell.Range + (_selectedCharacter?.RangeBonus ?? 0);
 
             for (int x = 0; x < _gridSize; x++)
-            {
                 for (int z = 0; z < _gridSize; z++)
-                {
-                    int dist = Mathf.Abs(x - ox) + Mathf.Abs(z - oz);
-                    if (dist < minDist || dist > effectiveRange) continue;
+                    HighlightIfInSpellRange(x, z, ox, oz, minDist, effectiveRange, color);
+        }
 
-                    MapTile tile = _tiles[x, z];
+        private void HighlightIfInSpellRange(int x, int z, int ox, int oz, int minDist, int effectiveRange, Color color)
+        {
+            int dist = Mathf.Abs(x - ox) + Mathf.Abs(z - oz);
+            if (dist < minDist || dist > effectiveRange) return;
 
-                    tile.SetSpellHighlight(true, color);
-                    _spellTargetTiles.Add(tile);
-                }
-            }
+            MapTile tile = _tiles[x, z];
+            tile.SetSpellHighlight(true, color);
+            _spellTargetTiles.Add(tile);
         }
 
         private void UpdateSpellPreview()
         {
             ClearPreviewTiles();
+            if (_hoveredTile == null) return;
+            if (!IsHoveredTileInSpellRange()) return;
 
-            if (_hoveredTile == null)
-                return;
+            HighlightSpellPreviewArea();
+        }
 
+        private bool IsHoveredTileInSpellRange()
+        {
             int distance =
                 Mathf.Abs(_hoveredTile.GridX - _selectedTile.GridX) +
                 Mathf.Abs(_hoveredTile.GridZ - _selectedTile.GridZ);
@@ -1041,21 +1040,20 @@ namespace BaaroForce.Map
             // Include the caster's passive range bonus (e.g. Hans's Long Bow), same as
             // ShowSpellRange, so the preview never rejects a tile the highlight allowed.
             int effectiveRange = _selectedSpell.Range + (_selectedCharacter?.RangeBonus ?? 0);
-            if (distance == 0 || distance > effectiveRange)
-                return;
+            return distance != 0 && distance <= effectiveRange;
+        }
 
-            // Dispatches on the spell's own AreaType (HorizontalLine, Cone, ...) so the preview
-            // always matches the shape Execute will actually resolve against.
-            List<MapTile> areaTiles =
-                SpellAreaUtils.GetAreaTiles(
-                    _selectedSpell,
-                    _selectedTile,
-                    _hoveredTile,
-                    _tiles,
-                    _gridSize);
+        /// <summary>
+        /// Dispatches on the spell's own AreaType (HorizontalLine, Cone, ...) so the preview
+        /// always matches the shape Execute will actually resolve against. Higher alpha than
+        /// the selectable-range highlight (0.9 vs 0.75) so the exact tiles about to be hit
+        /// stand out from the wider "you could aim here" range.
+        /// </summary>
+        private void HighlightSpellPreviewArea()
+        {
+            List<MapTile> areaTiles = SpellAreaUtils.GetAreaTiles(
+                _selectedSpell, _selectedTile, _hoveredTile, _tiles, _gridSize);
 
-            // Higher alpha than the selectable-range highlight (0.9 vs 0.75) so the exact
-            // tiles about to be hit stand out from the wider "you could aim here" range.
             Color previewColor = GetSpellHighlightColor(_selectedSpell, alpha: 0.9f);
             foreach (var tile in areaTiles)
             {
@@ -1082,74 +1080,84 @@ namespace BaaroForce.Map
         private void CommitSpell(MapTile targetTile)
         {
             if (_selectedSpell == null) return;
-
             Spell spell = _selectedSpell;
 
-            // Reject tiles that don't hold a valid target for this spell's TargetType
-            // (e.g. an Enemy-targeted spell aimed at an empty or ally-occupied tile).
-            // Bail out *before* touching AP/mana/cooldown and stay in targeting mode
-            // so the player can simply pick a real target instead of losing the turn.
-            if (!IsValidSpellTarget(spell, targetTile))
-            {
-                Debug.Log($"[TurnManager] '{spell.Name}' has no valid target on that tile.");
-                _warningToast?.Show(GetNoTargetMessage(spell));
-                return;
-            }
-
+            if (!IsValidSpellTarget(spell, targetTile)) { WarnInvalidSpellTarget(spell); return; }
             SetMode(InputMode.None);   // clears highlights and nulls _selectedSpell
+            if (!HasEnoughMana(_selectedCharacter, spell)) { WarnNotEnoughMana(_selectedCharacter, spell); return; }
 
-            if (spell.ManaCost > 0 && _selectedCharacter.CharacterStats.Mana < spell.ManaCost)
-            {
-                Debug.Log($"[TurnManager] '{_selectedCharacter.CharacterName}' " +
-                           "does not have enough mana to cast this spell.");
-                _warningToast?.Show($"Not enough mana to cast '{spell.Name}'.");
-                return;
-            }
+            var context = BuildSpellContext(_selectedCharacter, _selectedTile, targetTile);
+            if (TryStartSpellWithMovement(_selectedCharacter, spell, context)) return;
 
-            var context = new SpellContext(
-                caster:      _selectedCharacter,
-                casterLevel: _selectedCharacter.Level,
-                casterTile:  _selectedTile,
+            FaceTowardTile(_selectedCharacter, targetTile);
+            ResolveSpellCast(_selectedCharacter, spell, context);
+            FinishPlayerAction();
+        }
+
+        /// <summary>Rejects tiles that don't hold a valid target for this spell's TargetType
+        /// (e.g. an Enemy-targeted spell aimed at an empty or ally-occupied tile). Bail out
+        /// *before* touching AP/mana/cooldown and stay in targeting mode so the player can
+        /// simply pick a real target instead of losing the turn.</summary>
+        private void WarnInvalidSpellTarget(Spell spell)
+        {
+            Debug.Log($"[TurnManager] '{spell.Name}' has no valid target on that tile.");
+            _warningToast?.Show(GetNoTargetMessage(spell));
+        }
+
+        private bool HasEnoughMana(Character caster, Spell spell) =>
+            spell.ManaCost <= 0 || caster.CharacterStats.Mana >= spell.ManaCost;
+
+        private void WarnNotEnoughMana(Character caster, Spell spell)
+        {
+            Debug.Log($"[TurnManager] '{caster.CharacterName}' does not have enough mana to cast this spell.");
+            _warningToast?.Show($"Not enough mana to cast '{spell.Name}'.");
+        }
+
+        private SpellContext BuildSpellContext(Character caster, MapTile casterTile, MapTile targetTile) =>
+            new SpellContext(
+                caster:      caster,
+                casterLevel: caster.Level,
+                casterTile:  casterTile,
                 targetTile:  targetTile,
                 allTiles:    _tiles,
                 gridSize:    _gridSize);
 
-            // If the spell physically repositions the caster first (e.g. Charge),
-            // animate the movement and resolve the effect at the end of that coroutine.
+        /// <summary>If the spell physically repositions the caster first (e.g. Charge), starts
+        /// the movement+resolve coroutine and reports true so the caller stops here instead of
+        /// resolving the spell immediately in place.</summary>
+        private bool TryStartSpellWithMovement(Character caster, Spell spell, SpellContext context)
+        {
             MapTile landingTile = spell.GetCasterLandingTile(context);
-            if (landingTile != null)
-            {
-                StartCoroutine(SpellWithMovement(_selectedCharacter, _selectedTile,
-                                                 landingTile, spell, context));
-                return;
-            }
+            if (landingTile == null) return false;
 
-            FaceTowardTile(_selectedCharacter, targetTile);
+            StartCoroutine(SpellWithMovement(caster, _selectedTile, landingTile, spell, context));
+            return true;
+        }
+
+        /// <summary>
+        /// Executes <paramref name="spell"/> for <paramref name="caster"/> against an
+        /// already-built <paramref name="context"/>, spending the spell's action-point cost
+        /// regardless of outcome (the attempt was made — free spells like Evasion/Throwing
+        /// Knife have ActionPointCost 0), and only deducting mana / starting its cooldown /
+        /// breaking invisibility on a successful cast.
+        /// </summary>
+        private void ResolveSpellCast(Character caster, Spell spell, SpellContext context)
+        {
             bool resolved = spell.Execute(context);
+            _remainingActions[caster] =
+                Mathf.Max(0, RemainingActions(caster) - spell.ActionPointCost);
 
-            // Spend the spell's own action-point cost — the attempt was made.
-            // Free spells (ActionPointCost == 0, e.g. Evasion, Throwing Knife) spend nothing.
-            _remainingActions[_selectedCharacter] =
-                Mathf.Max(0, RemainingActions(_selectedCharacter) - spell.ActionPointCost);
+            if (resolved) ApplySuccessfulCastEffects(caster, spell);
+        }
 
-            // Only deduct mana and start the cooldown on a successful cast.
-            if (resolved)
-            {
-                _selectedCharacter.CharacterStats.Mana =
-                    Mathf.Max(0, _selectedCharacter.CharacterStats.Mana - spell.ManaCost);
-                StartSpellCooldown(_selectedCharacter, spell);
-                _selectedCharacter.BreakInvisibility();
-            }
-
-            CheckFightOutcome();
-            if (_fightEnded) return;
-
-            CheckAndHandleTurnEnd(_selectedCharacter);
-            if (_selectedCharacter != null)
-            {
-                ShowActionPanel();
-                OnCharacterSelected?.Invoke(_selectedCharacter);
-            }
+        /// <summary>Deducts mana and starts the cooldown for a spell that just resolved
+        /// successfully, then breaks the caster's invisibility (same as any other offensive
+        /// action).</summary>
+        private void ApplySuccessfulCastEffects(Character caster, Spell spell)
+        {
+            caster.CharacterStats.Mana = Mathf.Max(0, caster.CharacterStats.Mana - spell.ManaCost);
+            StartSpellCooldown(caster, spell);
+            caster.BreakInvisibility();
         }
 
         /// <summary>
@@ -1162,29 +1170,12 @@ namespace BaaroForce.Map
                                                SpellContext context)
         {
             _isMoving = true;
-
-            List<MapTile> path = FindShortestPath(fromTile, landingTile, caster);
-            yield return StartCoroutine(MoveUnitAlongPath(caster, fromTile, path, finalTile =>
-            {
-                _selectedTile = finalTile;
-            }));
-
+            yield return StartCoroutine(MoveCasterToLandingTile(caster, fromTile, landingTile));
             _isMoving = false;
 
             // Caster is now in position — resolve the spell's damage / effect.
             FaceTowardTile(caster, context.TargetTile);
-            bool resolved = spell.Execute(context);
-
-            _remainingActions[caster] =
-                Mathf.Max(0, RemainingActions(caster) - spell.ActionPointCost);
-
-            if (resolved)
-            {
-                caster.CharacterStats.Mana =
-                    Mathf.Max(0, caster.CharacterStats.Mana - spell.ManaCost);
-                StartSpellCooldown(caster, spell);
-                caster.BreakInvisibility();
-            }
+            ResolveSpellCast(caster, spell, context);
 
             CheckFightOutcome();
             if (_fightEnded) yield break;
@@ -1194,12 +1185,15 @@ namespace BaaroForce.Map
                 ShowActionPanel();
         }
 
-        /// <summary>Highlight tint for <paramref name="spell"/>'s selectable-range/self area.
-        /// Prefers the spell's own elemental/physical <see cref="Spell.Type"/> — reusing
-        /// <see cref="CombatTextColors.ForDamageType"/> so a spell's highlight always matches
-        /// the colour its damage numbers use (Physical = orange, Magical = light purple, ...).
-        /// Falls back to a TargetType-based colour for spells with no established type
-        /// (buffs like Grit/Meditate, whose effect isn't a damage type at all).</summary>
+        private IEnumerator MoveCasterToLandingTile(Character caster, MapTile fromTile, MapTile landingTile)
+        {
+            List<MapTile> path = _pathfinder.FindShortestPath(fromTile, landingTile, caster);
+            yield return StartCoroutine(MoveUnitAlongPath(caster, fromTile, path, finalTile =>
+            {
+                _selectedTile = finalTile;
+            }));
+        }
+
         /// <summary>Highlight tint for <paramref name="spell"/>, at <paramref name="alpha"/>.
         /// Prefers <see cref="Spell.GetHighlightType"/> (the caster-aware hook, so a
         /// randomised-type spell like Magic Dart can highlight its resolved type) — reusing
@@ -1216,7 +1210,12 @@ namespace BaaroForce.Map
                 return new Color(c.r, c.g, c.b, alpha);
             }
 
-            switch (spell.TargetType)
+            return FallbackHighlightColor(spell.TargetType, alpha);
+        }
+
+        private static Color FallbackHighlightColor(SpellTargetType targetType, float alpha)
+        {
+            switch (targetType)
             {
                 case SpellTargetType.Enemy: return new Color(0.9f, 0.15f, 0.10f, alpha); // red
                 case SpellTargetType.Ally:  return new Color(0.1f, 0.80f, 0.20f, alpha); // green
@@ -1283,43 +1282,57 @@ namespace BaaroForce.Map
                 return;
             }
 
-            if (_selectedCharacter.IsSilenced)
-            {
-                Debug.Log($"[TurnManager] '{_selectedCharacter.CharacterName}' is silenced and cannot cast spells.");
-                _warningToast?.Show($"'{_selectedCharacter.CharacterName}' is silenced and cannot cast spells.");
-                return;
-            }
+            if (!CanCastSpell(spell)) return;
+            EnterSpellTargetingMode(spell);
+        }
 
-            int ap = RemainingActions(_selectedCharacter);
-            if (ap < spell.ActionPointCost)
-            {
-                Debug.Log($"[TurnManager] '{_selectedCharacter.CharacterName}' has no actions remaining.");
-                _warningToast?.Show($"'{_selectedCharacter.CharacterName}' has no action points left.");
-                return;
-            }
+        /// <summary>Runs every affordability/legality check for casting <paramref name="spell"/>
+        /// — silence, action points, mana, cooldown — warning the player and stopping at the
+        /// first one that fails.</summary>
+        private bool CanCastSpell(Spell spell)
+        {
+            if (_selectedCharacter.IsSilenced) { WarnSilenced(); return false; }
+            if (RemainingActions(_selectedCharacter) < spell.ActionPointCost) { WarnNoActionPointsForSpell(); return false; }
+            if (!HasEnoughMana(_selectedCharacter, spell)) { WarnNotEnoughManaToActivate(spell); return false; }
+            if (!IsSpellAvailable(_selectedCharacter, spell)) { WarnSpellOnCooldown(spell); return false; }
+            return true;
+        }
 
-            if (spell.ManaCost > 0 && _selectedCharacter.CharacterStats.Mana < spell.ManaCost)
-            {
-                Debug.Log($"[TurnManager] Not enough mana to cast '{spell.Name}'.");
-                _warningToast?.Show($"Not enough mana to cast '{spell.Name}'.");
-                return;
-            }
+        private void WarnSilenced()
+        {
+            Debug.Log($"[TurnManager] '{_selectedCharacter.CharacterName}' is silenced and cannot cast spells.");
+            _warningToast?.Show($"'{_selectedCharacter.CharacterName}' is silenced and cannot cast spells.");
+        }
 
-            if (!IsSpellAvailable(_selectedCharacter, spell))
-            {
-                int cooldownRemaining = GetCooldownRemaining(_selectedCharacter, spell);
-                string cooldownMessage = cooldownRemaining == int.MaxValue
-                    ? $"'{spell.Name}' has already been used this fight."
-                    : $"'{spell.Name}' is on cooldown ({cooldownRemaining} round(s) left).";
+        private void WarnNoActionPointsForSpell()
+        {
+            Debug.Log($"[TurnManager] '{_selectedCharacter.CharacterName}' has no actions remaining.");
+            _warningToast?.Show($"'{_selectedCharacter.CharacterName}' has no action points left.");
+        }
 
-                Debug.Log($"[TurnManager] {cooldownMessage}");
-                _warningToast?.Show(cooldownMessage);
-                return;
-            }
+        private void WarnNotEnoughManaToActivate(Spell spell)
+        {
+            Debug.Log($"[TurnManager] Not enough mana to cast '{spell.Name}'.");
+            _warningToast?.Show($"Not enough mana to cast '{spell.Name}'.");
+        }
 
-            // Enter targeting mode — hide panels and show range/area highlights.
-            // Self-targeting spells with no aim still get a highlight (see ShowSpellRange);
-            // the click that confirms them lands on CommitSpell exactly like any other spell.
+        private void WarnSpellOnCooldown(Spell spell)
+        {
+            int cooldownRemaining = GetCooldownRemaining(_selectedCharacter, spell);
+            string message = cooldownRemaining == int.MaxValue
+                ? $"'{spell.Name}' has already been used this fight."
+                : $"'{spell.Name}' is on cooldown ({cooldownRemaining} round(s) left).";
+
+            Debug.Log($"[TurnManager] {message}");
+            _warningToast?.Show(message);
+        }
+
+        /// <summary>Enters targeting mode — hides panels and shows the spell's range/area
+        /// highlights. Self-targeting spells with no aim still get a highlight (see
+        /// <see cref="ShowSpellRange"/>); the click that confirms them lands on CommitSpell
+        /// exactly like any other spell.</summary>
+        private void EnterSpellTargetingMode(Spell spell)
+        {
             _actionPanel?.Hide();
             _spellPanel?.Hide();
             SetMode(InputMode.Spell);
@@ -1327,7 +1340,6 @@ namespace BaaroForce.Map
             ShowSpellRange(_selectedTile, spell);
             Debug.Log($"[TurnManager] Spell mode: '{spell.Name}'  " +
                       $"(Range: {spell.Range}, manaCost: {spell.ManaCost} mana)");
-
         }
 
         // ------------------------------------------------------------------ //
@@ -1392,17 +1404,17 @@ namespace BaaroForce.Map
         private void CheckAndHandlePlayerTurnEndPassives(List<Character> members)
         {
             foreach (Character c in members)
-            {
                 foreach (var passive in c.CharacterPassiveAbilities)
-                {
-                    Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{c.CharacterName}' at end of turn.");
-                    if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.EndOfTurn)
-                    {
-                        Debug.Log($"[TurnManager] Executing passive ability '{passive.Name}' for character '{c.CharacterName}'.");
-                        passive.Execute(new PassiveOnTurnContext(character: c, characterLevel: c.Level, characterTile: c.CharacterCurrentTile, allTiles: _tiles, gridSize: _gridSize));
-                    }
-                }
-            }
+                    ExecuteEndOfTurnPassive(passive, c);
+        }
+
+        private void ExecuteEndOfTurnPassive(PassiveAbility passive, Character c)
+        {
+            Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{c.CharacterName}' at end of turn.");
+            if (passive == null || passive.AbilityType != PassiveAbility.PassiveAbilityType.EndOfTurn) return;
+
+            Debug.Log($"[TurnManager] Executing passive ability '{passive.Name}' for character '{c.CharacterName}'.");
+            passive.Execute(new PassiveOnTurnContext(character: c, characterLevel: c.Level, characterTile: c.CharacterCurrentTile, allTiles: _tiles, gridSize: _gridSize));
         }
 
         /// <summary>
@@ -1421,6 +1433,68 @@ namespace BaaroForce.Map
             }
             Deselect();
             CheckAllCharactersDone();
+        }
+
+        /// <summary>Called by the party frame HUD's End Turn button. Ends the player's whole
+        /// turn immediately if no living ally has an action point left; otherwise shows a
+        /// Yes/No confirm toast naming who still does, only ending the turn if the player
+        /// confirms. No-ops outside the player's own turn.</summary>
+        public void RequestEndPlayerTurn()
+        {
+            Debug.Log($"[TurnManager] RequestEndPlayerTurn called. CurrentPhase={CurrentPhase}");
+            if (CurrentPhase != TurnPhase.PlayerTurn) return;
+
+            List<string> stillActing = AlliesWithActionPointsRemaining();
+            if (stillActing.Count == 0)
+            {
+                ForceEndPlayerTurn();
+                return;
+            }
+
+            string names = string.Join(", ", stillActing);
+            string verb  = stillActing.Count == 1 ? "has" : "have";
+            string message = $"{names} still {verb} an action point remaining. " +
+                              "Do you still want to end your turn?";
+            Debug.Log($"[TurnManager] Showing End Turn confirm: {message}");
+            _endTurnConfirm?.Show(message, ForceEndPlayerTurn);
+        }
+
+        /// <summary>Names of living allies who still have an unspent action point this turn —
+        /// i.e. haven't clicked Wait and haven't otherwise exhausted their actions.</summary>
+        private List<string> AlliesWithActionPointsRemaining()
+        {
+            var names = new List<string>();
+            List<Character> members = PartyManager.Instance?.Party?.Members;
+            if (members == null) return names;
+
+            foreach (Character c in members)
+                if (c.CharacterStats.HealthPoints > 0 && RemainingActions(c) > 0)
+                    names.Add(c.CharacterName);
+            return names;
+        }
+
+        /// <summary>Immediately ends the whole player turn — marks every living ally finished
+        /// (same bookkeeping EndCharacterTurn applies per-character) regardless of remaining
+        /// movement/action points, then hands off to the enemy turn.</summary>
+        private void ForceEndPlayerTurn()
+        {
+            FinishAllLivingAllies(PartyManager.Instance?.Party?.Members);
+
+            Debug.Log("[TurnManager] Player turn ended early via End Turn button.");
+            Deselect();
+            CheckAllCharactersDone();
+        }
+
+        private void FinishAllLivingAllies(List<Character> members)
+        {
+            if (members == null) return;
+            foreach (Character c in members)
+            {
+                if (c.CharacterStats.HealthPoints <= 0) continue;
+                _finishedCharacters.Add(c);
+                _remainingMovement[c] = 0;
+                _remainingActions[c]  = 0;
+            }
         }
 
         private void CheckAllCharactersDone()
@@ -1455,50 +1529,65 @@ namespace BaaroForce.Map
             if (_fightEnded) return;
 
             var members = PartyManager.Instance?.Party?.Members;
-            bool anyAllyAlive = false;
-            if (members != null)
-                foreach (Character c in members)
-                    if (c.CharacterStats.HealthPoints > 0) { anyAllyAlive = true; break; }
-
-            bool anyEnemyAlive = false;
-            for (int x = 0; x < _gridSize && !anyEnemyAlive; x++)
-                for (int z = 0; z < _gridSize && !anyEnemyAlive; z++)
-                {
-                    MapTile tile = _tiles[x, z];
-                    if (tile == null) continue;
-                    Npc npc = tile.OccupyingNpc;
-                    if (npc != null && npc.CharacterStats.HealthPoints > 0)
-                        anyEnemyAlive = true;
-                }
-
+            bool anyAllyAlive = AnyAllyAlive(members);
+            bool anyEnemyAlive = AnyEnemyAlive();
             if (anyAllyAlive && anyEnemyAlive) return;
 
             _fightEnded = true;
             Deselect();
 
             if (!anyAllyAlive)
-            {
-                Debug.Log("[TurnManager] All allies defeated. Game over.");
-                _fightResultUI?.ShowGameOver();
-            }
+                HandleGameOver();
             else
-            {
-                Debug.Log("[TurnManager] All enemies defeated. Fight won!");
-                int depth = PartyManager.Instance.Depth;
-                // Falls back to a Normal-tier reward shape when testing MapScene standalone,
-                // outside the Act Map flow (no PendingEncounter set) — mirrors the RealmType
-                // override pattern in MapGenerator.Start().
-                EncounterPoolTier tier = PartyManager.Instance.ActRun?.PendingEncounter?.Tier ?? EncounterPoolTier.Normal2;
+                HandleFightWon(members);
+        }
 
-                List<LootEntry> loot = FightRewardGenerator.Generate(depth, tier);
-                int xp = FightRewardGenerator.GetExperience(tier);
-                foreach (Character member in members)
-                    if (member.CharacterStats.HealthPoints > 0)
-                        member.GrantExperience(xp);
+        private static bool AnyAllyAlive(List<Character> members)
+        {
+            if (members == null) return false;
+            foreach (Character c in members)
+                if (c.CharacterStats.HealthPoints > 0) return true;
+            return false;
+        }
 
-                PartyManager.Instance.AdvanceDepth();
-                _fightResultUI?.ShowFightWon(loot);
-            }
+        private bool AnyEnemyAlive()
+        {
+            for (int x = 0; x < _gridSize; x++)
+                for (int z = 0; z < _gridSize; z++)
+                {
+                    Npc npc = _tiles[x, z]?.OccupyingNpc;
+                    if (npc != null && npc.CharacterStats.HealthPoints > 0) return true;
+                }
+            return false;
+        }
+
+        private void HandleGameOver()
+        {
+            Debug.Log("[TurnManager] All allies defeated. Game over.");
+            _fightResultUI?.ShowGameOver();
+        }
+
+        private void HandleFightWon(List<Character> members)
+        {
+            Debug.Log("[TurnManager] All enemies defeated. Fight won!");
+            int depth = PartyManager.Instance.Depth;
+            // Falls back to a Normal-tier reward shape when testing MapScene standalone,
+            // outside the Act Map flow (no PendingEncounter set) — mirrors the RealmType
+            // override pattern in MapGenerator.Start().
+            EncounterPoolTier tier = PartyManager.Instance.ActRun?.PendingEncounter?.Tier ?? EncounterPoolTier.Normal2;
+
+            List<LootEntry> loot = FightRewardGenerator.Generate(depth, tier);
+            GrantVictoryExperience(members, FightRewardGenerator.GetExperience(tier));
+
+            PartyManager.Instance.AdvanceDepth();
+            _fightResultUI?.ShowFightWon(loot);
+        }
+
+        private static void GrantVictoryExperience(List<Character> members, int xp)
+        {
+            foreach (Character member in members)
+                if (member.CharacterStats.HealthPoints > 0)
+                    member.GrantExperience(xp);
         }
 
         private void StartEnemyTurn()
@@ -1515,16 +1604,7 @@ namespace BaaroForce.Map
         /// </summary>
         private IEnumerator RunEnemyTurns()
         {
-            // Snapshot Npc list before acting — Npcs that die mid-turn are skipped.
-            var npcTiles = new List<(Npc npc, MapTile tile)>();
-            for (int x = 0; x < _gridSize; x++)
-                for (int z = 0; z < _gridSize; z++)
-                {
-                    MapTile t = _tiles[x, z];
-                    if (t.OccupyingNpc != null)
-                        npcTiles.Add((t.OccupyingNpc, t));
-                }
-
+            var npcTiles = CollectLivingNpcTiles();
             if (npcTiles.Count == 0)
             {
                 Debug.Log("[TurnManager] No Npcs remain.  Starting player turn.");
@@ -1534,53 +1614,83 @@ namespace BaaroForce.Map
 
             foreach (var (npc, _) in npcTiles)
             {
-                if (npc.CharacterStats.HealthPoints <= 0) continue;
-                if (npc.AI == null) continue;
-
-                // Re-locate the Npc's current tile (it may have moved earlier this round).
-                MapTile currentTile = FindNpcTile(npc);
-                if (currentTile == null) continue;
-
-                ApplyTerrainEffects(npc, currentTile);
-
-                var context = new NpcTurnContext(
-                    npc:               npc,
-                    currentTile:       currentTile,
-                    allTiles:          _tiles,
-                    gridSize:          _gridSize,
-                    remainingMovement: npc.IsRooted ? 0 : npc.CharacterStats.Movement,
-                    remainingActions:  npc.CharacterStats.MaxActionPoints);
-
-                context.BfsReachable       = (origin, range) => BfsReachable(origin, range, npc);
-                context.FindPath           = (origin, dest)  => FindShortestPath(origin, dest, npc);
-                context.PathCost           = path            => PathCost(path, npc);
-                context.TrimPathToMovement = (path, budget)  => TrimPathToMovement(path, budget, npc);
-                context.AnimateNpcMove = path => AnimateNpcMoveCoroutine(npc, context, path);
-                context.ExecuteAttack  = targetTile => NpcExecuteAttack(npc, targetTile);
-                context.ExecuteSpell   = (spell, targetTile)
-                    => NpcExecuteSpell(npc, context.CurrentTile, spell, targetTile);
-
-                yield return StartCoroutine(npc.AI.ExecuteTurn(context));
-
-                CheckFightOutcome();
+                yield return StartCoroutine(RunSingleNpcTurn(npc));
                 if (_fightEnded) yield break;
-
-                // Small pause between Npc turns so the player can follow the action.
-                yield return new WaitForSeconds(0.25f);
             }
 
             Debug.Log("[TurnManager] Enemy turn complete.  Starting player turn.");
-            // Tick status effects for all Npcs at the end of the enemy turn.
-            foreach (var (npc, _) in npcTiles)
-            {
-                if (npc.CharacterStats.HealthPoints <= 0) continue;
-                npc.TickStatusEffects();
-            }
+            TickAllNpcStatusEffects(npcTiles);
 
             CheckFightOutcome();
             if (_fightEnded) yield break;
 
             StartPlayerTurn();
+        }
+
+        /// <summary>Snapshot of every occupied Npc tile before acting — Npcs that die
+        /// mid-turn are simply skipped when their turn comes up.</summary>
+        private List<(Npc npc, MapTile tile)> CollectLivingNpcTiles()
+        {
+            var npcTiles = new List<(Npc npc, MapTile tile)>();
+            for (int x = 0; x < _gridSize; x++)
+                for (int z = 0; z < _gridSize; z++)
+                {
+                    MapTile t = _tiles[x, z];
+                    if (t.OccupyingNpc != null)
+                        npcTiles.Add((t.OccupyingNpc, t));
+                }
+            return npcTiles;
+        }
+
+        private IEnumerator RunSingleNpcTurn(Npc npc)
+        {
+            if (npc.CharacterStats.HealthPoints <= 0) yield break;
+            if (npc.AI == null) yield break;
+
+            // Re-locate the Npc's current tile (it may have moved earlier this round).
+            MapTile currentTile = FindNpcTile(npc);
+            if (currentTile == null) yield break;
+
+            ApplyTerrainEffects(npc, currentTile);
+            NpcTurnContext context = BuildNpcTurnContext(npc, currentTile);
+
+            yield return StartCoroutine(npc.AI.ExecuteTurn(context));
+
+            CheckFightOutcome();
+            if (_fightEnded) yield break;
+
+            // Small pause between Npc turns so the player can follow the action.
+            yield return new WaitForSeconds(0.25f);
+        }
+
+        private NpcTurnContext BuildNpcTurnContext(Npc npc, MapTile currentTile)
+        {
+            var context = new NpcTurnContext(
+                npc:               npc,
+                currentTile:       currentTile,
+                allTiles:          _tiles,
+                gridSize:          _gridSize,
+                remainingMovement: npc.IsRooted ? 0 : npc.CharacterStats.Movement,
+                remainingActions:  npc.CharacterStats.MaxActionPoints);
+
+            context.BfsReachable       = (origin, range) => _pathfinder.BfsReachable(origin, range, npc);
+            context.FindPath           = (origin, dest)  => _pathfinder.FindShortestPath(origin, dest, npc);
+            context.PathCost           = path            => _pathfinder.PathCost(path, npc);
+            context.TrimPathToMovement = (path, budget)  => _pathfinder.TrimPathToMovement(path, budget, npc);
+            context.AnimateNpcMove = path => AnimateNpcMoveCoroutine(npc, context, path);
+            context.ExecuteAttack  = targetTile => NpcExecuteAttack(npc, targetTile);
+            context.ExecuteSpell   = (spell, targetTile)
+                => NpcExecuteSpell(npc, context.CurrentTile, spell, targetTile);
+            return context;
+        }
+
+        private void TickAllNpcStatusEffects(List<(Npc npc, MapTile tile)> npcTiles)
+        {
+            foreach (var (npc, _) in npcTiles)
+            {
+                if (npc.CharacterStats.HealthPoints <= 0) continue;
+                npc.TickStatusEffects();
+            }
         }
 
         /// <summary>Scans the grid for the tile currently occupied by <paramref name="npc"/>.</summary>
@@ -1626,9 +1736,11 @@ namespace BaaroForce.Map
             int dz = targetTile.GridZ - fromTile.GridZ;
             if (dx == 0 && dz == 0) return;
 
-            Vector2Int dir = Mathf.Abs(dx) >= Mathf.Abs(dz)
-                ? new Vector2Int(dx > 0 ? 1 : -1, 0)
-                : new Vector2Int(0, dz > 0 ? 1 : -1);
+            Vector2Int dir;
+            if (Mathf.Abs(dx) >= Mathf.Abs(dz))
+                dir = new Vector2Int(Math.Sign(dx), 0);
+            else
+                dir = new Vector2Int(0, Math.Sign(dz));
 
             fromTile.UnitObject?.GetComponent<SpriteCharacterView>()?.FaceGridDirection(dir.x, dir.y);
             unit.FacingDirection = dir;
@@ -1643,73 +1755,95 @@ namespace BaaroForce.Map
         private void ResolveBasicAttack(Character attacker, Character target, MapTile targetTile)
         {
             attacker.BreakInvisibility();
-
             CheckAndHandleReceivingBasicAttackDamage(attacker, target);
 
-            int damage = Mathf.Max(0, attacker.CharacterStats.TotalAttack);
-
-            // Aim (Archer) multiplies the damage of the attacker's next basic attack —
-            // consumed here the instant it's used, same pattern as Dodge/Bubble Shield.
-            int aimMultiplier = attacker.TryConsumeAim();
-            if (aimMultiplier != 1)
-            {
-                damage *= aimMultiplier;
-                Debug.Log($"[TurnManager] '{attacker.CharacterName}' consumes Aim, multiplying attack damage by {aimMultiplier}.");
-            }
-
-            // Magic-specialty basic attacks (e.g. a Mage's wand hit) deal magical damage —
-            // routed through TakeDamage so Dodge (a physical-evasion mechanic) doesn't apply,
-            // same as every other magic-typed spell in the game.
-            bool isMagic = attacker.CharacterClass != null &&
-                           attacker.CharacterClass.Specialty == CharacterClass.ClassSpecialty.Magic;
-            SpellType damageType = isMagic ? SpellType.Magical : SpellType.Physical;
-
-            // Empower (Mystic) multiplies the attacker's next basic attack and swaps its
-            // damage type for a pre-rolled element — consumed here the instant it's used,
-            // same pattern as Aim. An empowered hit always bypasses Dodge, same reasoning
-            // as magic-specialty basic attacks above.
-            EmpowerStatus empower = attacker.TryConsumeEmpower();
-            bool empowered = empower != null;
-            if (empowered)
-            {
-                damage *= empower.Multiplier;
-                damageType = empower.DamageType;
-                Debug.Log($"[TurnManager] '{attacker.CharacterName}' consumes Empower, multiplying attack damage by {empower.Multiplier} and dealing {empower.DamageType} damage.");
-            }
-
-            int dealt = (isMagic || empowered) ? target.TakeDamage(damage) : target.TakePhysicalDamage(damage);
+            var (damage, damageType, bypassesDodge) = ComputeAttackDamage(attacker);
+            int dealt = bypassesDodge ? target.TakeDamage(damage) : target.TakePhysicalDamage(damage);
             FloatingCombatTextSystem.Instance?.ShowDamage(target, dealt, damageType);
+            LogAttackResult(attacker, target, damage, dealt);
 
+            CheckAndHandleAllyDamagedPassives(target, targetTile);
+            HandleDefeatIfDead(target, targetTile);
+        }
+
+        /// <summary>Computes the attacker's basic-attack damage/type and whether the hit
+        /// bypasses Dodge (a physical-evasion mechanic) — true for magic-specialty attacks
+        /// and empowered hits, both of which are routed through TakeDamage instead of
+        /// TakePhysicalDamage, same as every other magic-typed spell in the game.</summary>
+        private static (int damage, SpellType damageType, bool bypassesDodge) ComputeAttackDamage(Character attacker)
+        {
+            int damage = Mathf.Max(0, attacker.CharacterStats.TotalAttack);
+            damage = ApplyAimMultiplier(attacker, damage);
+
+            bool isMagic = IsMagicSpecialty(attacker);
+            SpellType damageType = isMagic ? SpellType.Magical : SpellType.Physical;
+            bool empowered = ApplyEmpower(attacker, ref damage, ref damageType);
+
+            return (damage, damageType, isMagic || empowered);
+        }
+
+        private static bool IsMagicSpecialty(Character attacker) =>
+            attacker.CharacterClass != null &&
+            attacker.CharacterClass.Specialty == CharacterClass.ClassSpecialty.Magic;
+
+        /// <summary>Aim (Archer) multiplies the damage of the attacker's next basic attack —
+        /// consumed here the instant it's used, same pattern as Dodge/Bubble Shield.</summary>
+        private static int ApplyAimMultiplier(Character attacker, int damage)
+        {
+            int aimMultiplier = attacker.TryConsumeAim();
+            if (aimMultiplier == 1) return damage;
+
+            Debug.Log($"[TurnManager] '{attacker.CharacterName}' consumes Aim, multiplying attack damage by {aimMultiplier}.");
+            return damage * aimMultiplier;
+        }
+
+        /// <summary>Empower (Mystic) multiplies the attacker's next basic attack and swaps its
+        /// damage type for a pre-rolled element — consumed here the instant it's used, same
+        /// pattern as Aim. Returns true if an Empower was consumed.</summary>
+        private static bool ApplyEmpower(Character attacker, ref int damage, ref SpellType damageType)
+        {
+            EmpowerStatus empower = attacker.TryConsumeEmpower();
+            if (empower == null) return false;
+
+            damage *= empower.Multiplier;
+            damageType = empower.DamageType;
+            Debug.Log($"[TurnManager] '{attacker.CharacterName}' consumes Empower, multiplying attack damage by {empower.Multiplier} and dealing {empower.DamageType} damage.");
+            return true;
+        }
+
+        private static void LogAttackResult(Character attacker, Character target, int damage, int dealt)
+        {
             Debug.Log($"[TurnManager] '{attacker.CharacterName}' attacks '{target.CharacterName}' "
                     + $"for {damage} damage ({dealt} after shield).  "
                     + $"HP: {Mathf.Max(0, target.CharacterStats.HealthPoints)}"
                     + $"/{target.CharacterStats.MaxHealthPoints}");
+        }
 
-            CheckAndHandleAllyDamagedPassives(target, targetTile);
-
-            if (target.CharacterStats.HealthPoints <= 0)
-            {
-                Debug.Log($"[TurnManager] '{target.CharacterName}' has been defeated!");
-                targetTile.RemoveUnit();
-            }
+        private static void HandleDefeatIfDead(Character target, MapTile targetTile)
+        {
+            if (target.CharacterStats.HealthPoints > 0) return;
+            Debug.Log($"[TurnManager] '{target.CharacterName}' has been defeated!");
+            targetTile.RemoveUnit();
         }
 
         private void CheckAndHandleReceivingBasicAttackDamage(Character attacker, Character target)
         {
             foreach (var passive in target.CharacterPassiveAbilities)
-            {
-                if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.OnReceivingAttack)
-                {
-                    Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{target.CharacterName}' on receiving damage.");
-                    passive.Execute(new PassiveOnReceivingAttackContext(
-                        attacker: attacker,
-                        receivingCharacter: target,
-                        attackerTile: attacker.CharacterCurrentTile,
-                        receivingCharacterTile: target.CharacterCurrentTile,
-                        allTiles: _tiles,
-                        gridSize: _gridSize));
-                }
-            }
+                ExecuteOnReceivingAttackPassive(passive, attacker, target);
+        }
+
+        private void ExecuteOnReceivingAttackPassive(PassiveAbility passive, Character attacker, Character target)
+        {
+            if (passive == null || passive.AbilityType != PassiveAbility.PassiveAbilityType.OnReceivingAttack) return;
+
+            Debug.Log($"[TurnManager] Checking passive ability '{passive.Name}' for character '{target.CharacterName}' on receiving damage.");
+            passive.Execute(new PassiveOnReceivingAttackContext(
+                attacker: attacker,
+                receivingCharacter: target,
+                attackerTile: attacker.CharacterCurrentTile,
+                receivingCharacterTile: target.CharacterCurrentTile,
+                allTiles: _tiles,
+                gridSize: _gridSize));
         }
 
         /// <summary>
@@ -1729,7 +1863,13 @@ namespace BaaroForce.Map
             // this runs before the defeat check/removal below, so a reactive heal (e.g.
             // Spiritual Protector saving a unit one-shot from over 50%) still has a chance
             // to bring them back above 0 before they're finalised as defeated.
-            List<Character> allies = new List<Character>();
+            foreach (Character owner in CollectAlliesOf(damagedAlly))
+                ExecuteAllyDamagedPassivesFor(owner, damagedAlly, damagedAllyTile);
+        }
+
+        private List<Character> CollectAlliesOf(Character damagedAlly)
+        {
+            var allies = new List<Character>();
             if (damagedAlly is Npc)
             {
                 for (int x = 0; x < _gridSize; x++)
@@ -1744,33 +1884,37 @@ namespace BaaroForce.Map
                 var members = PartyManager.Instance?.Party?.Members;
                 if (members != null) allies.AddRange(members);
             }
+            return allies;
+        }
 
-            foreach (Character owner in allies)
-            {
-                // Self counts as an Ally — a character can trigger its own OnAllyDamaged
-                // passive (e.g. Buggles' Spiritual Protector healing himself, potentially
-                // saving himself from a lethal hit). Self is exempt from the "must be
-                // alive" check for the same reason damagedAlly is above: when owner is
-                // the one who was just one-shot, their HP is already <= 0 pending the
-                // passive's chance to heal them back. Other allies must still be alive to react.
-                bool isSelf = owner == damagedAlly;
-                if ((!isSelf && owner.CharacterStats.HealthPoints <= 0) || owner.CharacterCurrentTile == null)
-                    continue;
+        /// <summary>Self counts as an Ally — a character can trigger its own OnAllyDamaged
+        /// passive (e.g. Buggles' Spiritual Protector healing himself, potentially saving
+        /// himself from a lethal hit). Self is exempt from the "must be alive" check for the
+        /// same reason damagedAlly is above: when owner is the one who was just one-shot,
+        /// their HP is already &lt;= 0 pending the passive's chance to heal them back. Other
+        /// allies must still be alive to react.</summary>
+        private void ExecuteAllyDamagedPassivesFor(Character owner, Character damagedAlly, MapTile damagedAllyTile)
+        {
+            bool isSelf = owner == damagedAlly;
+            if ((!isSelf && owner.CharacterStats.HealthPoints <= 0) || owner.CharacterCurrentTile == null)
+                return;
 
-                foreach (var passive in owner.CharacterPassiveAbilities)
-                {
-                    if (passive != null && passive.AbilityType == PassiveAbility.PassiveAbilityType.OnAllyDamaged)
-                    {
-                        passive.Execute(new PassiveOnAllyDamagedContext(
-                            owner: owner,
-                            ownerTile: owner.CharacterCurrentTile,
-                            damagedAlly: damagedAlly,
-                            damagedAllyTile: damagedAllyTile,
-                            allTiles: _tiles,
-                            gridSize: _gridSize));
-                    }
-                }
-            }
+            foreach (var passive in owner.CharacterPassiveAbilities)
+                ExecuteOnAllyDamagedPassive(passive, owner, damagedAlly, damagedAllyTile);
+        }
+
+        private void ExecuteOnAllyDamagedPassive(PassiveAbility passive, Character owner,
+            Character damagedAlly, MapTile damagedAllyTile)
+        {
+            if (passive == null || passive.AbilityType != PassiveAbility.PassiveAbilityType.OnAllyDamaged) return;
+
+            passive.Execute(new PassiveOnAllyDamagedContext(
+                owner: owner,
+                ownerTile: owner.CharacterCurrentTile,
+                damagedAlly: damagedAlly,
+                damagedAllyTile: damagedAllyTile,
+                allTiles: _tiles,
+                gridSize: _gridSize));
         }
 
         /// <summary>Executes a basic attack from <paramref name="attacker"/> against the
@@ -1801,81 +1945,32 @@ namespace BaaroForce.Map
         private bool NpcExecuteSpell(Npc caster, MapTile casterTile,
                                      Spell spell, MapTile targetTile)
         {
+            if (!CanNpcCastSpell(caster, spell, targetTile)) return false;
+
+            var context = BuildSpellContext(caster, casterTile, targetTile);
+            FaceTowardTile(caster, targetTile);
+            bool resolved = spell.Execute(context);
+            if (resolved) ApplySuccessfulCastEffects(caster, spell);
+
+            CheckFightOutcome();
+            return resolved;
+        }
+
+        /// <summary>Defense-in-depth: AggressiveNpcAI already excludes silenced casters,
+        /// insufficient mana, spells on cooldown, and Invisible Enemy targets when choosing a
+        /// spell/target, but enforcing it here too covers any other AI type that doesn't.</summary>
+        private bool CanNpcCastSpell(Npc caster, Spell spell, MapTile targetTile)
+        {
             if (caster.IsSilenced) return false;
             if (spell.ManaCost > 0 && caster.CharacterStats.Mana < spell.ManaCost) return false;
             if (!IsSpellAvailable(caster, spell)) return false;
 
-            // Defense-in-depth: AggressiveNpcAI already excludes Invisible Enemy targets when
-            // choosing a spell target, but enforce it here too in case another AI type doesn't.
             Character targetCharacter = targetTile?.OccupyingCharacter;
             if (spell.TargetType == SpellTargetType.Enemy && targetCharacter != null &&
                 targetCharacter.IsInvisible && !caster.IgnoresInvisibility)
                 return false;
 
-            var context = new SpellContext(
-                caster:      caster,
-                casterLevel: caster.Level,
-                casterTile:  casterTile,
-                targetTile:  targetTile,
-                allTiles:    _tiles,
-                gridSize:    _gridSize);
-
-            FaceTowardTile(caster, targetTile);
-            bool resolved = spell.Execute(context);
-
-            if (resolved)
-            {
-                caster.CharacterStats.Mana =
-                    Mathf.Max(0, caster.CharacterStats.Mana - spell.ManaCost);
-                StartSpellCooldown(caster, spell);
-                caster.BreakInvisibility();
-            }
-
-            CheckFightOutcome();
-
-            return resolved;
-        }
-
-        /// <summary>
-        /// True if <paramref name="other"/> is an enemy of <paramref name="mover"/> for
-        /// Zone-of-Control purposes — factions are simply Npc vs. non-Npc Character.
-        /// An Invisible <paramref name="other"/> is not considered an enemy unless
-        /// <paramref name="mover"/> is an Npc that ignores invisibility, matching the
-        /// perception rule <see cref="AggressiveNpcAI"/> already uses for targeting/pathing
-        /// (see AggressiveNpcAI.CanTarget) — otherwise ZoC would reveal an invisible unit's
-        /// position via a doubled movement cost the mover shouldn't be able to notice.
-        /// </summary>
-        private static bool IsEnemyOf(Character mover, Character other)
-        {
-            if ((mover is Npc) == (other is Npc)) return false;
-            if (other.IsInvisible && !(mover is Npc n && n.IgnoresInvisibility)) return false;
             return true;
-        }
-
-        /// <summary>
-        /// Movement cost of a single cardinal step from <paramref name="from"/> to
-        /// <paramref name="to"/> for <paramref name="mover"/>. Base cost is <paramref
-        /// name="to"/>'s terrain (see TerrainInfoRegistry — 2 for difficult terrain like
-        /// Forest/Swamp/Mountain/Snow, 1 otherwise), +1 more if <paramref name="from"/> lies
-        /// within an enemy's Zone of Control (the 8 tiles surrounding that enemy) and
-        /// <paramref name="to"/> lies outside that same enemy's zone — i.e. the step leaves
-        /// the zone. Checking all enemies adjacent to <paramref name="from"/> with an
-        /// early-exit means overlapping enemy zones still only add the +1 once, never stack.
-        /// </summary>
-        private int StepCost(MapTile from, MapTile to, Character mover)
-        {
-            int cost = TerrainInfoRegistry.Get(to.TerrainType).MovementCost;
-
-            foreach (MapTile t in SpellAreaUtils.GetCircleAroundTiles(from, 1, _tiles, _gridSize))
-            {
-                Character occupant = t.OccupyingUnit;
-                if (occupant == null || !IsEnemyOf(mover, occupant)) continue;
-
-                int dx = Mathf.Abs(to.GridX - t.GridX);
-                int dz = Mathf.Abs(to.GridZ - t.GridZ);
-                if (Mathf.Max(dx, dz) > 1) { cost += 1; break; }
-            }
-            return cost;
         }
 
         /// <summary>Applies <paramref name="tile"/>'s terrain effects (see TerrainInfoRegistry)
@@ -1892,141 +1987,6 @@ namespace BaaroForce.Map
             if (regen <= 0) return;
             c.CharacterStats.HealthPoints = Mathf.Min(
                 c.CharacterStats.HealthPoints + regen, c.CharacterStats.MaxHealthPoints);
-        }
-
-        /// <summary>Total Zone-of-Control-aware movement cost of an already-found
-        /// <paramref name="path"/> (as returned by <see cref="FindShortestPath"/>).</summary>
-        private int PathCost(List<MapTile> path, Character mover)
-        {
-            int cost = 0;
-            for (int i = 1; i < path.Count; i++)
-                cost += StepCost(path[i - 1], path[i], mover);
-            return cost;
-        }
-
-        /// <summary>Returns the longest affordable prefix of <paramref name="path"/> (which
-        /// must start at the mover's current tile) given a movement point <paramref name="budget"/>,
-        /// accounting for Zone-of-Control step costs. May return just the origin tile if even
-        /// the first step is unaffordable.</summary>
-        private List<MapTile> TrimPathToMovement(List<MapTile> path, int budget, Character mover)
-        {
-            var trimmed = new List<MapTile> { path[0] };
-            int spent = 0;
-            for (int i = 1; i < path.Count; i++)
-            {
-                int stepCost = StepCost(path[i - 1], path[i], mover);
-                if (spent + stepCost > budget) break;
-                spent += stepCost;
-                trimmed.Add(path[i]);
-            }
-            return trimmed;
-        }
-
-        /// <summary>
-        /// Dijkstra: returns all _tiles reachable within <paramref name="range"/> movement
-        /// points of <paramref name="mover"/>, excluding occupied _tiles (characters may not
-        /// pass through or land on them). Step costs vary (see <see cref="StepCost"/>), so a
-        /// genuine relax-then-settle loop is used rather than plain BFS.
-        /// </summary>
-        private HashSet<MapTile> BfsReachable(MapTile origin, int range, Character mover)
-        {
-            var dist     = new Dictionary<MapTile, int> { [origin] = 0 };
-            var settled  = new HashSet<MapTile>();
-            var frontier = new List<MapTile> { origin };
-
-            while (frontier.Count > 0)
-            {
-                MapTile cur  = null;
-                int     best = int.MaxValue;
-                foreach (MapTile t in frontier)
-                    if (dist[t] < best) { best = dist[t]; cur = t; }
-
-                frontier.Remove(cur);
-                settled.Add(cur);
-                if (best > range) break;
-
-                foreach (MapTile nb in Neighbors(cur))
-                {
-                    if (!nb.IsPassable(mover)) continue;
-                    if (nb.IsOccupied || settled.Contains(nb)) continue;
-
-                    int nd = best + StepCost(cur, nb, mover);
-                    if (nd > range) continue;
-
-                    if (!dist.TryGetValue(nb, out int old) || nd < old)
-                    {
-                        dist[nb] = nd;
-                        if (!frontier.Contains(nb)) frontier.Add(nb);
-                    }
-                }
-            }
-
-            return new HashSet<MapTile>(settled);
-        }
-
-        /// <summary>
-        /// Dijkstra shortest (cheapest) path from <paramref name="origin"/> to
-        /// <paramref name="dest"/> for <paramref name="mover"/>, accounting for
-        /// Zone-of-Control step costs (see <see cref="StepCost"/>).
-        /// Returns an ordered list that starts with origin and ends with dest.
-        /// </summary>
-        private List<MapTile> FindShortestPath(MapTile origin, MapTile dest, Character mover)
-        {
-            var dist     = new Dictionary<MapTile, int> { [origin] = 0 };
-            var prev     = new Dictionary<MapTile, MapTile>();
-            var settled  = new HashSet<MapTile>();
-            var frontier = new List<MapTile> { origin };
-
-            while (frontier.Count > 0)
-            {
-                MapTile cur  = null;
-                int     best = int.MaxValue;
-                foreach (MapTile t in frontier)
-                    if (dist[t] < best) { best = dist[t]; cur = t; }
-
-                frontier.Remove(cur);
-                settled.Add(cur);
-                if (cur == dest) break;
-
-                foreach (MapTile nb in Neighbors(cur))
-                {
-                    if (!nb.IsPassable(mover)) continue;
-                    if (nb.IsOccupied && nb != dest) continue;
-                    if (settled.Contains(nb)) continue;
-
-                    int nd = best + StepCost(cur, nb, mover);
-                    if (!dist.TryGetValue(nb, out int old) || nd < old)
-                    {
-                        dist[nb] = nd;
-                        prev[nb] = cur;
-                        if (!frontier.Contains(nb)) frontier.Add(nb);
-                    }
-                }
-            }
-
-            // Reconstruct path back from dest → origin, then reverse.
-            var path = new List<MapTile>();
-            MapTile node = dest;
-            while (node != null)
-            {
-                path.Insert(0, node);
-                MapTile parent;
-                if (!prev.TryGetValue(node, out parent)) break;
-                node = parent;
-            }
-            return path;
-        }
-
-        private List<MapTile> Neighbors(MapTile tile)
-        {
-            var list = new List<MapTile>(4);
-            int x = tile.GridX;
-            int z = tile.GridZ;
-            if (x > 0)            list.Add(_tiles[x - 1, z]);
-            if (x < _gridSize - 1) list.Add(_tiles[x + 1, z]);
-            if (z > 0)            list.Add(_tiles[x, z - 1]);
-            if (z < _gridSize - 1) list.Add(_tiles[x, z + 1]);
-            return list;
         }
 
         // ------------------------------------------------------------------ //
@@ -2058,30 +2018,51 @@ namespace BaaroForce.Map
 
             for (int i = 1; i < path.Count; i++)
             {
-                MapTile next     = path[i];
-                spriteView?.FaceGridDirection(next.GridX - currentTile.GridX, next.GridZ - currentTile.GridZ);
-                unit.FacingDirection = new Vector2Int(next.GridX - currentTile.GridX, next.GridZ - currentTile.GridZ);
-                Vector3 startPos = model.transform.position;
-                float   halfH    = next.transform.lossyScale.y * 0.5f;
-                Vector3 endPos   = next.transform.position + Vector3.up * (halfH + 0.05f);
-                float   elapsed  = 0f;
-                float   duration = _step / MoveSpeed;
-
-                while (elapsed < duration)
-                {
-                    elapsed += Time.deltaTime;
-                    model.transform.position = Vector3.Lerp(startPos, endPos, elapsed / duration);
-                    yield return null;
-                }
-
-                // Snap to exact position and transfer occupancy.
-                model.transform.position = endPos;
-                currentTile.ReleaseUnit();
-                next.AssignUnit(unit, model);
-                currentTile = next;
+                yield return StartCoroutine(MoveOneStep(unit, model, spriteView, currentTile, path[i]));
+                currentTile = path[i];
             }
 
             onArrived?.Invoke(currentTile);
+        }
+
+        /// <summary>Faces <paramref name="unit"/> toward <paramref name="to"/>, lerps its
+        /// model there over one tile-step's worth of time, then transfers tile occupancy.</summary>
+        private IEnumerator MoveOneStep(Character unit, GameObject model, SpriteCharacterView spriteView,
+                                         MapTile from, MapTile to)
+        {
+            FaceStepDirection(unit, spriteView, from, to);
+
+            Vector3 startPos = model.transform.position;
+            Vector3 endPos = StepEndPosition(to);
+            yield return LerpPosition(model, startPos, endPos, _step / MoveSpeed);
+
+            from.ReleaseUnit();
+            to.AssignUnit(unit, model);
+        }
+
+        private static void FaceStepDirection(Character unit, SpriteCharacterView spriteView, MapTile from, MapTile to)
+        {
+            Vector2Int dir = new Vector2Int(to.GridX - from.GridX, to.GridZ - from.GridZ);
+            spriteView?.FaceGridDirection(dir.x, dir.y);
+            unit.FacingDirection = dir;
+        }
+
+        private static Vector3 StepEndPosition(MapTile to)
+        {
+            float halfH = to.transform.lossyScale.y * 0.5f;
+            return to.transform.position + Vector3.up * (halfH + 0.05f);
+        }
+
+        private static IEnumerator LerpPosition(GameObject model, Vector3 startPos, Vector3 endPos, float duration)
+        {
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                model.transform.position = Vector3.Lerp(startPos, endPos, elapsed / duration);
+                yield return null;
+            }
+            model.transform.position = endPos; // Snap to exact position.
         }
 
         private IEnumerator AnimateMove(Character character, MapTile fromTile,

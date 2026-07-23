@@ -49,7 +49,8 @@ namespace BaaroForce.UI
 
         // All possible zone / weapon-type USS classes, so we can strip them cleanly
         // before applying the new one each time a panel is repopulated.
-        private static readonly string[] ZoneClasses =
+        // internal, not private — ZoneClasses is reused by CharacterInspectUI's chassis border.
+        internal static readonly string[] ZoneClasses =
         {
             "zone-fire", "zone-water", "zone-earth", "zone-wind", "zone-light", "zone-dark"
         };
@@ -485,7 +486,8 @@ namespace BaaroForce.UI
             }
         }
 
-        private static void PopulateStatusEffects(VisualElement container, Character character)
+        /// <summary>internal, not private — reused by CharacterInspectUI's status-effects row.</summary>
+        internal static void PopulateStatusEffects(VisualElement container, Character character)
         {
             container.Clear();
 
@@ -510,7 +512,8 @@ namespace BaaroForce.UI
                 character.ActiveEffects.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
-        private static string ResolveZoneId(Character character)
+        /// <summary>internal, not private — reused by CharacterInspectUI's zone-tinted border.</summary>
+        internal static string ResolveZoneId(Character character)
         {
             List<Realm> realms = character.CharacterRealms;
             if (realms != null && realms.Count > 0)
@@ -522,8 +525,9 @@ namespace BaaroForce.UI
         // Small UI-building helpers                                           //
         // ------------------------------------------------------------------ //
 
-        /// <summary>Rebuilds a segmented bar (children = individual segment divs) to show filled/total.</summary>
-        private static void SetSegmentedBar(VisualElement bar, int filled, int total, string fillClass)
+        /// <summary>Rebuilds a segmented bar (children = individual segment divs) to show
+        /// filled/total. internal, not private — reused by CharacterInspectUI's stats column.</summary>
+        internal static void SetSegmentedBar(VisualElement bar, int filled, int total, string fillClass)
         {
             if (bar == null) return;
             bar.Clear();
@@ -537,8 +541,9 @@ namespace BaaroForce.UI
             }
         }
 
-        /// <summary>Rebuilds the diamond movement pips to show filled/total.</summary>
-        private static void SetPips(VisualElement pips, int filled, int total)
+        /// <summary>Rebuilds the diamond movement pips to show filled/total. internal, not
+        /// private — reused by CharacterInspectUI's stats column.</summary>
+        internal static void SetPips(VisualElement pips, int filled, int total)
         {
             if (pips == null) return;
             pips.Clear();
@@ -552,7 +557,8 @@ namespace BaaroForce.UI
             }
         }
 
-        private static void ApplyExclusiveClass(VisualElement el, string[] allClasses, string activeClass)
+        /// <summary>internal, not private — reused by CharacterInspectUI's zone-tinted border.</summary>
+        internal static void ApplyExclusiveClass(VisualElement el, string[] allClasses, string activeClass)
         {
             if (el == null) return;
             foreach (var c in allClasses) el.RemoveFromClassList(c);

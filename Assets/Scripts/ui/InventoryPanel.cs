@@ -120,7 +120,8 @@ namespace BaaroForce.UI
             return glyph;
         }
 
-        private static string SlotGlyph(EquipmentSlotType slot)
+        /// <summary>internal, not private — reused by CharacterInspectUI's equipment slots.</summary>
+        internal static string SlotGlyph(EquipmentSlotType slot)
         {
             switch (slot)
             {
@@ -129,11 +130,13 @@ namespace BaaroForce.UI
                 case EquipmentSlotType.Legs: return "L";
                 case EquipmentSlotType.MainHand: return "M";
                 case EquipmentSlotType.OffHand: return "O";
+                case EquipmentSlotType.Trinket: return "T";
                 default: return "?";
             }
         }
 
-        private static string RarityClass(Rarity rarity)
+        /// <summary>internal, not private — reused by CharacterInspectUI's equipment slots.</summary>
+        internal static string RarityClass(Rarity rarity)
         {
             switch (rarity)
             {
@@ -285,7 +288,8 @@ namespace BaaroForce.UI
         // Small helpers                                                      //
         // ---------------------------------------------------------------- //
 
-        private static string DescribeSlot(Equipment e)
+        /// <summary>internal, not private — reused by CharacterInspectUI's equipment tooltips.</summary>
+        internal static string DescribeSlot(Equipment e)
         {
             if (!e.IsWeapon) return e.SlotType.ToString();
             return e.WeaponClassification != null
@@ -293,7 +297,8 @@ namespace BaaroForce.UI
                 : $"{e.SlotType}, Weapon";
         }
 
-        private static string DescribeBonuses(Equipment e)
+        /// <summary>internal, not private — reused by CharacterInspectUI's equipment tooltips.</summary>
+        internal static string DescribeBonuses(Equipment e)
         {
             var parts = new List<string>();
             if (e.AttackBonus != 0) parts.Add($"+{e.AttackBonus} ATK");

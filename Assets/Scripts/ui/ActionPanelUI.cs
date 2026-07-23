@@ -21,6 +21,7 @@ namespace BaaroForce.UI
         public Action OnAttackClicked;
         public Action OnSpellsClicked;
         public Action OnItemsClicked;
+        public Action OnInspectClicked;
         public Action OnWaitClicked;
 
         private VisualElement _panel;
@@ -75,6 +76,7 @@ namespace BaaroForce.UI
             _spellsButton = MakeButton("Spells", "action-btn-spells", () => OnSpellsClicked?.Invoke());
             list.Add(_spellsButton);
             list.Add(MakeButton("Items",    "action-btn-items",  () => OnItemsClicked?.Invoke()));
+            list.Add(MakeButton("Inspect",  "action-btn-inspect", () => OnInspectClicked?.Invoke()));
             list.Add(MakeButton("Wait",     "action-btn-wait",   () => OnWaitClicked?.Invoke()));
 
             doc.rootVisualElement.Add(_panel);

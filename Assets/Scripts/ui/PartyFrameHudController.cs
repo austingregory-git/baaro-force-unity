@@ -28,8 +28,10 @@ namespace BaaroForce.UI
         [SerializeField] private StyleSheet _styleSheet;       // CombatHud.uss
 
         private UIDocument _document;
+        private VisualElement _allyColumn;
         private VisualElement _allyList;
         private VisualElement _enemyList;
+        private Button _endTurnButton;
 
         private readonly Dictionary<Character, VisualElement> _allyRows = new Dictionary<Character, VisualElement>();
         private readonly Dictionary<Character, VisualElement> _enemyRows = new Dictionary<Character, VisualElement>();
@@ -84,15 +86,34 @@ namespace BaaroForce.UI
             if (_styleSheet != null && !root.styleSheets.Contains(_styleSheet))
                 root.styleSheets.Add(_styleSheet);
 
+            // Ally rows + the End Turn button share one vertically-centred column (rather than
+            // the row list alone being absolutely positioned, like the enemy side) so the
+            // button always trails the rows in normal flex flow — "below the party frames"
+            // regardless of how many allies are currently alive.
+            _allyColumn = new VisualElement();
+            _allyColumn.AddToClassList("party-frame-ally-column");
+            root.Add(_allyColumn);
+
             _allyList = new VisualElement();
-            _allyList.AddToClassList("party-frame-list");
-            _allyList.AddToClassList("party-frame-list--ally");
-            root.Add(_allyList);
+            _allyList.AddToClassList("party-frame-ally-rows");
+            _allyColumn.Add(_allyList);
+
+            _endTurnButton = new Button(OnEndTurnClicked) { text = "End Turn" };
+            _endTurnButton.AddToClassList("action-btn");
+            _endTurnButton.AddToClassList("action-btn-endturn");
+            _endTurnButton.AddToClassList("end-turn-btn");
+            _allyColumn.Add(_endTurnButton);
 
             _enemyList = new VisualElement();
             _enemyList.AddToClassList("party-frame-list");
             _enemyList.AddToClassList("party-frame-list--enemy");
             root.Add(_enemyList);
+        }
+
+        private void OnEndTurnClicked()
+        {
+            Debug.Log("[PartyFrameHudController] End Turn button clicked.");
+            _turnManager?.RequestEndPlayerTurn();
         }
 
         private void Update()
@@ -107,6 +128,18 @@ namespace BaaroForce.UI
                 ? _turnManager.GetLivingEnemies().Cast<Character>()
                 : Enumerable.Empty<Character>();
             RefreshSide(_enemyList, _enemyRows, enemies);
+
+            // Later-added HUD components (ActionPanelUI, CombatCornerMenu, ...) are appended
+            // to root AFTER this component builds its lists (they're created by TurnManager,
+            // which runs from MapGenerator.Start — after every scene component's OnEnable),
+            // so they paint over this column by default UI Toolkit stacking order even where
+            // they have no visible content. Re-assert this column on top every frame so the
+            // End Turn button stays clickable — except while a real modal is open, so it
+            // doesn't punch through something the player is actually supposed to interact with.
+            if (_allyColumn != null && !CombatCornerMenu.IsBlockingCombatInput)
+                _allyColumn.BringToFront();
+
+            _endTurnButton?.SetEnabled(_turnManager != null && _turnManager.CurrentPhase == TurnPhase.PlayerTurn);
         }
 
         /// <summary>

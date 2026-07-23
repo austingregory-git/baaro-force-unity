@@ -264,7 +264,8 @@ public class CharacterSelectionManager : MonoBehaviour
     // the pill's edges on anything longer than a word or two. A wrapper whose
     // size just follows its child's ordinary flex content size sidesteps that
     // Label-measures-its-own-padding quirk entirely.
-    private static VisualElement BuildAbilityChip(string abilityName, string summaryBody, string detailedBody, string tintClass)
+    /// <summary>internal, not private — reused by CharacterInspectUI's spell/passive section.</summary>
+    internal static VisualElement BuildAbilityChip(string abilityName, string summaryBody, string detailedBody, string tintClass)
     {
         var chip = new VisualElement();
         chip.AddToClassList("ability-chip");
@@ -282,7 +283,8 @@ public class CharacterSelectionManager : MonoBehaviour
     /// <summary>Adds a labelled ability-category group (heading + wrapped chip row) to
     /// the card, or nothing at all when the category is empty — a character with no
     /// personal spells shouldn't show an empty "Spells" heading.</summary>
-    private static void AddAbilitySection(VisualElement content, string label, List<VisualElement> chips)
+    /// <summary>internal, not private — reused by CharacterInspectUI's spell/passive section.</summary>
+    internal static void AddAbilitySection(VisualElement content, string label, List<VisualElement> chips)
     {
         if (chips.Count == 0) return;
 
@@ -307,7 +309,8 @@ public class CharacterSelectionManager : MonoBehaviour
     // in-combat HUD panel.                                                //
     // ------------------------------------------------------------------ //
 
-    private static VisualElement BuildStatRow(string badgeClass)
+    /// <summary>internal, not private — reused by CharacterInspectUI's stats column.</summary>
+    internal static VisualElement BuildStatRow(string badgeClass)
     {
         var row = new VisualElement();
         row.AddToClassList("stat-row");
@@ -344,7 +347,8 @@ public class CharacterSelectionManager : MonoBehaviour
         return row;
     }
 
-    private static VisualElement BuildAttackStat(CharacterClass characterClass, int totalAttack)
+    /// <summary>internal, not private — reused by CharacterInspectUI's stats column.</summary>
+    internal static VisualElement BuildAttackStat(CharacterClass characterClass, int totalAttack)
     {
         VisualElement row = BuildStatRow(WeaponBadgeClass(characterClass));
         var num = new Label(totalAttack.ToString());

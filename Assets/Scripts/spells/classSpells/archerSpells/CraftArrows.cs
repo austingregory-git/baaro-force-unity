@@ -32,7 +32,7 @@ namespace BaaroForce.Spells
         public override ScalingValue[] ComputeValues(Character caster)
         {
             var attack = new ScalingValue("Attack Bonus");
-            attack.Add("Base", 2);
+            attack.Add("Base", 1);
             attack.Add("Level", Mathf.FloorToInt(caster.Level * 0.25f));
             return new[] { attack };
         }
