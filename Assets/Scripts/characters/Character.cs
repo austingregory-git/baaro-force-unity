@@ -264,6 +264,25 @@ namespace BaaroForce.Characters
             return null;
         }
 
+        /// <summary>Non-destructive read of this character's active Aim multiplier (1 if
+        /// none) — for basic-attack damage previews, where TryConsumeAim would wrongly burn
+        /// the status just from hovering a target. See CharacterHudController.RefreshAllPreviews.</summary>
+        public int PeekAimMultiplier()
+        {
+            foreach (StatusEffect effect in ActiveEffects)
+                if (effect is AimStatus aim) return aim.Multiplier;
+            return 1;
+        }
+
+        /// <summary>Non-destructive read of this character's active Empower multiplier (1 if
+        /// none) — same reasoning as <see cref="PeekAimMultiplier"/>.</summary>
+        public int PeekEmpowerMultiplier()
+        {
+            foreach (StatusEffect effect in ActiveEffects)
+                if (effect is EmpowerStatus empower) return empower.Multiplier;
+            return 1;
+        }
+
         /// <summary>Removes this character's active Bubble Shield status (if any) and returns true if one was consumed.</summary>
         public bool TryConsumeBubbleShield()
         {

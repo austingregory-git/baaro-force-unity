@@ -143,13 +143,13 @@ namespace BaaroForce.Spells
             int ndz = Math.Sign(dz);
             if (ndx == 0 && ndz == 0) ndz = 1;
 
-            int cx = casterTile.GridX;
-            int cz = casterTile.GridZ;
+            int tx = targetTile.GridX;
+            int tz = targetTile.GridZ;
 
-            for (int d = 1; d <= area; d++)
+            for (int d = 0; d < area; d++)
             {
-                int x = cx + d * ndx;
-                int z = cz + d * ndz;
+                int x = tx + d * ndx;
+                int z = tz + d * ndz;
                 if (x >= 0 && x < gridSize && z >= 0 && z < gridSize)
                     result.Add(allTiles[x, z]);
             }

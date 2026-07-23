@@ -280,7 +280,8 @@ namespace BaaroForce.UI
                 ActionPreview targetPreview = targetIsAimed
                     ? (spell != null
                         ? spell.GetPreview(caster, _targetCharacter)
-                        : new ActionPreview { RawDamage = caster.CharacterStats.TotalAttack })
+                        : new ActionPreview { RawDamage = Mathf.Max(0, caster.CharacterStats.TotalAttack)
+                            * caster.PeekAimMultiplier() * caster.PeekEmpowerMultiplier() })
                     : ActionPreview.None;
                 ApplyPreview(_targetPanel, _targetCharacter, targetPreview, manaCost: 0);
             }

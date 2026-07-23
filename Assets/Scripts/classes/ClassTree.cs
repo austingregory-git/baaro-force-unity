@@ -13,12 +13,12 @@ namespace BaaroForce.Classes
 
         static ClassTree()
         {
-            _promotionsMap.Add("Mage", new List<string> { "DarkMage", "LightMage", "EarthMage", "FireMage", "WaterMage", "WindMage", "Scholar" });
+            _promotionsMap.Add("Mage", new List<string> { "Dark Mage", "Light Mage", "Earth Mage", "Fire Mage", "Water Mage", "Wind Mage", "Scholar" });
             _promotionsMap.Add("Warrior", new List<string> { "Soldier", "Samurai", "Paladin", "Thug", "Duelist", "StreetFighter", "NatureWarrior" });
-            _promotionsMap.Add("DarkMage", new List<string> { "TwilightMage", "Undead", "Demon", "LunarMage", "VoidMage" });
+            _promotionsMap.Add("Dark Mage", new List<string> { "Twilight Mage", "Undead", "Demon", "Lunar Mage", "Void Mage" });
             _promotionsMap.Add("Rogue", new List<string> { "Assassin", "Scout", "Ninja", "Thrower", "Duelist", "Thug" });
-            _promotionsMap.Add("Archer", new List<string> { "Hunter", "Gunner", "Ranger", "Thrower", "ElementalArcher", "ExplosivesArtist"});
-            _promotionsMap.Add("Mystic", new List<string> { "Shaman", "Druid", "Cleric", "Monk", "EarthMage", "NatureWarrior", "Enchanter" });
+            _promotionsMap.Add("Archer", new List<string> { "Hunter", "Gunner", "Ranger", "Thrower", "Elemental Archer", "Explosives Artist"});
+            _promotionsMap.Add("Mystic", new List<string> { "Shaman", "Druid", "Cleric", "Monk", "Earth Mage", "Nature Warrior", "Enchanter" });
         }
 
         public ClassTree()
