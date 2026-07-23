@@ -354,6 +354,20 @@ namespace BaaroForce.Characters
             _equippedSlots.TryGetValue(slot, out Equipment equipped) ? equipped : null;
 
         /// <summary>
+        /// True if this character is allowed to equip <paramref name="equipment"/>. Only
+        /// classified weapons (<see cref="Equipment.IsWeapon"/> + a non-null <see
+        /// cref="Equipment.WeaponClassification"/>) are gated — armor and unclassified weapons
+        /// are always equippable. A classified weapon requires the character's <see
+        /// cref="CharacterClass.Specialty"/> to match (Melee/Ranged/Magic).
+        /// </summary>
+        public bool CanEquip(Equipment equipment)
+        {
+            if (equipment == null) return false;
+            if (!equipment.IsWeapon || equipment.WeaponClassification == null) return true;
+            return CharacterClass != null && CharacterClass.Specialty == equipment.WeaponClassification.Value;
+        }
+
+        /// <summary>
         /// Equips <paramref name="equipment"/> into its slot, auto-swapping out whatever was
         /// already there — the previous occupant's bonuses are removed first, the new item's
         /// bonuses are applied, and the displaced item (or null if the slot was empty) is

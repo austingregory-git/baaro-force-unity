@@ -147,7 +147,7 @@ public class CharacterSelectionManager : MonoBehaviour
     private void BuildCards()
     {
         Realm realm = PartyManager.Instance.CurrentRealm ?? Realm.Earth;
-        List<Character> characters = CharacterUtils.GetRandomCharacters(3, realm);
+        List<Character> characters = CharacterUtils.GetRandomCharacters(3, realm, PartyManager.Instance.Party.Members);
         foreach (Character character in characters)
             _cardRow.Add(BuildCard(character));
     }

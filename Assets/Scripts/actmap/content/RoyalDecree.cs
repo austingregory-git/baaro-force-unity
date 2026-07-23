@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using BaaroForce.Utils;
 
 namespace BaaroForce.ActMap.Content
 {
@@ -24,19 +25,18 @@ namespace BaaroForce.ActMap.Content
         private static readonly RoyalDecreeOptionType[] AllOptions =
             (RoyalDecreeOptionType[])System.Enum.GetValues(typeof(RoyalDecreeOptionType));
 
+        // An option shown here won't be offered again until every other option has had a
+        // turn — on top of the existing "3 of 5, no repeats within one draw" guarantee.
+        private static readonly HashSet<string> _shown = new HashSet<string>();
+
+        /// <summary>Clears the shown-decree cycle. Call at the start of a new run so history
+        /// from a previous run doesn't bleed into the next one.</summary>
+        public static void ResetShownHistory() => _shown.Clear();
+
         /// <summary>Returns 3 of the 5 options, chosen at random without repeats.</summary>
-        public static List<RoyalDecreeOptionType> GetRandomThree()
-        {
-            var pool = new List<RoyalDecreeOptionType>(AllOptions);
-            var result = new List<RoyalDecreeOptionType>(3);
-            for (int i = 0; i < 3 && pool.Count > 0; i++)
-            {
-                int index = Random.Range(0, pool.Count);
-                result.Add(pool[index]);
-                pool.RemoveAt(index);
-            }
-            return result;
-        }
+        public static List<RoyalDecreeOptionType> GetRandomThree() =>
+            WeightedCyclePicker.PickMany(AllOptions, identity: o => o.ToString(), weight: _ => 1f,
+                count: 3, shownHistory: _shown);
 
         public static string GetLabel(RoyalDecreeOptionType type)
         {

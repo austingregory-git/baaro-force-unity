@@ -62,6 +62,12 @@ namespace BaaroForce.UI
 
             _label.text = message;
             _toast.style.display = DisplayStyle.Flex;
+            // The toast is built once, early (whenever this component is added), but modal
+            // overlays (Act Map/Inventory, combat's own modal shell, ...) are frequently added
+            // to the same root *after* that — and being later siblings, they'd otherwise paint
+            // over the toast and hide it any time one is open. Re-assert top-of-stack on every
+            // show instead of just once at construction.
+            _toast.BringToFront();
 
             _hideTimer = _toast.schedule.Execute(Hide).StartingIn(DisplayMilliseconds);
         }

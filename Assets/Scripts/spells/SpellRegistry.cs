@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using BaaroForce.Utils;
 
 namespace BaaroForce.Spells
 {
@@ -106,6 +107,74 @@ namespace BaaroForce.Spells
             if (!_byClass.TryGetValue(classID, out var factories) || factories.Count == 0)
                 return null;
             return factories[UnityEngine.Random.Range(0, factories.Count)]();
+        }
+
+        // Per-class shown history for player-facing spell OFFERS (e.g. the Royal Decree
+        // "learn a spell" pick) — kept separate from GetRandomClassSpell above, which is
+        // used for automatic character-creation spell assignment and shouldn't share a
+        // cycle with what's been shown to the player in a choice screen.
+        private static readonly Dictionary<string, HashSet<string>> _offeredShownByClass =
+            new Dictionary<string, HashSet<string>>();
+
+        // Which classes have been offered a spell choice since the last time every class
+        // had a turn — kept separate from _offeredShownByClass so the two cycles (which
+        // class shows up / which spell within it) don't interfere with each other.
+        private static readonly HashSet<string> _offeredShownClassIDs = new HashSet<string>();
+
+        private static HashSet<string> OfferedShownSet(string classID)
+        {
+            if (!_offeredShownByClass.TryGetValue(classID, out HashSet<string> set))
+                _offeredShownByClass[classID] = set = new HashSet<string>();
+            return set;
+        }
+
+        /// <summary>Clears the shown-spell-offer cycle for every class. Call at the start of
+        /// a new run so history from a previous run doesn't bleed into the next one.</summary>
+        public static void ResetOfferedShownHistory()
+        {
+            _offeredShownByClass.Clear();
+            _offeredShownClassIDs.Clear();
+        }
+
+        /// <summary>
+        /// Returns up to <paramref name="count"/> distinct <see cref="ClassSpell"/>s offered
+        /// to the player from <paramref name="classID"/>'s pool — e.g. a Royal Decree "learn a
+        /// spell" choice. A spell offered here won't be offered again until every other spell
+        /// in that class has had a turn.
+        /// </summary>
+        public static List<ClassSpell> GetRandomClassSpellsToOffer(string classID, int count)
+        {
+            if (classID == null || !_byClass.TryGetValue(classID, out var factories) || factories.Count == 0)
+                return new List<ClassSpell>();
+
+            List<Func<ClassSpell>> picked = WeightedCyclePicker.PickMany(
+                factories, identity: f => f().Name, weight: _ => 1f,
+                count: count, shownHistory: OfferedShownSet(classID));
+
+            var result = new List<ClassSpell>(picked.Count);
+            foreach (Func<ClassSpell> factory in picked) result.Add(factory());
+            return result;
+        }
+
+        /// <summary>
+        /// Picks <paramref name="count"/> distinct classes from <paramref name="classIDs"/>
+        /// (preferring ones not yet offered since the last full cycle) and returns one
+        /// randomly offered spell from each — e.g. for the Royal Decree "learn a spell"
+        /// choice, so it doesn't always surface the same class or the same spell.
+        /// </summary>
+        public static List<ClassSpell> GetRandomClassSpellOffers(IReadOnlyList<string> classIDs, int count)
+        {
+            List<string> chosenClasses = WeightedCyclePicker.PickMany(
+                classIDs, identity: c => c, weight: _ => 1f,
+                count: count, shownHistory: _offeredShownClassIDs);
+
+            var result = new List<ClassSpell>(chosenClasses.Count);
+            foreach (string classID in chosenClasses)
+            {
+                List<ClassSpell> offered = GetRandomClassSpellsToOffer(classID, 1);
+                if (offered.Count > 0) result.Add(offered[0]);
+            }
+            return result;
         }
     }
 }

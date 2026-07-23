@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using BaaroForce.Items;
+using BaaroForce.Utils;
 
 namespace BaaroForce.Relics
 {
@@ -27,10 +28,28 @@ namespace BaaroForce.Relics
                     } },
             };
 
+        // A relic drawn here won't be offered again until every other relic of that
+        // rarity has had a turn.
+        private static readonly Dictionary<Rarity, HashSet<string>> _shownByRarity =
+            new Dictionary<Rarity, HashSet<string>>();
+
+        private static HashSet<string> ShownSet(Rarity rarity)
+        {
+            if (!_shownByRarity.TryGetValue(rarity, out HashSet<string> set))
+                _shownByRarity[rarity] = set = new HashSet<string>();
+            return set;
+        }
+
+        /// <summary>Clears the shown-relic cycle for every rarity. Call at the start of a
+        /// new run so history from a previous run doesn't bleed into the next one.</summary>
+        public static void ResetShownHistory() => _shownByRarity.Clear();
+
         public static Relic GetRandom(Rarity rarity)
         {
-            List<Func<Relic>> pool = _byRarity[rarity];
-            return pool[UnityEngine.Random.Range(0, pool.Count)]();
+            List<Func<Relic>> picked = WeightedCyclePicker.PickMany(
+                _byRarity[rarity], identity: f => f().Name, weight: _ => 1f,
+                count: 1, shownHistory: ShownSet(rarity));
+            return picked.Count > 0 ? picked[0]() : null;
         }
 
         public static void Register(Rarity rarity, Func<Relic> factory)

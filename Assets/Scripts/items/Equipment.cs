@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BaaroForce.Classes;
 using BaaroForce.Passives;
 using BaaroForce.Spells;
 
@@ -25,6 +26,14 @@ namespace BaaroForce.Items
         /// other slot.</summary>
         public bool IsWeapon { get; set; }
 
+        /// <summary>Which class specialty this weapon belongs to (Melee/Ranged/Magic) — only
+        /// meaningful when <see cref="IsWeapon"/> is true. Null for non-weapon equipment
+        /// (armor is specialty-agnostic) and for any weapon not yet classified. A character
+        /// can only equip a classified weapon if it matches their <see
+        /// cref="CharacterClass.Specialty"/> — see <see
+        /// cref="BaaroForce.Characters.Character.CanEquip"/>.</summary>
+        public CharacterClass.ClassSpecialty? WeaponClassification { get; set; }
+
         public int HealthBonus { get; set; }
         public int AttackBonus { get; set; }
         public int SpellPowerBonus { get; set; }
@@ -36,7 +45,8 @@ namespace BaaroForce.Items
 
         public Equipment(string name, string description, Rarity rarity, EquipmentSlotType slotType,
             int healthBonus = 0, int attackBonus = 0, int spellPowerBonus = 0,
-            int manaBonus = 0, int movementBonus = 0, bool isWeapon = false)
+            int manaBonus = 0, int movementBonus = 0, bool isWeapon = false,
+            CharacterClass.ClassSpecialty? weaponClassification = null)
         {
             Name = name;
             Description = description;
@@ -48,6 +58,7 @@ namespace BaaroForce.Items
             ManaBonus = manaBonus;
             MovementBonus = movementBonus;
             IsWeapon = isWeapon;
+            WeaponClassification = weaponClassification;
         }
 
         /// <summary>
@@ -68,7 +79,8 @@ namespace BaaroForce.Items
                 spellPowerBonus: Bump(SpellPowerBonus),
                 manaBonus: Bump(ManaBonus),
                 movementBonus: Bump(MovementBonus),
-                isWeapon: IsWeapon)
+                isWeapon: IsWeapon,
+                weaponClassification: WeaponClassification)
             { IsUpgraded = true };
         }
 

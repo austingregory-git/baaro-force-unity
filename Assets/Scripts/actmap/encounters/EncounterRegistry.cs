@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using BaaroForce.Characters;
 using BaaroForce.Map;
+using BaaroForce.Utils;
 
 namespace BaaroForce.ActMap.Encounters
 {
@@ -102,15 +103,41 @@ namespace BaaroForce.ActMap.Encounters
                     } },
             };
 
+        // An encounter drawn here won't be offered again until every other encounter in
+        // that same (realm, tier) — or shared default-tier — pool has had a turn. Keyed
+        // separately from _pools/_defaultPools so a realm falling back to the default pool
+        // for one tier doesn't share history with a realm that has real entries for it.
+        private static readonly Dictionary<(Realm, EncounterPoolTier), HashSet<string>> _shownByRealmPool =
+            new Dictionary<(Realm, EncounterPoolTier), HashSet<string>>();
+        private static readonly Dictionary<EncounterPoolTier, HashSet<string>> _shownByDefaultTier =
+            new Dictionary<EncounterPoolTier, HashSet<string>>();
+
+        private static HashSet<string> ShownSet<TKey>(Dictionary<TKey, HashSet<string>> byKey, TKey key)
+        {
+            if (!byKey.TryGetValue(key, out HashSet<string> set))
+                byKey[key] = set = new HashSet<string>();
+            return set;
+        }
+
+        /// <summary>Clears the shown-encounter cycle for every pool. Call at the start of a
+        /// new run so history from a previous run doesn't bleed into the next one.</summary>
+        public static void ResetShownHistory()
+        {
+            _shownByRealmPool.Clear();
+            _shownByDefaultTier.Clear();
+        }
+
         /// <summary>Returns a random encounter for <paramref name="realm"/>/<paramref name="tier"/>,
         /// falling back to the shared default pool for that tier if the realm has no dedicated entries.</summary>
         public static Encounter GetRandom(Realm realm, EncounterPoolTier tier)
         {
-            List<Encounter> pool = _pools.TryGetValue((realm, tier), out List<Encounter> realmPool) && realmPool.Count > 0
-                ? realmPool
-                : _defaultPools[tier];
+            bool hasRealmPool = _pools.TryGetValue((realm, tier), out List<Encounter> realmPool) && realmPool.Count > 0;
+            List<Encounter> pool = hasRealmPool ? realmPool : _defaultPools[tier];
+            HashSet<string> shown = hasRealmPool
+                ? ShownSet(_shownByRealmPool, (realm, tier))
+                : ShownSet(_shownByDefaultTier, tier);
 
-            return pool[UnityEngine.Random.Range(0, pool.Count)];
+            return WeightedCyclePicker.PickOne(pool, identity: e => e.Name, weight: _ => 1f, shown);
         }
 
         /// <summary>Registers an additional encounter under its own (Realm, Tier) pool.</summary>

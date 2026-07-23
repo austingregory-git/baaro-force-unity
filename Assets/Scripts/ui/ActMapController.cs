@@ -51,10 +51,12 @@ namespace BaaroForce.UI
         private Label _modalTitle;
 
         private InventoryPanel _inventoryPanel;
+        private WarningToastUI _warningToast;
 
         private void Awake()
         {
             _run = PartyManager.Instance.ActRun;
+            _warningToast = gameObject.AddComponent<WarningToastUI>();
             BuildChrome();
             RefreshGold();
 
@@ -111,7 +113,7 @@ namespace BaaroForce.UI
 
             BuildModalShell();
 
-            _inventoryPanel = new InventoryPanel(_modalContent, OpenModal, CloseModal);
+            _inventoryPanel = new InventoryPanel(_modalContent, OpenModal, CloseModal, _warningToast.Show);
             mapRoot.Add(MakeInventoryButton(() => _inventoryPanel.Open()));
         }
 
@@ -350,9 +352,8 @@ namespace BaaroForce.UI
             // TryAddEquipment pattern for the other decree options) rather than equipping it on a
             // chosen member — no need for the extra "who receives it" step this used to have.
             OpenModal("Choose a Weapon");
-            for (int i = 0; i < 3; i++)
+            foreach (Equipment weapon in EquipmentRegistry.GetRandomOfSlot(Rarity.Common, EquipmentSlotType.MainHand, count: 3))
             {
-                Equipment weapon = EquipmentRegistry.GetRandomOfSlot(Rarity.Common, EquipmentSlotType.MainHand);
                 var row = new VisualElement();
                 row.AddToClassList("act-choice-row");
                 var label = new Label(weapon.Name);
@@ -373,12 +374,8 @@ namespace BaaroForce.UI
         private void ShowSpellChoiceFor(Character member)
         {
             OpenModal($"Choose a Spell for {member.CharacterName}");
-            for (int i = 0; i < 3; i++)
+            foreach (ClassSpell spell in SpellRegistry.GetRandomClassSpellOffers(TierOneClassIDs, 3))
             {
-                string classID = TierOneClassIDs[UnityEngine.Random.Range(0, TierOneClassIDs.Length)];
-                ClassSpell spell = SpellRegistry.GetRandomClassSpell(classID);
-                if (spell == null) continue;
-
                 var row = new VisualElement();
                 row.AddToClassList("act-choice-row");
                 var label = new Label(spell.Name);
@@ -663,7 +660,7 @@ namespace BaaroForce.UI
                 return;
             }
 
-            foreach (Character candidate in CharacterUtils.GetRandomCharacters(3, RunRealm()))
+            foreach (Character candidate in CharacterUtils.GetRandomCharacters(3, RunRealm(), party.Members))
             {
                 var row = new VisualElement();
                 row.AddToClassList("act-choice-row");

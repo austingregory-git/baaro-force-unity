@@ -25,12 +25,15 @@ namespace BaaroForce.UI
         private readonly VisualElement _modalContent;
         private readonly Action<string, bool> _openModal;
         private readonly Action _closeModal;
+        private readonly Action<string> _showWarning;
 
-        public InventoryPanel(VisualElement modalContent, Action<string, bool> openModal, Action closeModal)
+        public InventoryPanel(VisualElement modalContent, Action<string, bool> openModal, Action closeModal,
+            Action<string> showWarning)
         {
             _modalContent = modalContent;
             _openModal = openModal;
             _closeModal = closeModal;
+            _showWarning = showWarning;
         }
 
         /// <summary>Opens the Inventory modal on the bag grid. Never touches ActRunState —
@@ -136,6 +139,8 @@ namespace BaaroForce.UI
             {
                 case Rarity.Uncommon: return "inv-slot-rarity-uncommon";
                 case Rarity.Rare: return "inv-slot-rarity-rare";
+                case Rarity.Epic: return "inv-slot-rarity-epic";
+                case Rarity.Legendary: return "inv-slot-rarity-legendary";
                 default: return "inv-slot-rarity-common";
             }
         }
@@ -192,13 +197,20 @@ namespace BaaroForce.UI
 
             foreach (Character member in PartyManager.Instance.Party.Members)
             {
+                Character capturedMember = member; // fixed per-row capture
+                bool canEquip = capturedMember.CanEquip(item);
+
                 var row = new VisualElement();
                 row.AddToClassList("act-choice-row");
+                if (!canEquip) row.AddToClassList("act-choice-row-disabled");
                 var label = new Label($"{member.CharacterName} (Lv {member.Level} {member.CharacterClass?.ClassID})");
                 label.AddToClassList("act-choice-label");
                 row.Add(label);
 
-                Character capturedMember = member; // fixed per-row capture
+                string mismatchReason = $"{member.CharacterName} is a {member.CharacterClass?.Specialty} class and " +
+                    $"cannot equip this {item.WeaponClassification} weapon.";
+                if (!canEquip) row.tooltip = mismatchReason; // shown on hover
+
                 row.RegisterCallback<PointerEnterEvent>(_ =>
                 {
                     Equipment current = capturedMember.GetEquipped(item.SlotType);
@@ -209,13 +221,20 @@ namespace BaaroForce.UI
                 row.RegisterCallback<PointerLeaveEvent>(_ =>
                     previewLabel.text = "Hover a party member to preview their current gear.");
 
-                row.RegisterCallback<ClickEvent>(_ =>
+                if (canEquip)
                 {
-                    PartyManager.Instance.Party.RemoveEquipment(item);
-                    Equipment previous = capturedMember.Equip(item);
-                    if (previous != null) PartyManager.Instance.Party.TryAddEquipment(previous);
-                    RenderGrid();
-                });
+                    row.RegisterCallback<ClickEvent>(_ =>
+                    {
+                        PartyManager.Instance.Party.RemoveEquipment(item);
+                        Equipment previous = capturedMember.Equip(item);
+                        if (previous != null) PartyManager.Instance.Party.TryAddEquipment(previous);
+                        RenderGrid();
+                    });
+                }
+                else
+                {
+                    row.RegisterCallback<ClickEvent>(_ => _showWarning?.Invoke(mismatchReason));
+                }
 
                 memberList.Add(row);
             }
@@ -266,7 +285,13 @@ namespace BaaroForce.UI
         // Small helpers                                                      //
         // ---------------------------------------------------------------- //
 
-        private static string DescribeSlot(Equipment e) => e.IsWeapon ? $"{e.SlotType}, Weapon" : e.SlotType.ToString();
+        private static string DescribeSlot(Equipment e)
+        {
+            if (!e.IsWeapon) return e.SlotType.ToString();
+            return e.WeaponClassification != null
+                ? $"{e.SlotType}, {e.WeaponClassification} Weapon"
+                : $"{e.SlotType}, Weapon";
+        }
 
         private static string DescribeBonuses(Equipment e)
         {

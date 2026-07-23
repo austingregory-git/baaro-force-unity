@@ -116,6 +116,7 @@ namespace BaaroForce.Map
         private FightResultUI   _fightResultUI;
         private LevelUpUI       _levelUpUI;
         private TileInfoPanelUI _tileInfoPanel;
+        private CombatCornerMenu _cornerMenu;
         private bool           _isMoving;
         private bool           _fightEnded;
         private MapTile _hoveredTile;
@@ -177,9 +178,11 @@ namespace BaaroForce.Map
             _tileInfoPanel = gameObject.AddComponent<TileInfoPanelUI>();
 
             gameObject.AddComponent<CombatLogUI>();
-            gameObject.AddComponent<CombatCornerMenu>();
+            _cornerMenu = gameObject.AddComponent<CombatCornerMenu>();
 
             _fightResultUI = gameObject.AddComponent<FightResultUI>();
+            _fightResultUI.GoldFlightTarget = _cornerMenu.GoldTarget;
+            _fightResultUI.ItemFlightTarget = _cornerMenu.InventoryTarget;
             _levelUpUI     = gameObject.AddComponent<LevelUpUI>();
             _fightResultUI.OnReturnToMainMenu = () =>
             {
@@ -213,6 +216,7 @@ namespace BaaroForce.Map
             if (entry.Type == LootType.Gold)
             {
                 PartyManager.Instance.Party.AddGold(entry.Amount);
+                _cornerMenu?.AnimateGoldGain();
                 return;
             }
 

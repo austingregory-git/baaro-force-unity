@@ -188,10 +188,12 @@
 .act-choice-row:hover { background-color: rgba(255, 255, 255, 0.16); }
 
 .act-choice-label {
+    width: 100%;
     font-size: 14px;
     -unity-font-style: bold;
     color: rgb(243, 230, 200);
     white-space: normal;
+    -unity-text-align: middle-left;
 }
 
 .act-choice-sub {
@@ -342,9 +344,11 @@
 
 .inv-slot-empty { opacity: 0.45; }
 
-.inv-slot-rarity-common   { border-color: rgb(200, 200, 200); }
-.inv-slot-rarity-uncommon { border-color: rgb(60, 200, 90); }
-.inv-slot-rarity-rare     { border-color: rgb(80, 150, 235); }
+.inv-slot-rarity-common    { border-color: rgb(200, 200, 200); }
+.inv-slot-rarity-uncommon  { border-color: rgb(60, 200, 90); }
+.inv-slot-rarity-rare      { border-color: rgb(80, 150, 235); }
+.inv-slot-rarity-epic      { border-color: rgb(170, 90, 235); }
+.inv-slot-rarity-legendary { border-color: rgb(235, 165, 60); }
 
 .inv-slot-glyph {
     font-size: 20px;
@@ -359,6 +363,10 @@
 
 .inv-picker-list {
     flex-grow: 1;
+    /* Without this, a flex-grow child's default min-width (auto, i.e. "at least as wide as
+       its content") can win out over the growth calculation and force this column wider
+       than the space actually available next to the fixed-width preview box. */
+    min-width: 0;
     margin-right: 12px;
 }
 

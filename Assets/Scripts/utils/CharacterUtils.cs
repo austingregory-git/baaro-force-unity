@@ -42,69 +42,62 @@ namespace BaaroForce.Utils
             return characterStats;
         }
 
+        /// <summary>Characters shown in a pool since the last time every eligible
+        /// character had appeared at least once. Persists across calls (and across
+        /// scene loads, since it's static) so a character that just showed up in one
+        /// selection screen won't show up again until everyone else has had a turn.
+        /// Reset per run via <see cref="ResetShownHistory"/>.</summary>
+        private static readonly HashSet<string> _shownNames = new HashSet<string>();
+
+        /// <summary>Clears the shown-character cycle. Call at the start of a new run
+        /// so history from a previous run doesn't bleed into the next one.</summary>
+        public static void ResetShownHistory() => _shownNames.Clear();
+
         /// <summary>
         /// Returns <paramref name="numCharacters"/> randomly selected characters,
         /// weighted towards <paramref name="realm"/>.
         /// Characters whose realm matches get weight 0.5; all others get 0.1.
-        /// Selection is without replacement where possible; repeats are only
-        /// allowed when more characters are requested than the registry holds.
+        /// Characters in <paramref name="exclude"/> (e.g. current party members) are
+        /// never returned. Among the rest, characters already shown in a previous
+        /// pool are skipped until every other eligible character has been shown too —
+        /// once the cycle completes it starts over. Selection is without repeats
+        /// within a single call where possible; repeats are only allowed when more
+        /// characters are requested than remain eligible.
         /// </summary>
-        public static List<Character> GetRandomCharacters(int numCharacters, Realm realm)
+        public static List<Character> GetRandomCharacters(int numCharacters, Realm realm,
+            IEnumerable<Character> exclude = null)
         {
-            var entries = BuildWeightedEntries(realm);
-            var result  = new List<Character>(numCharacters);
-            bool[] used = new bool[entries.Count];
+            var excludedNames = new HashSet<string>();
+            if (exclude != null)
+                foreach (Character character in exclude)
+                    excludedNames.Add(character.CharacterName);
 
-            for (int pick = 0; pick < numCharacters; pick++)
-            {
-                ResetUsedIfExhausted(used, entries);
-                int chosen = PickWeightedIndex(used, entries);
-                used[chosen] = true;
-                result.Add(entries[chosen].factory());
-            }
+            List<(Func<Character> factory, float weight, string name)> entries = BuildWeightedEntries(realm);
 
+            List<(Func<Character> factory, float weight, string name)> picked = WeightedCyclePicker.PickMany(
+                entries,
+                identity: e => e.name,
+                weight: e => e.weight,
+                count: numCharacters,
+                shownHistory: _shownNames,
+                exclude: excludedNames);
+
+            var result = new List<Character>(picked.Count);
+            foreach (var entry in picked) result.Add(entry.factory());
             return result;
         }
 
-        private static List<(Func<Character> factory, float weight)> BuildWeightedEntries(Realm realm)
+        private static List<(Func<Character> factory, float weight, string name)> BuildWeightedEntries(Realm realm)
         {
-            var entries = new List<(Func<Character> factory, float weight)>(CharacterRegistry.GetAll().Count);
-            foreach (Func<Character> factory in CharacterRegistry.GetAll())
+            IReadOnlyList<Func<Character>> factories = CharacterRegistry.GetAll();
+            var entries = new List<(Func<Character> factory, float weight, string name)>(factories.Count);
+            foreach (Func<Character> factory in factories)
             {
-                float weight = factory().CharacterRealms.Contains(realm) ? 0.5f : 0.1f;
-                entries.Add((factory, weight));
+                Character sample = factory();
+                float weight = sample.CharacterRealms.Contains(realm) ? 0.5f : 0.1f;
+                entries.Add((factory, weight, sample.CharacterName));
             }
             return entries;
-        }
-
-        private static void ResetUsedIfExhausted(bool[] used,
-            List<(Func<Character> factory, float weight)> entries)
-        {
-            float total = 0f;
-            for (int i = 0; i < entries.Count; i++)
-                if (!used[i]) total += entries[i].weight;
-
-            if (total <= 0f)
-                for (int i = 0; i < used.Length; i++) used[i] = false;
-        }
-
-        private static int PickWeightedIndex(bool[] used,
-            List<(Func<Character> factory, float weight)> entries)
-        {
-            float total = 0f;
-            for (int i = 0; i < entries.Count; i++)
-                if (!used[i]) total += entries[i].weight;
-
-            float roll       = UnityEngine.Random.value * total;
-            float cumulative = 0f;
-            int   chosen     = entries.Count - 1;
-            for (int i = 0; i < entries.Count; i++)
-            {
-                if (used[i]) continue;
-                cumulative += entries[i].weight;
-                if (roll <= cumulative) { chosen = i; break; }
-            }
-            return chosen;
         }
 
         // public List<Character> GenerateCharacters(int numCharacters)

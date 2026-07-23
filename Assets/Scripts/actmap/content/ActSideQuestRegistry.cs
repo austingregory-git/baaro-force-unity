@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using BaaroForce.Characters;
 using BaaroForce.Items;
+using BaaroForce.Utils;
 using static BaaroForce.ActMap.Content.ActChoiceEffects;
 
 namespace BaaroForce.ActMap.Content
@@ -85,12 +86,28 @@ namespace BaaroForce.ActMap.Content
                 }) } },
         };
 
+        // A side quest drawn here won't be offered again until every other side quest in
+        // that realm has had a turn.
+        private static readonly Dictionary<Realm, HashSet<string>> _shownByRealm =
+            new Dictionary<Realm, HashSet<string>>();
+
+        private static HashSet<string> ShownSet(Realm realm)
+        {
+            if (!_shownByRealm.TryGetValue(realm, out HashSet<string> set))
+                _shownByRealm[realm] = set = new HashSet<string>();
+            return set;
+        }
+
+        /// <summary>Clears the shown-side-quest cycle for every realm. Call at the start of a
+        /// new run so history from a previous run doesn't bleed into the next one.</summary>
+        public static void ResetShownHistory() => _shownByRealm.Clear();
+
         /// <summary>Returns the realm's authored side quest, or null if none exists yet.</summary>
         public static ActSideQuest GetRandom(Realm realm)
         {
             if (!_byRealm.TryGetValue(realm, out List<ActSideQuest> pool) || pool.Count == 0)
                 return null;
-            return pool[UnityEngine.Random.Range(0, pool.Count)];
+            return WeightedCyclePicker.PickOne(pool, identity: q => q.Title, weight: _ => 1f, ShownSet(realm));
         }
 
         public static void Register(ActSideQuest sideQuest)

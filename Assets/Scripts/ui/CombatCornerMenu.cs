@@ -12,7 +12,9 @@ namespace BaaroForce.UI
     /// (see <see cref="ActMapView"/>'s Interactive flag), since mid-fight it's purely a
     /// "where am I in the run" reference. Also bound to the 'M' key (TurnManager no
     /// longer treats M as a Move-mode alias — see TurnManager.HandleKeys — since W
-    /// already covers that).
+    /// already covers that). Also owns the top-right Gold readout (reusing ActMap.uss's
+    /// .act-map-gold look) so the combat scene has one too — both it and the Inventory
+    /// button double as landing targets for FightResultUI's claim-flight animation.
     ///
     /// Added by TurnManager.Initialize() alongside the other combat UI components
     /// (ActionPanelUI, WarningToastUI, ...); reuses whichever UIDocument is already in
@@ -39,6 +41,19 @@ namespace BaaroForce.UI
         private InventoryPanel _inventoryPanel;
         private bool _modalOpen;
 
+        private VisualElement _inventoryButton;
+        private Label _goldLabel;
+        private int _displayedGold;
+        private IVisualElementScheduledItem _goldCountAnim;
+
+        /// <summary>The Inventory button's own element — used as the "fly to" landing spot for
+        /// claimed equipment/potions in FightResultUI's claim animation.</summary>
+        public VisualElement InventoryTarget => _inventoryButton;
+
+        /// <summary>The top-right Gold readout's element — used as the "fly to" landing spot
+        /// for claimed gold in FightResultUI's claim animation.</summary>
+        public VisualElement GoldTarget => _goldLabel;
+
         private void Awake()
         {
             UIDocument doc = FindAnyObjectByType<UIDocument>();
@@ -52,12 +67,77 @@ namespace BaaroForce.UI
             StyleSheet actMapStyles = Resources.Load<StyleSheet>("ActMap");
             if (actMapStyles != null) _root.styleSheets.Add(actMapStyles);
 
+            // TurnManager.Initialize() already adds one to this same GameObject before adding
+            // CombatCornerMenu; fall back to adding our own only if that's somehow not true
+            // (e.g. this component used standalone outside the usual combat scene wiring).
+            WarningToastUI warningToast = GetComponent<WarningToastUI>() ?? gameObject.AddComponent<WarningToastUI>();
+
             BuildMapOverlay();
             BuildModalShell();
-            _inventoryPanel = new InventoryPanel(_modalContent, OpenModal, CloseModal);
+            _inventoryPanel = new InventoryPanel(_modalContent, OpenModal, CloseModal, warningToast.Show);
 
+            _goldLabel = new Label();
+            _goldLabel.AddToClassList("act-map-gold");
+            _root.Add(_goldLabel);
+            RefreshGold();
+
+            _inventoryButton = MakeInventoryButton(() => _inventoryPanel.Open());
             _root.Add(MakeMapButton(ToggleMap));
-            _root.Add(MakeInventoryButton(() => _inventoryPanel.Open()));
+            _root.Add(_inventoryButton);
+        }
+
+        /// <summary>Snaps the top-right Gold readout straight to the party's current total, no
+        /// animation — for setup (Awake) and anything else that isn't a claimed-gold moment.</summary>
+        public void RefreshGold()
+        {
+            _goldCountAnim?.Pause();
+            _displayedGold = PartyManager.Instance.Party.Gold;
+            if (_goldLabel != null) _goldLabel.text = $"{_displayedGold} Gold";
+        }
+
+        /// <summary>Counts the Gold readout up from whatever it's currently showing to the
+        /// party's new total (see TurnManager.ClaimLoot), with a quick scale bounce timed to
+        /// the count so the number visibly "lands" rather than just snapping to the new value.
+        /// Safe to call again mid-animation — restarts from whatever's currently displayed.</summary>
+        public void AnimateGoldGain()
+        {
+            if (_goldLabel == null) return;
+
+            int from = _displayedGold;
+            int to = PartyManager.Instance.Party.Gold;
+            if (to <= from) { RefreshGold(); return; }
+
+            _goldCountAnim?.Pause();
+
+            const int stepMs = 25;
+            const int durationMs = 550;
+            int totalSteps = Mathf.Max(1, durationMs / stepMs);
+            int step = 0;
+
+            IVisualElementScheduledItem anim = null;
+            anim = _goldLabel.schedule.Execute(() =>
+            {
+                step++;
+                float t = Mathf.Clamp01((float)step / totalSteps);
+
+                _displayedGold = Mathf.RoundToInt(Mathf.Lerp(from, to, t));
+                _goldLabel.text = $"{_displayedGold} Gold";
+
+                // A single bounce envelope across the whole count-up — zero at both ends,
+                // peaking mid-flight — rather than a discrete pulse per tick, so it reads as
+                // one springy motion instead of a jittery shake.
+                float bounce = Mathf.Sin(t * Mathf.PI) * 0.22f;
+                _goldLabel.style.scale = new Scale(Vector3.one * (1f + bounce));
+
+                if (t >= 1f)
+                {
+                    anim.Pause();
+                    _displayedGold = to;
+                    _goldLabel.text = $"{to} Gold";
+                    _goldLabel.style.scale = new Scale(Vector3.one);
+                }
+            }).Every(stepMs);
+            _goldCountAnim = anim;
         }
 
         private void OnDestroy() => IsBlockingCombatInput = false;

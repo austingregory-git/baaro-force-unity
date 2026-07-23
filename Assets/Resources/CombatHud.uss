@@ -522,11 +522,22 @@
     border-radius: 8px;
     padding: 10px 12px;
     margin: 0 0 8px 0;
+    transition-property: height, opacity, margin-top, margin-bottom, padding-top, padding-bottom;
+    transition-duration: 0.22s;
+    transition-timing-function: ease-out;
 }
 .loot-row:hover { background-color: rgba(255, 255, 255, 0.16); }
-.loot-row-claimed {
-    background-color: rgba(255, 255, 255, 0.04);
-    opacity: 0.6;
+
+/* Claiming a row shrinks it to nothing (see FightResultUI.CollapseRow) instead of just
+   tagging it "Claimed" in place — the rows below slide up to fill the gap as a natural
+   side effect of the layout reflow, so the player can click the same spot repeatedly. */
+.loot-row-collapsed {
+    height: 0;
+    opacity: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
 }
 
 .loot-icon {
@@ -553,14 +564,19 @@
     color: rgb(243, 230, 200);
 }
 
-.loot-claimed-tag {
-    font-size: 11px;
-    -unity-font-style: bold;
-    color: rgb(166, 235, 166);
-    background-color: rgba(120, 200, 140, 0.18);
-    border-radius: 10px;
-    padding: 2px 8px;
-    margin-left: 8px;
+/* Small floating dot spawned at a claimed loot icon's position and animated (via this
+   transition) shrinking into the Gold readout / Inventory button — see
+   FightResultUI.FlyToTarget. Reuses .loot-icon-gold/.loot-icon-item for matching tint. */
+/* Position/left/top/width/height/opacity here are all driven frame-by-frame from C#
+   (FightResultUI.FlyToTarget) rather than a USS transition — left/top/width/height aren't
+   reliably transition-animatable together on a dynamically-positioned element in UI Toolkit,
+   so this is a manual tween instead. Don't add a transition-property here: it would fight
+   the manual per-tick values instead of complementing them. */
+.loot-fly-icon {
+    position: absolute;
+    /* Larger than half of any size it's animated at (30px down to 8px) so it clamps to a
+       full circle throughout, without relying on percentage border-radius support. */
+    border-radius: 20px;
 }
 
 .fight-result-btn {
