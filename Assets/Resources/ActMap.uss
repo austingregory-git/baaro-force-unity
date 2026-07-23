@@ -221,8 +221,61 @@
 
 /* ---------------- Corner icons (Inventory / Map) ------------------------- */
 
+/* Act Map screen only: one row anchored bottom-right (deliberately opposite
+   corner from .act-map-gold, top-right, so the two never compete for space),
+   with each icon just a plain flex child inside it — adding a future icon is
+   one more child here, not another hardcoded `right: Npx` offset. Combat's
+   CombatCornerMenu still positions its own Inventory/Map buttons
+   independently via .act-inventory-btn/.act-map-btn below (unchanged), since
+   it doesn't go through this row. */
+.act-corner-icons {
+    position: absolute;
+    bottom: 20px;
+    right: 24px;
+    flex-direction: row;
+    align-items: center;
+}
+
+/* Shared chrome for every icon inside .act-corner-icons — same box .act-
+   inventory-btn/.act-map-btn use below, just without their own positioning
+   (position comes from being a flex child of the row instead). */
+.act-corner-icon-btn {
+    width: 52px;
+    height: 52px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: rgba(24, 17, 27, 0.9);
+    border-width: 2px;
+    border-color: rgb(201, 163, 90);
+    margin-left: 10px;
+}
+.act-corner-icon-btn:hover { background-color: rgba(40, 30, 44, 0.95); }
+
+/* Plain 3-dot "group" glyph for the Party button — same no-sprite-assets-yet
+   convention as the bag/map icon glyphs above. */
+.party-icon-wrap {
+    width: 26px;
+    height: 26px;
+}
+
+.party-icon-dot {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    background-color: rgb(201, 163, 90);
+}
+
+.party-icon-dot-a { left: 8px; top: 0; }
+.party-icon-dot-b { left: 0; bottom: 0; }
+.party-icon-dot-c { right: 0; bottom: 0; }
+
 /* Small square corner trigger, bottom-right — deliberately opposite corner
-   from .act-map-gold (top-right) so the two never compete for space. */
+   from .act-map-gold (top-right) so the two never compete for space.
+   Used standalone (not through .act-corner-icons) by CombatCornerMenu in
+   the combat scene. */
 .act-inventory-btn {
     position: absolute;
     bottom: 20px;

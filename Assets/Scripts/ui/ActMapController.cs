@@ -51,12 +51,17 @@ namespace BaaroForce.UI
         private Label _modalTitle;
 
         private InventoryPanel _inventoryPanel;
+        private CharacterInspectUI _inspectPanel;
         private WarningToastUI _warningToast;
 
         private void Awake()
         {
             _run = PartyManager.Instance.ActRun;
             _warningToast = gameObject.AddComponent<WarningToastUI>();
+            // CharacterInspectUI's equipment-slot tooltips rely on TooltipSystem.Instance —
+            // combat scenes get one via TurnManager's setup, but nothing here did yet.
+            if (TooltipSystem.Instance == null)
+                new GameObject("[TooltipSystem]").AddComponent<TooltipSystem>();
             BuildChrome();
             RefreshGold();
 
@@ -114,7 +119,15 @@ namespace BaaroForce.UI
             BuildModalShell();
 
             _inventoryPanel = new InventoryPanel(_modalContent, OpenModal, CloseModal, _warningToast.Show);
-            mapRoot.Add(MakeInventoryButton(() => _inventoryPanel.Open()));
+            _inspectPanel = gameObject.AddComponent<CharacterInspectUI>();
+
+            // One row, anchored bottom-right — see .act-corner-icons in ActMap.uss. Party
+            // sits left of Inventory; a future icon is just another child added here.
+            var cornerIcons = new VisualElement();
+            cornerIcons.AddToClassList("act-corner-icons");
+            mapRoot.Add(cornerIcons);
+            cornerIcons.Add(MakePartyButton(ShowPartyPicker));
+            cornerIcons.Add(MakeInventoryButton(() => _inventoryPanel.Open()));
         }
 
         /// <summary>Small square corner button that opens the Inventory — built from plain
@@ -124,7 +137,7 @@ namespace BaaroForce.UI
         private static VisualElement MakeInventoryButton(Action onClick)
         {
             var button = new VisualElement();
-            button.AddToClassList("act-inventory-btn");
+            button.AddToClassList("act-corner-icon-btn");
             button.RegisterCallback<ClickEvent>(_ => onClick());
 
             var flap = new VisualElement();
@@ -134,6 +147,37 @@ namespace BaaroForce.UI
             var body = new VisualElement();
             body.AddToClassList("bag-icon-body");
             button.Add(body);
+
+            return button;
+        }
+
+        /// <summary>Small square corner button that opens the Party list — same plain-
+        /// VisualElement-glyph convention as MakeInventoryButton (a 3-dot "group" cluster
+        /// instead of text/sprite).</summary>
+        private static VisualElement MakePartyButton(Action onClick)
+        {
+            var button = new VisualElement();
+            button.AddToClassList("act-corner-icon-btn");
+            button.RegisterCallback<ClickEvent>(_ => onClick());
+
+            var wrap = new VisualElement();
+            wrap.AddToClassList("party-icon-wrap");
+            button.Add(wrap);
+
+            var dotA = new VisualElement();
+            dotA.AddToClassList("party-icon-dot");
+            dotA.AddToClassList("party-icon-dot-a");
+            wrap.Add(dotA);
+
+            var dotB = new VisualElement();
+            dotB.AddToClassList("party-icon-dot");
+            dotB.AddToClassList("party-icon-dot-b");
+            wrap.Add(dotB);
+
+            var dotC = new VisualElement();
+            dotC.AddToClassList("party-icon-dot");
+            dotC.AddToClassList("party-icon-dot-c");
+            wrap.Add(dotC);
 
             return button;
         }
@@ -392,6 +436,16 @@ namespace BaaroForce.UI
                 });
                 _modalContent.Add(row);
             }
+        }
+
+        /// <summary>Party corner button — lists every party member (reusing ShowMemberPicker's
+        /// row/label style, same as picking who equips an item) and opens the character sheet
+        /// for whoever is clicked. Unlike ShowMemberPicker's other caller (a forced Royal
+        /// Decree choice), this is just browsing, so it gets an explicit Close button.</summary>
+        private void ShowPartyPicker()
+        {
+            ShowMemberPicker("Party", member => _inspectPanel.Show(member));
+            _modalContent.Add(MakeActionButton("Close", CloseModal));
         }
 
         private void ShowMemberPicker(string title, Action<Character> onPicked)

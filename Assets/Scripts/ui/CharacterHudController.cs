@@ -145,14 +145,29 @@ namespace BaaroForce.UI
             _selectedPanel.AddToClassList("hud-panel--left");
             _selectedPanel.style.display = DisplayStyle.None;
             root.Add(_selectedPanel);
+            AttachStatTooltips(_selectedPanel);
 
             _targetPanel = _panelTemplate.Instantiate();
             _targetPanel.AddToClassList("hud-panel");
             _targetPanel.AddToClassList("hud-panel--right");
             _targetPanel.style.display = DisplayStyle.None;
             root.Add(_targetPanel);
+            AttachStatTooltips(_targetPanel);
 
             _arrow = new ActionArrowIndicator(root);
+        }
+
+        /// <summary>Wires each stat row's hover tooltip once per panel instance (rows are
+        /// static UXML elements reused across repeated Populate() calls, unlike the code-built
+        /// rows in CharacterSelectionManager/CharacterInspectUI which get fresh tooltip
+        /// registration every time they're built).</summary>
+        private static void AttachStatTooltips(VisualElement panel)
+        {
+            StatTooltips.AttachHp(panel.Q<VisualElement>("hp-row"));
+            StatTooltips.AttachMana(panel.Q<VisualElement>("mana-row"));
+            StatTooltips.AttachMovement(panel.Q<VisualElement>("move-row"));
+            StatTooltips.AttachAttack(panel.Q<VisualElement>("atk-row"));
+            StatTooltips.AttachShield(panel.Q<VisualElement>("shield-row"));
         }
 
         // ------------------------------------------------------------------ //

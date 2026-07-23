@@ -269,6 +269,10 @@ namespace BaaroForce.UI
             var num = new Label($"{filled}/{total}");
             num.AddToClassList("stat-num");
             row.Add(num);
+
+            if (badgeClass == "stat-badge-hp") StatTooltips.AttachHp(row);
+            else if (badgeClass == "stat-badge-mana") StatTooltips.AttachMana(row);
+
             return row;
         }
 
@@ -282,6 +286,7 @@ namespace BaaroForce.UI
             var num = new Label(movement.ToString());
             num.AddToClassList("stat-num");
             row.Add(num);
+            StatTooltips.AttachMovement(row);
             return row;
         }
 
@@ -295,6 +300,7 @@ namespace BaaroForce.UI
             num.AddToClassList("stat-num");
             num.AddToClassList("stat-num-big");
             row.Add(num);
+            StatTooltips.AttachShield(row);
             return row;
         }
 
@@ -312,6 +318,9 @@ namespace BaaroForce.UI
             var num = new Label(value.ToString());
             num.AddToClassList("stat-num");
             row.Add(num);
+
+            if (label == "Attack Bonus") StatTooltips.AttachAttackBonus(row);
+            else if (label == "Spell Power") StatTooltips.AttachSpellPower(row);
 
             return row;
         }

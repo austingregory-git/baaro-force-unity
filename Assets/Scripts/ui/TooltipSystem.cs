@@ -65,6 +65,19 @@ namespace BaaroForce.UI
         {
             if (_panelRect == null || !_panelRect.gameObject.activeSelf) return;
 
+            // A click almost always means whatever triggered this tooltip is about to be
+            // rebuilt or replaced (a character gets selected, a node/member gets picked, a
+            // menu opens...). When that happens the pointer never actually leaves the old
+            // element's screen position — it just stops existing — so no PointerLeaveEvent
+            // fires to close this on its own, and it would otherwise linger until the player
+            // happens to hover something else with a tooltip. Hiding on any click sidesteps
+            // needing to track every place a hover target can be pulled out from under it.
+            if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
+            {
+                Hide();
+                return;
+            }
+
             PositionNearCursor();
 
             bool shiftHeld = IsShiftHeld();

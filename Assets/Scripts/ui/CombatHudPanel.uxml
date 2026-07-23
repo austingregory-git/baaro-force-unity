@@ -15,25 +15,25 @@
 
         <ui:VisualElement name="stat-list" class="stat-list">
 
-            <ui:VisualElement class="stat-row">
+            <ui:VisualElement name="hp-row" class="stat-row">
                 <ui:VisualElement class="stat-badge stat-badge-hp" />
                 <ui:VisualElement name="hp-bar" class="seg-bar" />
                 <ui:Label name="hp-num" text="0/0" class="stat-num" />
             </ui:VisualElement>
 
-            <ui:VisualElement class="stat-row">
+            <ui:VisualElement name="mana-row" class="stat-row">
                 <ui:VisualElement class="stat-badge stat-badge-mana" />
                 <ui:VisualElement name="mana-bar" class="seg-bar" />
                 <ui:Label name="mana-num" text="0/0" class="stat-num" />
             </ui:VisualElement>
 
-            <ui:VisualElement class="stat-row">
+            <ui:VisualElement name="move-row" class="stat-row">
                 <ui:VisualElement class="stat-badge stat-badge-move" />
                 <ui:VisualElement name="move-pips" class="pips" />
                 <ui:Label name="move-num" text="0" class="stat-num" />
             </ui:VisualElement>
 
-            <ui:VisualElement class="stat-row">
+            <ui:VisualElement name="atk-row" class="stat-row">
                 <ui:VisualElement name="atk-badge" class="stat-badge weapon-melee" />
                 <ui:Label name="atk-num" text="0" class="stat-num stat-num-big" />
             </ui:VisualElement>

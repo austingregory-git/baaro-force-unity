@@ -331,6 +331,10 @@ public class CharacterSelectionManager : MonoBehaviour
         var num = new Label(value.ToString());
         num.AddToClassList("stat-num");
         row.Add(num);
+
+        if (badgeClass == "stat-badge-hp") StatTooltips.AttachHp(row);
+        else if (badgeClass == "stat-badge-mana") StatTooltips.AttachMana(row);
+
         return row;
     }
 
@@ -344,6 +348,7 @@ public class CharacterSelectionManager : MonoBehaviour
         var num = new Label(movement.ToString());
         num.AddToClassList("stat-num");
         row.Add(num);
+        StatTooltips.AttachMovement(row);
         return row;
     }
 
@@ -354,6 +359,7 @@ public class CharacterSelectionManager : MonoBehaviour
         var num = new Label(totalAttack.ToString());
         num.AddToClassList("stat-num");
         row.Add(num);
+        StatTooltips.AttachAttack(row);
         return row;
     }
 
