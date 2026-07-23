@@ -290,6 +290,7 @@ namespace BaaroForce.UI
                 MapSize = encounter.GridSize,
                 EnemyLevel = node.EnemyLevel,
                 Enemies = encounter.Enemies,
+                MapFile = encounter.MapFile,
             };
             SceneManager.LoadScene(FightScene);
         }

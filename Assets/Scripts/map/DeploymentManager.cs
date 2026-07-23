@@ -28,6 +28,12 @@ namespace BaaroForce.Map
 
         private bool   _deploymentComplete;
 
+        // Explicit deployment tiles from a hand-drawn map's [UNITS] "PZ" markers (see
+        // MapLayout.DeploymentTiles) — set just before Initialize() when generating from a
+        // layout. Null/empty means "no author-marked zone", so MarkDeploymentZone falls back
+        // to the usual fixed 4x2 block, same as every procedurally generated map.
+        private List<(int x, int z)> _explicitDeploymentCoords;
+
         /// <summary>
         /// Fired when the last party member has been placed (or immediately if the
         /// party is empty).  MapGenerator subscribes TurnManager.StartPlayerTurn here.
@@ -39,13 +45,15 @@ namespace BaaroForce.Map
         // ------------------------------------------------------------------ //
 
         public void Initialize(MapTile[,] grid, int size, float tileStep,
-                               float originWorldX, float originWorldZ)
+                               float originWorldX, float originWorldZ,
+                               List<(int x, int z)> explicitDeploymentCoords = null)
         {
             _tiles   = grid;
             _gridSize = size;
             _step    = tileStep;
             _originX = originWorldX;
             _originZ = originWorldZ;
+            _explicitDeploymentCoords = explicitDeploymentCoords;
 
             _deploymentTiles.Clear();
             _charactersToPlace.Clear();
@@ -73,7 +81,20 @@ namespace BaaroForce.Map
 
         private void MarkDeploymentZone()
         {
-            // Centre 4 columns, bottom 2 rows.
+            if (_explicitDeploymentCoords != null && _explicitDeploymentCoords.Count > 0)
+            {
+                foreach ((int x, int z) in _explicitDeploymentCoords)
+                {
+                    MapTile tile = _tiles[x, z];
+                    if (!tile.IsPassable(null)) continue;
+                    tile.SetDeploymentZone(true);
+                    _deploymentTiles.Add(tile);
+                }
+                return;
+            }
+
+            // No author-marked zone — fall back to the original fixed rectangle: centre 4
+            // columns, bottom 2 rows.
             int startX = _gridSize / 2 - DeployWidth / 2;
             int startZ = 0;
 
@@ -82,10 +103,10 @@ namespace BaaroForce.Map
                 for (int z = startZ; z < startZ + DeployHeight; z++)
                 {
                     MapTile tile = _tiles[x, z];
-                    // Skip impassable terrain (Mountain/Water/Ocean) — the deployment block is a
-                    // fixed rectangle with no terrain awareness, so without this a Water/Mountain
+                    // Skip impassable tiles (terrain or object) — the deployment block is a
+                    // fixed rectangle with no terrain awareness, so without this an impassable
                     // roll here would offer a deployment tile nobody could actually stand on.
-                    if (!TerrainInfoRegistry.IsPassable(tile.TerrainType, null)) continue;
+                    if (!tile.IsPassable(null)) continue;
                     tile.SetDeploymentZone(true);
                     _deploymentTiles.Add(tile);
                 }
@@ -117,7 +138,7 @@ namespace BaaroForce.Map
                 for (int z = _gridSize / 2; z < _gridSize; z++)
                 {
                     MapTile tile = _tiles[x, z];
-                    if (!tile.IsOccupied && TerrainInfoRegistry.IsPassable(tile.TerrainType, null))
+                    if (!tile.IsOccupied && tile.IsPassable(null))
                         candidateTiles.Add(tile);
                 }
 

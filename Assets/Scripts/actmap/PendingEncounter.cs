@@ -23,5 +23,10 @@ namespace BaaroForce.ActMap
         /// <see cref="Encounter.Enemies"/>) — spawned as-is by MapGenerator, one Npc per
         /// factory, each leveled up via its ApplyLevel.</summary>
         public List<Func<Npc>> Enemies { get; set; }
+
+        /// <summary>Passthrough of <see cref="Encounter.MapFile"/> — null means MapGenerator
+        /// builds this fight's map procedurally as it always has; set means it loads and parses
+        /// that hand-drawn layout instead. See MapLayoutParser.</summary>
+        public string MapFile { get; set; }
     }
 }

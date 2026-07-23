@@ -1947,7 +1947,7 @@ namespace BaaroForce.Map
 
                 foreach (MapTile nb in Neighbors(cur))
                 {
-                    if (!TerrainInfoRegistry.IsPassable(nb.TerrainType, mover)) continue;
+                    if (!nb.IsPassable(mover)) continue;
                     if (nb.IsOccupied || settled.Contains(nb)) continue;
 
                     int nd = best + StepCost(cur, nb, mover);
@@ -1990,7 +1990,7 @@ namespace BaaroForce.Map
 
                 foreach (MapTile nb in Neighbors(cur))
                 {
-                    if (!TerrainInfoRegistry.IsPassable(nb.TerrainType, mover)) continue;
+                    if (!nb.IsPassable(mover)) continue;
                     if (nb.IsOccupied && nb != dest) continue;
                     if (settled.Contains(nb)) continue;
 

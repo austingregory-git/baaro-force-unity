@@ -16,6 +16,7 @@ namespace BaaroForce.Map
         // ------------------------------------------------------------------ //
 
         public TerrainTile.TerrainType TerrainType      { get; private set; }
+        public TileObjectType      TileObject            { get; private set; } = TileObjectType.None;
         public bool                IsInDeploymentZone    { get; private set; }
 
         /// <summary>The single unit (player Character or Npc) occupying this tile, or null.</summary>
@@ -27,6 +28,13 @@ namespace BaaroForce.Map
         public Npc       OccupyingNpc       => OccupyingUnit as Npc;
 
         public bool IsOccupied => OccupyingUnit != null;
+
+        /// <summary>Single choke point for "can a unit stand on this tile" — combines terrain
+        /// passability with this tile's object layer (e.g. a Boulder blocks a tile regardless
+        /// of otherwise-walkable terrain underneath it). Use this instead of calling
+        /// TerrainInfoRegistry.IsPassable directly so object obstacles are never missed.</summary>
+        public bool IsPassable(Character mover) =>
+            TerrainInfoRegistry.IsPassable(TerrainType, mover) && TileObjectRegistry.IsPassable(TileObject);
 
         /// <summary>Column index in the grid array.</summary>
         public int GridX { get; private set; }
@@ -84,6 +92,79 @@ namespace BaaroForce.Map
             GetComponent<MeshRenderer>().material = mat;
 
             SpawnTerrainProps(type);
+        }
+
+        /// <summary>Places an independent object prop (see TileObjectType) on top of whatever
+        /// terrain this tile already has — additive to, not a replacement for, Initialize's
+        /// automatic terrain-driven decoration. Called by MapGenerator only for hand-authored
+        /// (.map file) layouts; procedurally generated tiles never have one.</summary>
+        public void InitializeObject(TileObjectType type)
+        {
+            TileObject = type;
+            if (type == TileObjectType.None) return;
+
+            float tileWorldSize = transform.lossyScale.x;
+            float halfTileH     = transform.lossyScale.y * 0.5f;
+            Vector3 basePos     = transform.position + Vector3.up * halfTileH;
+
+            switch (type)
+            {
+                case TileObjectType.Boulder: BuildBoulder(basePos, tileWorldSize); break;
+                case TileObjectType.Crate:   BuildCrate(basePos, tileWorldSize);   break;
+                case TileObjectType.Rubble:  BuildRubble(basePos, tileWorldSize);  break;
+            }
+        }
+
+        private static readonly Color BoulderColor = new Color(0.42f, 0.40f, 0.38f);
+        private static readonly Color CrateColor    = new Color(0.55f, 0.38f, 0.20f);
+        private static readonly Color RubbleColor   = new Color(0.48f, 0.46f, 0.44f);
+
+        /// <summary>A single rough grey block, parented to the grid root — same non-uniform-
+        /// scale reasoning as SpawnForestProps/SpawnMountainProp.</summary>
+        private void BuildBoulder(Vector3 basePos, float tileWorldSize)
+        {
+            GameObject boulder = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            boulder.name = "Boulder";
+            Destroy(boulder.GetComponent<Collider>());
+            boulder.transform.SetParent(transform.parent, false);
+            float size = tileWorldSize * 0.45f;
+            boulder.transform.position   = basePos + Vector3.up * (size * 0.5f);
+            boulder.transform.localScale = new Vector3(size, size * 0.8f, size);
+            boulder.GetComponent<MeshRenderer>().material = SolidMaterial(BoulderColor);
+        }
+
+        /// <summary>A single wooden supply crate.</summary>
+        private void BuildCrate(Vector3 basePos, float tileWorldSize)
+        {
+            GameObject crate = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            crate.name = "Crate";
+            Destroy(crate.GetComponent<Collider>());
+            crate.transform.SetParent(transform.parent, false);
+            float size = tileWorldSize * 0.4f;
+            crate.transform.position   = basePos + Vector3.up * (size * 0.5f);
+            crate.transform.localScale = new Vector3(size, size, size);
+            crate.GetComponent<MeshRenderer>().material = SolidMaterial(CrateColor);
+        }
+
+        /// <summary>A few low, jittered rubble chunks — same scatter approach as SpawnForestProps.</summary>
+        private void BuildRubble(Vector3 basePos, float tileWorldSize)
+        {
+            int chunkCount = Random.Range(3, 5);
+            for (int i = 0; i < chunkCount; i++)
+            {
+                Vector3 jitter = new Vector3(
+                    Random.Range(-0.3f, 0.3f), 0f, Random.Range(-0.3f, 0.3f)) * tileWorldSize;
+
+                GameObject chunk = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                chunk.name = "RubbleChunk";
+                Destroy(chunk.GetComponent<Collider>());
+                chunk.transform.SetParent(transform.parent, false);
+                float size = tileWorldSize * Random.Range(0.10f, 0.16f);
+                chunk.transform.position   = basePos + jitter + Vector3.up * (size * 0.5f);
+                chunk.transform.rotation   = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                chunk.transform.localScale = new Vector3(size, size * 0.6f, size);
+                chunk.GetComponent<MeshRenderer>().material = SolidMaterial(RubbleColor);
+            }
         }
 
         // ------------------------------------------------------------------ //

@@ -1,0 +1,40 @@
+# Wolf Den — example hand-drawn map (Earth / Normal1, see EncounterRegistry).
+# File rows read top-to-bottom as far-edge-to-near-edge: the first grid row below is the
+# FAR side of the battlefield (z = HEIGHT-1, where enemies stand), the last grid row is the
+# NEAR side (z = 0, the player's side) — so this file reads the same way the map looks.
+# Columns read left-to-right as x = 0..WIDTH-1.
+#
+# See MapCodeTables.cs for the full code list.
+
+WIDTH=8
+HEIGHT=8
+
+[TERRAIN]
+GR GR FO FO GR GR GR GR
+GR FO FO GR GR GR MT GR
+GR GR GR GR GR GR MT GR
+GR GR GR GR GR GR GR GR
+GR GR GR GR GR GR GR GR
+GR GR GR GR GR GR GR GR
+GR GR GR GR GR GR GR GR
+GR GR GR GR GR GR GR GR
+
+[OBJECTS]
+.. .. .. .. .. .. .. ..
+.. .. .. .. .. BO .. ..
+.. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. ..
+.. .. RB .. .. .. .. ..
+.. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. ..
+
+[UNITS]
+.. .. .. .. WO .. .. AW
+.. WO .. .. .. .. .. ..
+.. .. .. WO .. .. .. ..
+.. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. ..
+PZ PZ PZ PZ .. .. .. ..
+PZ PZ PZ PZ .. .. .. ..

@@ -35,6 +35,11 @@ namespace BaaroForce.Map
         // type), same as every other factory-based registry in this project.
         private List<Func<Npc>> _enemies = DefaultTestEnemies;
 
+        // Resources path to a hand-drawn .map file (see MapLayoutParser) — set from
+        // PendingEncounter.MapFile in Start(). Null means this fight generates procedurally,
+        // exactly as every fight did before hand-drawn maps existed.
+        private string _mapFile;
+
         private static List<Func<Npc>> DefaultTestEnemies => new List<Func<Npc>>
         {
             () => new Wolf(),
@@ -79,6 +84,7 @@ namespace BaaroForce.Map
                 MapSize    = pending.MapSize;
                 EnemyLevel = pending.EnemyLevel;
                 _enemies   = pending.Enemies;
+                _mapFile   = pending.MapFile;
             }
 
             GenerateMap();
@@ -89,6 +95,24 @@ namespace BaaroForce.Map
         {
             ClearExistingTiles();
 
+            MapLayout layout = string.IsNullOrEmpty(_mapFile) ? null : MapLayoutParser.Load(_mapFile);
+            if (layout != null)
+            {
+                BuildFromLayout(layout);
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(_mapFile))
+                    Debug.LogWarning($"[MapGenerator] Falling back to procedural generation — " +
+                        $"'{_mapFile}' failed to load/parse (see error above).");
+                BuildProcedural();
+            }
+        }
+
+        /// <summary>The original random-per-tile generation — unchanged behavior for every
+        /// encounter that doesn't set <see cref="Encounter.MapFile"/>.</summary>
+        private void BuildProcedural()
+        {
             int size = (int)MapSize;
             _tiles = new MapTile[size, size];
 
@@ -108,6 +132,62 @@ namespace BaaroForce.Map
                 }
             }
 
+            FinishSetup(size, step, originX, originZ, explicitDeploymentCoords: null);
+
+            // Build and place the enemy pack on the far side of the map.
+            List<Npc> enemyPack = SpawnEnemies();
+            _deploymentManager.PlaceEnemyPack(enemyPack);
+        }
+
+        /// <summary>Builds the grid from a hand-drawn <see cref="MapLayout"/> instead of
+        /// rolling terrain per tile — see MapLayoutParser for the .map file format this comes
+        /// from. Terrain/objects come straight from the file; enemy placement and the player
+        /// deployment zone use the file's own [UNITS] markers when it has any, falling back to
+        /// this fight's Encounter.Enemies + the usual random/fixed-rectangle logic otherwise.</summary>
+        private void BuildFromLayout(MapLayout layout)
+        {
+            int size = layout.Width;
+            _tiles = new MapTile[size, size];
+
+            float step    = TileSize + TileGap;
+            float originX = -(size * step) / 2f + step / 2f;
+            float originZ = -(size * step) / 2f + step / 2f;
+
+            for (int x = 0; x < size; x++)
+            {
+                for (int z = 0; z < size; z++)
+                {
+                    MapTile tile = SpawnTile(x, z, layout.Terrain[x, z], originX + x * step, originZ + z * step);
+                    tile.InitializeObject(layout.Objects[x, z]);
+                    _tiles[x, z] = tile;
+                }
+            }
+
+            FinishSetup(size, step, originX, originZ, layout.DeploymentTiles);
+
+            if (layout.EnemySpawns.Count > 0)
+            {
+                foreach ((int x, int z, Func<Npc> factory) in layout.EnemySpawns)
+                {
+                    Npc npc = factory();
+                    ApplyLevel(npc, EnemyLevel);
+                    _tiles[x, z].PlaceUnit(npc);
+                }
+            }
+            else
+            {
+                // Author didn't place any enemies in [UNITS] — fall back to this Encounter's
+                // roster with the usual random far-half placement, same as a procedural map.
+                List<Npc> enemyPack = SpawnEnemies();
+                _deploymentManager.PlaceEnemyPack(enemyPack);
+            }
+        }
+
+        /// <summary>Shared tail end of both generation paths: camera framing, scene light,
+        /// TurnManager, and DeploymentManager (with an optional author-marked deployment zone).</summary>
+        private void FinishSetup(int size, float step, float originX, float originZ,
+            List<(int x, int z)> explicitDeploymentCoords)
+        {
             FitCameraToMap(size, step);
             SetupSceneLight();
 
@@ -120,11 +200,7 @@ namespace BaaroForce.Map
             if (_deploymentManager == null)
                 _deploymentManager = gameObject.AddComponent<DeploymentManager>();
             _deploymentManager.OnDeploymentComplete += _turnManager.StartPlayerTurn;
-            _deploymentManager.Initialize(_tiles, size, step, originX, originZ);
-
-            // Build and place the enemy pack on the far side of the map.
-            List<Npc> enemyPack = SpawnEnemies();
-            _deploymentManager.PlaceEnemyPack(enemyPack);
+            _deploymentManager.Initialize(_tiles, size, step, originX, originZ, explicitDeploymentCoords);
         }
 
         /// <summary>Instantiates this fight's explicit roster (<see cref="_enemies"/>), each

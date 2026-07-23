@@ -24,12 +24,17 @@ namespace BaaroForce.ActMap.Encounters
             {
                 { (Realm.Earth, EncounterPoolTier.Normal1), new List<Encounter>
                     {
+                        // First hand-drawn map in the game — see Assets/Resources/Maps/wolf_den.map
+                        // and MapLayoutParser for the file format. Enemies/deployment zone come
+                        // from the file's own [UNITS] section, so the "enemies" list below is a
+                        // dormant fallback only (used if the file ever fails to load/parse).
                         new Encounter("Wolf Den", Realm.Earth, EncounterPoolTier.Normal1, MapSize.Small,
-                            enemies: new List<Func<Npc>> 
-                            { () => new Wolf(), 
+                            enemies: new List<Func<Npc>>
+                            { () => new Wolf(),
                               () => new Wolf(),
                               () => new Wolf(),
-                              () => new AlphaWolf() }),
+                              () => new AlphaWolf() },
+                            mapFile: "Maps/wolf_den"),
                         new Encounter("Mozeem Outpost", Realm.Earth, EncounterPoolTier.Normal1, MapSize.Small,
                             enemies: new List<Func<Npc>> { () => new MozeemGuardian(), () => new MozeemArcher() }),
                     } },

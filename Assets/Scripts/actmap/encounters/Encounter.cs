@@ -21,13 +21,25 @@ namespace BaaroForce.ActMap.Encounters
         public MapSize GridSize { get; }
         public List<Func<Npc>> Enemies { get; }
 
-        public Encounter(string name, Realm realm, EncounterPoolTier tier, MapSize gridSize, List<Func<Npc>> enemies)
+        /// <summary>Resources path to a hand-drawn .map file (e.g. "Maps/wolf_den" for
+        /// Assets/Resources/Maps/wolf_den.map) — see MapLayoutParser for the file format. Null
+        /// (the default) means this encounter still generates its map procedurally from
+        /// <see cref="GridSize"/>/Realm the way every encounter did before hand-drawn maps
+        /// existed. When set, MapGenerator builds the map from the file instead; <see
+        /// cref="GridSize"/> is then ignored (the file's own WIDTH/HEIGHT wins), and <see
+        /// cref="Enemies"/> is only used as a fallback if the file's [UNITS] section doesn't
+        /// place any enemies itself.</summary>
+        public string MapFile { get; }
+
+        public Encounter(string name, Realm realm, EncounterPoolTier tier, MapSize gridSize,
+            List<Func<Npc>> enemies, string mapFile = null)
         {
             Name = name;
             Realm = realm;
             Tier = tier;
             GridSize = gridSize;
             Enemies = enemies;
+            MapFile = mapFile;
         }
     }
 }
